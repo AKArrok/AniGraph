@@ -1,175 +1,201 @@
-# 🤖 LangGraph Multi-Agent Chatbot
+# AniGraph — ACG 番剧智能推荐助手
 
 <div align="center">
 
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge&logo=python)
 ![LangGraph](https://img.shields.io/badge/LangGraph-0.3%2B-green?style=for-the-badge)
 ![LangChain](https://img.shields.io/badge/LangChain-0.3%2B-orange?style=for-the-badge)
-![FastMCP](https://img.shields.io/badge/FastMCP-0.2%2B-purple?style=for-the-badge)
-![Tavily](https://img.shields.io/badge/Tavily-Search-blue?style=for-the-badge)
+![Qwen](https://img.shields.io/badge/LLM-Qwen--Max-red?style=for-the-badge)
+![Pinecone](https://img.shields.io/badge/VectorDB-Pinecone-blueviolet?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
-![Status](https://img.shields.io/badge/Status-Production--Ready-brightgreen?style=for-the-badge)
 
-> A production-grade **Multi-Agent AI Chatbot** built with LangGraph — featuring intelligent query routing, RAG pipeline, real-time web search via Tavily, Python code execution via MCP, and persistent memory backed by PostgreSQL.
-
-**[⭐ Star this repo if it helps you!](#)**
+> 基于 Hybrid RAG + Multi-Agent 架构的 ACG 番剧智能推荐系统。在约 5,000 部番剧知识库上，通过 LangGraph 编排多个专业化 Agent 协作，实现自然语言问答。
 
 </div>
 
 ---
 
-## ✨ Features
+## 功能
 
-| Feature | Description |
-|---------|-------------|
-| 🔀 **Smart Router** | Classifies every query and routes it to the right tool automatically |
-| 🐍 **Python Executor** | Runs Python code in real-time via a remote FastMCP server |
-| 🔍 **Web Search** | Real-time search powered by Tavily |
-| 📄 **RAG Pipeline** | Document Q&A using Pinecone Vector DB + MMR retrieval |
-| 🧠 **Persistent Memory** | Multi-thread conversation memory backed by PostgreSQL (Neon) |
-| 📊 **Observability** | Full tracing and monitoring via LangSmith |
-| 🌐 **Bilingual** | Responds in Roman Urdu or English based on user input |
+| 功能 | 描述 |
+|------|------|
+| 智能推荐 | "推荐类似 JOJO 的番"、"有没有类似命运石之门的科幻番" |
+| 事实查询 | "京都动画有哪些作品"、"素晴的评分是多少" |
+| 对比分析 | "巨人 vs 鬼灭哪个好看" |
+| 角色 / 梗解析 | "夏亚是谁"、"典明粥是什么梗" |
+| 昵称识别 | "凉宫" → 凉宫春日的忧郁、"爱马仕" → 偶像大师 |
+| 自然闲聊 | 日常对话、感谢、问候等 |
 
 ---
 
-## 🏗️ Architecture
+## 架构
 
 ```
 User Query
     │
     ▼
-┌──────────────┐
-│ router_node  │  Classifies → python_tool / rag / web_search / direct
-└──────┬───────┘
-       │
-  ┌────┴────────────┬─────────────────┐
-  ▼                 ▼                 ▼
-python_tool      web_search          rag
-(FastMCP)        (Tavily)         (Pinecone)
-       │
-       ▼
-┌──────────────┐
-│ answer_node  │  Generates final response
-└──────────────┘
+┌─ 查询预处理 ──────────────────────────────────────────┐
+│  alias_resolve  →  昵称 / 实体解析（字典 → LLM → Web） │
+│  planner        →  规则优先分类（metadata/semantic/mixed/chat）│
+│  query_processing → 查询优化（Rewrite / HyDE / Decompose） │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─ 知识检索（三路索引）───────────────────────────────────┐
+│  MetadataIndex（结构化过滤, 零 Pinecone）               │
+│  Pinecone MMR（密集向量检索）                           │
+│  Whoosh BM25F（稀疏关键词检索）                         │
+│  → RRF 融合 → CrossEncoder 精排 → 压缩去重             │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─ 多 Expert 并行推理 ──────────────────────────────────┐
+│  metadata_reasoner（元数据推理）                        │
+│  similar_expert（相似推荐）                             │
+│  → merge（去重 + 置信度过滤 + 排序）                    │
+└───────────────────────────────────────────────────────┘
+    │
+    ▼
+┌─ 回答生成 ───────────────────────────────────────────┐
+│  web_fallback  →  低置信度时联网兜底                   │
+│  answer         →  口语化自然回答                      │
+└──────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 📁 Project Structure
+## 技术栈
 
-```
-langgraph-multi-agent/
-├── main.py              # Entry point — run the chatbot
-├── graph.py             # LangGraph graph assembly
-├── state.py             # State schema (TypedDict + Pydantic)
-├── llms.py              # LLM and embeddings setup
-├── config.py            # All settings from .env
-├── nodes/
-│   ├── router.py        # Router node + route condition
-│   ├── llm_tool.py      # LLM tool-calling node
-│   └── answer.py        # Final answer generation node
-├── tools/
-│   ├── rag.py           # RAG tool (Pinecone)
-│   ├── web_search.py    # Web search tool (Tavily)
-│   └── mcp_client.py   # MCP client (FastMCP Python REPL)
-├── docs/
-│   ├── architecture.md  # Deep-dive architecture docs
-│   └── api_reference.md # API reference
-├── tests/
-│   └── test_agent.py    # pytest test suite
-├── .env.example         # Environment variables template
-├── requirements.txt     # Dependencies
-└── README.md
-```
+| 层级 | 技术 |
+|------|------|
+| Agent 框架 | LangGraph |
+| 主 LLM | Qwen-Max（阿里 DashScope） |
+| 轻量 LLM | Qwen-Flash（阿里 DashScope） |
+| Embedding | Qwen3-Embedding-0.6B（本地, CPU） / DashScope API 可选 |
+| 向量数据库 | Pinecone |
+| 稀疏检索 | Whoosh BM25F（本地） |
+| 精排模型 | bge-reranker-v2-m3（CrossEncoder） |
+| 联网搜索 | Tavily |
+| 会话记忆 | MemorySaver（内存） |
+| 可观测性 | LangSmith / LangFuse（可选） |
 
 ---
 
-## 🚀 Quick Start
+## 快速开始
 
-### 1. Clone & Install
+### 1. 安装依赖
 
 ```bash
-git clone https://github.com/arbaz-builds/langgraph-multi-agent.git
-cd langgraph-multi-agent
 pip install -r requirements.txt
 ```
 
-### 2. Set up Environment
+### 2. 配置环境变量
 
 ```bash
 cp .env.example .env
-# Fill in your API keys in .env
+# 编辑 .env，填入你的 API Key
 ```
 
-### 3. Run
+必填的 API Key：
+
+| 变量 | 说明 | 获取地址 |
+|------|------|----------|
+| `DASHSCOPE_API_KEY` | 阿里云 DashScope（LLM + Embeddings） | [dashscope.aliyun.com](https://dashscope.aliyun.com) |
+| `PINECONE_API_KEY` | Pinecone 向量数据库 | [pinecone.io](https://pinecone.io) |
+| `TAVILY_API_KEY` | Tavily 联网搜索 | [tavily.com](https://tavily.com) |
+
+### 3. 运行
 
 ```python
 import asyncio
 from main import run
 
-result = asyncio.run(run("python version check karo", thread_id="1"))
+# 智能推荐
+result = asyncio.run(run("有没有类似命运石之门的科幻番"))
 print(result)
+
+# 事实查询
+result = asyncio.run(run("京都动画有哪些作品"))
+print(result)
+```
+
+或直接：
+
+```bash
+python main.py
 ```
 
 ---
 
-## 🔧 Environment Variables
+## 项目结构
 
-| Variable | Required | Description | Get it from |
-|----------|----------|-------------|-------------|
-| `NVIDIA_API_KEY` | ✅ | LLM inference | [build.nvidia.com](https://build.nvidia.com) |
-| `OPENAI_API_KEY` | ✅ | Embeddings | [platform.openai.com](https://platform.openai.com) |
-| `PINECONE_API_KEY` | ✅ | Vector database | [pinecone.io](https://pinecone.io) |
-| `TAVILY_API_KEY` | ✅ | Web search | [tavily.com](https://tavily.com) |
-| `DATABASE_URL` | ✅ | PostgreSQL memory | [neon.tech](https://neon.tech) |
-| `MCP_SERVER_URL` | ✅ | FastMCP Python REPL | [fastmcp-python-repl-server](https://github.com/arbaz-builds/fastmcp-python-repl-server) |
-| `LANGCHAIN_API_KEY` | ⚙️ optional | LangSmith tracing | [smith.langchain.com](https://smith.langchain.com) |
-
----
-
-## 🧠 How It Works
-
-1. **User sends a query** — in English or Roman Urdu
-2. **Router node** classifies it into one of 4 routes:
-   - `python_tool` → executes Python via FastMCP
-   - `web_search` → fetches real-time results via Tavily
-   - `rag` → retrieves from uploaded documents via Pinecone
-   - `direct` → answers directly without tools
-3. **LLM tool node** calls the appropriate tool
-4. **Answer node** generates a clean, concise response
-
----
-
-## 🛠️ Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Agent Framework | LangGraph |
-| LLM | NVIDIA NIM (gpt-oss-20b) |
-| Embeddings | OpenAI text-embedding-3-small |
-| Vector DB | Pinecone |
-| Web Search | Tavily |
-| Code Execution | FastMCP Python REPL |
-| Memory | PostgreSQL via Neon |
-| Observability | LangSmith |
+```
+AniGraph/
+├── main.py                 # 程序入口
+├── graph.py                # 图构建入口（重导出 agents/graph.py）
+├── llms.py                 # LLM & Embedding 实例创建
+├── config.py               # 全局配置（读取所有环境变量）
+├── requirements.txt        # Python 依赖
+├── agents/                 # 多 Agent 核心逻辑
+│   ├── graph.py            # LangGraph 图结构构建（核心编排）
+│   ├── planner.py          # 查询规划器（规则优先 + LLM fallback）
+│   ├── alias.py            # 番剧别名解析（字典 + LLM + Web）
+│   ├── entity_resolver.py  # 实体解析（角色/梗 → 番剧）
+│   ├── metadata_reasoner.py# 元数据推理 Expert
+│   ├── similar_expert.py   # 相似推荐 Expert
+│   ├── merge.py            # Expert 结果合并/去重/排序
+│   ├── answer.py           # 最终回答生成
+│   ├── web_fallback.py     # 联网搜索回退
+│   └── cache.py            # 别名缓存 + 元数据缓存
+├── tools/                  # 检索 & 工具层
+│   ├── knowledge_retrieval.py # 混合检索（Whoosh + Fusion + Rerank + 压缩）
+│   ├── query_processing.py   # 查询分类 + 改写（Rewrite/HyDE/Decompose）
+│   ├── rag_optimizer.py      # RAG 全链路门面
+│   └── web_search.py         # Tavily 联网搜索封装
+├── tests/                  # 测试
+│   ├── test_agent.py       # 交互式全链路测试
+│   └── test_integration.py # 集成测试
+├── data/                   # 知识库数据
+├── models/                 # 本地模型文件
+└── docs/                   # 文档
+```
 
 ---
 
-## 🔗 Related Projects
+## 环境变量
 
-- [fastmcp-python-repl-server](https://github.com/arbaz-builds/fastmcp-python-repl-server) — MCP Python REPL server used by this agent
-- [langchain-ai/langgraph](https://github.com/langchain-ai/langgraph) — Graph framework powering this project
-- [langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters) — MCP integration for LangChain
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `DASHSCOPE_API_KEY` | ✅ | - | 阿里云 DashScope API Key |
+| `DASHSCOPE_BASE_URL` | - | `https://dashscope.aliyuncs.com/compatible-mode/v1` | DashScope 端点 |
+| `PINECONE_API_KEY` | ✅ | - | Pinecone API Key |
+| `PINECONE_INDEX` | - | `vector` | Pinecone 索引名 |
+| `TAVILY_API_KEY` | ✅ | - | Tavily 联网搜索 Key |
+| `QWEN_LLM_MODEL` | - | `qwen-max` | 主 LLM 模型 |
+| `SIMPLE_LLM_MODEL` | - | `qwen-flash` | 轻量 LLM 模型 |
+| `EMBEDDING_BACKEND` | - | `local` | Embedding 后端：`local` / `dashscope` |
+| `ENABLE_RERANKING` | - | `true` | 是否启用 CrossEncoder 精排 |
+| `MAX_ITERATIONS` | - | `3` | 最大迭代次数 |
+| `RETRIEVER_K` | - | `5` | 最终返回文档数 |
+| `LANGCHAIN_API_KEY` | - | - | LangSmith 追踪（可选） |
+| `LANGFUSE_PUBLIC_KEY` | - | - | LangFuse 可观测（可选） |
 
 ---
 
-## 🤝 Contributing
+## 设计亮点
 
-Contributions, issues and feature requests are welcome!
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+| 决策 | 说明 | 收益 |
+|------|------|------|
+| Planner 规则优先 | 避免每次查询都调 LLM | 80% 查询零 Planner 成本，延迟 -2s |
+| 三路索引 | Metadata + Dense + Sparse | 覆盖精确/语义/结构化三种查询 |
+| 双 Expert 并行 | Send API 并行执行 | 职责清晰，独立优化 |
+| RRF 融合 | Dense/Sparse 分数尺度不同 | 规避归一化问题 |
+| 本地 Embedding | Qwen3-Embedding-0.6B CPU 运行 | 零 API 配额消耗 |
+| 三层实体解析 | 字典 → LLM → Web | 逐级降级，最大化成本效率 |
+| Answer 结构随机化 | 避免回答套路化 | 零额外 LLM 成本 |
 
 ---
 
-## 📄 License
+## 许可证
 
 MIT © [Arbaz](https://github.com/arbaz-builds)

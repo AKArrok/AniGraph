@@ -41,3 +41,5 @@ logs/
 # Data
 data/
 uploads/
+
+models/

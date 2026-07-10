@@ -28,6 +28,10 @@ pypdf>=4.0.0
 docx2txt>=0.8
 rank-bm25>=0.2.2
 
+# RAG Optimization
+sentence-transformers>=3.0.0
+whoosh>=2.7.4
+
 # Web Search
 requests>=2.31.0
 

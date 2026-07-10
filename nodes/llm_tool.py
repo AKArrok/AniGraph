@@ -1,7 +1,7 @@
 """LLM tool node — 绑定工具并生成工具调用（RAG 检索 / Web 搜索）"""
 from langchain_core.messages import SystemMessage, ToolMessage
 from state import State
-from llms import answer_LLM
+from llms import tool_LLM
 
 _SYSTEM = (
     "你是 ACG 番剧推荐助手。你必须调用工具来获取信息，不要直接回答。\n"
@@ -14,7 +14,7 @@ async def llm_tool_node(state: State, tools: list):
     if isinstance(state["messages"][-1], ToolMessage):
         return {"messages": [], "iteration_count": state.get("iteration_count", 0)}
 
-    resp = await answer_LLM.bind_tools(tools).ainvoke(
+    resp = await tool_LLM.bind_tools(tools, tool_choice="required").ainvoke(
         [SystemMessage(content=_SYSTEM)] + state["messages"][-10:]
     )
     return {"messages": [resp], "iteration_count": state.get("iteration_count", 0) + 1}

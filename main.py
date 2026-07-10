@@ -8,11 +8,13 @@ import config
 config.validate()
 
 async def run(query: str, thread_id: str = "1") -> str:
-    g, _ = build_graph()
-    return (await g.compile(checkpointer=MemorySaver()).ainvoke(
-        {"messages": [HumanMessage(content=query)], "iteration_count": 0},
+    g = build_graph()
+    resp = await g.compile(checkpointer=MemorySaver()).ainvoke(
+        {"messages": [HumanMessage(content=query)]},
         config={"configurable": {"thread_id": thread_id}}
-    ))["messages"][-1].content
+    )
+    msgs = resp.get("messages", [])
+    return msgs[-1].content if msgs else "(无回答)"
 
 if __name__ == "__main__":
     print(asyncio.run(run("推荐一部类似命运石之门的科幻番")))

@@ -316,7 +316,7 @@ def _route_after_retrieval(state: AgentState) -> list[Send | str]:
         sends.append(Send(expert, expert_input))
 
     if not sends:
-        return "answer"
+        return "answer_planner"  # 无 Expert → 先规划回答结构，再生成回答
 
     # 单个 Expert 直接返回节点名，走正常边（state 自动继承）
     if len(sends) == 1:

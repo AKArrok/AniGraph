@@ -10,6 +10,7 @@
   ExpertResult {answer, confidence, evidence}
 """
 import json
+import time
 import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 import config
@@ -111,7 +112,8 @@ def _format_candidates(candidates: list[dict]) -> str:
 
 async def similar_expert_node(state: dict) -> dict:
     """LangGraph 节点: Similar Expert"""
-    from llms import answer_LLM
+    t0 = time.time()
+    from llms import answer_LLM, simple_LLM
 
     query = state.get("resolved_query") or state.get("original_query", "")
 
@@ -146,6 +148,11 @@ async def similar_expert_node(state: dict) -> dict:
 
     llm = answer_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
 
+    # simple_fact 查询用轻量模型（快 + 省）
+    plan = state.get("plan", {})
+    if plan.get("query_type") == "simple_fact":
+        llm = simple_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
+
     resp = llm.invoke([
         SystemMessage(content=_SIMILAR_SYSTEM),
         HumanMessage(content=_SIMILAR_USER.format(
@@ -172,6 +179,7 @@ async def similar_expert_node(state: dict) -> dict:
             "evidence": ["LLM 输出非 JSON 格式"],
         }
 
+    logger.info(f"  similar_expert 耗时 {time.time()-t0:.1f}s")
     return {
         "expert_results": [result],
         "messages": [resp],

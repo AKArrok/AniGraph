@@ -7,14 +7,16 @@ from langchain_core.embeddings import Embeddings
 import config
 
 # Qwen-Max 作为主 LLM（DashScope OpenAI 兼容模式）
-_base = dict(base_url=config.DASHSCOPE_BASE_URL, api_key=config.DASHSCOPE_API_KEY, model=config.QWEN_LLM_MODEL)
+_base = dict(base_url=config.DASHSCOPE_BASE_URL, api_key=config.DASHSCOPE_API_KEY,
+             model=config.QWEN_LLM_MODEL, request_timeout=60)
 
 answer_LLM = ChatOpenAI(**_base, temperature=0.9)
 router_LLM = ChatOpenAI(**_base, temperature=0, max_tokens=512)
 tool_LLM    = ChatOpenAI(**_base, temperature=0.3)  # 低温度，确保稳定调工具
 
 # 轻量 LLM — 简单事实查询（评分/声优/公司等）
-_base_simple = dict(base_url=config.DASHSCOPE_BASE_URL, api_key=config.DASHSCOPE_API_KEY, model=config.SIMPLE_LLM_MODEL)
+_base_simple = dict(base_url=config.DASHSCOPE_BASE_URL, api_key=config.DASHSCOPE_API_KEY,
+                    model=config.SIMPLE_LLM_MODEL, request_timeout=60)
 simple_LLM = ChatOpenAI(**_base_simple, temperature=0.5)
 
 

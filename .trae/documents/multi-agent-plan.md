@@ -1,5 +1,7 @@
 # 多 Agent 协作架构方案（终版）
 
+> **状态**: ✅ 已实施 — Planner-based 多 Agent 协作架构已实现（metadata_reasoner + similar_expert + Send 并行 + merge）。已扩展 context_resolver 和 simple_fact_answer 节点。
+
 > 基于《多Agent架构优化建议》+《多Agent架构进一步优化建议》整合
 
 ---

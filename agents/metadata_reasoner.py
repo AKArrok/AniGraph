@@ -9,6 +9,7 @@
   ExpertResult {answer, confidence, evidence}
 """
 import json
+import time
 import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 import config
@@ -54,7 +55,8 @@ _REASONER_USER = """## 用户问题
 
 async def metadata_reasoner_node(state: dict) -> dict:
     """LangGraph 节点: Metadata Reasoner"""
-    from llms import answer_LLM
+    t0 = time.time()
+    from llms import answer_LLM, simple_LLM
 
     query = state.get("resolved_query") or state.get("original_query", "")
     metadata = state.get("metadata", [])
@@ -78,6 +80,11 @@ async def metadata_reasoner_node(state: dict) -> dict:
         context_text = context_text[:2000] + "\n... (truncated)"
 
     llm = answer_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
+
+    # simple_fact 查询用轻量模型（快 + 省）
+    plan = state.get("plan", {})
+    if plan.get("query_type") == "simple_fact":
+        llm = simple_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
 
     resp = llm.invoke([
         SystemMessage(content=_REASONER_SYSTEM),
@@ -105,6 +112,7 @@ async def metadata_reasoner_node(state: dict) -> dict:
             "evidence": ["LLM 输出非 JSON 格式"],
         }
 
+    logger.info(f"  metadata_reasoner 耗时 {time.time()-t0:.1f}s")
     return {
         "expert_results": [result],
         "messages": [resp],

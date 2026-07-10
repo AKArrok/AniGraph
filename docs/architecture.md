@@ -1,72 +1,597 @@
-# 🏗️ Architecture Deep Dive
+# 🏗️ AniGraph 架构文档
 
-## Graph Flow
+## 概述
+
+AniGraph 是一个基于 LangGraph 的多 Agent 协作 ACG 番剧推荐系统。核心采用 **ExecutionPlan 驱动编排** 的设计：Planner 输出一份执行计划，图引擎根据计划自动选择检索路径、Expert 组合和回答策略。
+
+关键特性：
+
+- **规则优先 + LLM 兜底**：大部分路由和分类由正则/关键词规则完成（零 LLM 成本），仅复杂查询才走 LLM
+- **三层检索路径**：Metadata Index（结构化过滤）、Pinecone + Whoosh（向量 + 稀疏检索）、联网回退
+- **Simple Fact 快速通道**：简单事实查询跳过 Expert → Merge → Answer 三步流水线，一次 LLM 调用直接作答
+- **对话上下文感知**：追问检测、指代消解、多轮话题推断
+
+---
+
+## 图流程
 
 ```
 START
   │
   ▼
-router_node
-  │ route_condition()
-  ├──── rag / web_search / python_tool ──→ LLM_Tool
-  │                                            │
-  │                                      tool_condition()
-  │                                            ├── tool_calls? ──→ tools
-  │                                            │                      │
-  │                                            └── no tool ──→ answer_node ←──┘
+alias_resolve          ← 别名/实体解析：番剧别名 → 正名，角色/梗识别
   │
-  └──── direct ──────────────────────────────────────→ answer_node
-                                                              │
-                                                             END
+  ▼
+history_extractor      ← 从 messages 提取最近 N 轮对话历史
+  │
+  ▼
+context_builder        ← 构建 ConversationContext：追问检测、指代消解、话题推断
+  │
+  ▼
+planner                ← 分析查询，输出 ExecutionPlan（query_type / experts / rewrite_strategy 等）
+  │
+  │  route_after_planner()
+  ├── chat ────────────────────────────────────→ answer（闲聊直达回答）
+  │
+  └── 其他 ──→ query_processing   ← 查询优化：direct / rewrite / hyde / decompose
+                  │
+                  ▼
+           knowledge_retrieval    ← 知识检索：metadata / semantic / mixed 三路径
+                  │
+                  │  route_after_retrieval()
+                  ├── simple_fact ──→ simple_fact_answer ──→ END（快速通道）
+                  ├── 无 Expert  ──→ answer_planner
+                  └── 有 Expert  ──→ [metadata_reasoner || similar_expert]（并行 if 2 个）
+                                          │
+                                          ├──→ merge（去重 + 排序 + 合并）
+                                          │        │
+                                          │        │  route_after_merge()
+                                          │        ├── web_fallback（按需触发联网搜索）
+                                          │        │        │
+                                          │        └── answer_planner ←┘（回答结构规划）
+                                          │                 │
+                                          └──→ answer ←────┘（最终回答生成）
+                                                   │
+                                                  END
 ```
 
-## Nodes Explained
+图定义文件：`agents/graph.py` → `build_graph()`
 
-### 1. `router_node`
-- Input: User query
-- Process: LLM classifies query into 4 categories
-- Output: `router_decision` (python_tool/web_search/rag/direct)
-- Accuracy: **100%** (tested on 10+ queries)
+---
 
-### 2. `LLM_Tool`
-- Input: Messages + router_decision
-- Process: Forces LLM to call specific tool
-- Output: AIMessage with tool_calls
-- Key fix: `tool_choice=forced` — no text answers
+## 节点详解
 
-### 3. `tools`
-- Input: Tool call from LLM_Tool
-- Process: Executes actual tool (run_python/web_search/RAG)
-- Output: ToolMessage with result
+### 1. `alias_resolve` — 别名/实体解析
 
-### 4. `answer_node`
-- Input: Tool output + user query
-- Process: Formats clean answer
-- Output: Final response in user's language
-- Key fix: No history contamination
+**文件**：`agents/graph.py` → `_alias_resolve_node()`
 
-## Bugs Fixed
+**调用 LLM**：否（别名解析走 dict + LLM 兜底，实体解析走内置词典）
 
-### Bug 1: Tool Not Executing
-**Problem:** `tools → LLM_Tool` loop caused tool to never execute  
-**Fix:** `tools → answer_node` directly
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `messages[-1].content` | 用户当前查询 |
 
-### Bug 2: Hallucination  
-**Problem:** Old ToolMessage in history caused wrong answers  
-**Fix:** `answer_node` only uses `user_q + tool_out`
+**处理流程**：
+1. 调用 `agents/alias.py:resolve_alias()` — 先查别名词典，未命中且查询较短时调用 LLM 推断
+2. 调用 `agents/entity_resolver.py:resolve_entity()` — 识别角色名、梗名
+3. 高置信度番剧别名命中 → 直接查 Metadata Cache，提前注入 `metadata`
+4. 角色/梗高置信度命中 → 将对应番剧名写入 `search_keywords`，供后续检索使用
+5. 低置信度或未知实体 → 标记 `entity_confidence`，供 Planner 决定是否需要联网
 
-### Bug 3: Wrong Language
-**Problem:** LLM replied in Hindi script  
-**Fix:** Explicit "Roman Urdu only" rule in answer_node prompt
+**输出**：
+| 字段 | 说明 |
+|------|------|
+| `original_query` | 用户原始查询 |
+| `resolved_query` | 别名解析后的查询（若未解析则等于原始） |
+| `search_keywords` | 提取的番剧名列表 |
+| `entity_type` | 实体类型：`"alias"` / `"character"` / `"meme"` / `""` |
+| `entity_name` | 解析出的实体名 |
+| `entity_anime` | 实体对应的番剧名 |
+| `entity_confidence` | 置信度 0.0–1.0 |
+| `entity_source` | 解析来源：`"dict"` / `"llm"` / `"web"` |
 
-## Memory System
+---
+
+### 2. `history_extractor` — 对话历史提取
+
+**文件**：`agents/history_extractor.py`
+
+**调用 LLM**：否（纯函数，零成本）
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `messages` | LangGraph 消息列表（含历史轮次） |
+
+**处理流程**：
+- 遍历 `messages`，将 `HumanMessage` 和 `AIMessage` 按序配对
+- 取最近 `config.MEMORY_MAX_ROUNDS`（默认 5）轮
+
+**输出**：
+```python
+{"context": {"history": [{"user": "...", "assistant": "..."}, ...]}}
+```
+
+---
+
+### 3. `context_builder` — 对话上下文构建
+
+**文件**：`agents/context_builder.py`
+
+**调用 LLM**：否（纯规则，零成本）
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `messages[-1].content` | 当前用户查询 |
+| `context.history` | history_extractor 输出的历史 |
+| `entity_name` / `entity_type` | alias_resolve 的实体结果 |
+| `recent_entities` | 上轮持久化的实体列表 |
+| `previous_intent` | 上轮意图 |
+
+**处理流程**：
+1. **追问检测**（`_detect_followup`）：正则匹配代词开头、追问词（"还有吗""再""继续"）、对比词
+2. **指代解析**（`_resolve_reference`）：
+   - 序号指代：`"第二部的评分"` → 替换为 `recent_entities[1].name` + "的评分"
+   - 代词指代：`"它的评分"` → 替换为 `recent_entities[0].name` + "的评分"
+   - 特殊处理 `"那"` 字避免误匹配（如 `"那祢豆子呢"` 不解析）
+3. **话题推断**（`_infer_topic`）：匹配关键词推断当前话题（评分/声优/制作/推荐/对比/闲聊/通用）
+
+**输出**：
+```python
+{"context": ConversationContext, "resolved_query": "指代消解后的查询"}
+```
+
+---
+
+### 4. `planner` — 执行计划生成
+
+**文件**：`agents/planner.py`
+
+**调用 LLM**：视情况 — 很大一部分查询走规则（零 LLM），仅 `mixed` 类复杂查询走 `answer_LLM`
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `resolved_query` | context_builder 指代消解后的查询 |
+| `context.history` | 对话历史 |
+| `entity_confidence` / `entity_type` / `entity_source` | 实体解析结果 |
+
+**核心逻辑**：
 
 ```
-Thread ID → PostgreSQL (Neon)
-    │
-    ├── Conversation 1 (thread_id="1")
-    ├── Conversation 2 (thread_id="2")
-    └── Conversation N (thread_id="N")
+规则分类（零 LLM）
+├── _classify_query_category(query)
+│   ├── metadata: 公司/声优/导演/年份/评分/标签查询
+│   ├── semantic: 相似推荐/评价分析/对比/深度讨论
+│   └── mixed:   两者兼有（如 "推荐热血异世界"）
+│
+├── 闲聊检测 → query_type=chat, experts=[]
+├── metadata 类 → 规则判断 simple_fact / recommendation
+├── semantic 类 → query_type=recommendation, experts=[similar_expert]
+│
+└── mixed 类 → 调用 LLM 生成完整 ExecutionPlan
 ```
 
-Each thread maintains full conversation history via `AsyncPostgresSaver`.
+**Planner 还会根据实体解析结果调整 plan**：
+- `entity_confidence < 0.5` → `need_web = True`
+- `entity_type == "meme" and source != "dict"` → `need_web = True`
+- `entity_type == "character"` + 身份询问 → 更正为 `simple_fact`
+
+**输出**（`ExecutionPlan`）：
+```python
+{
+    "query_type":        "simple_fact | recommendation | comparison | chat",
+    "alias_resolved":    False,
+    "rewrite_strategy":  "direct | rewrite | hyde | decompose",
+    "experts":           ["metadata_reasoner"] | ["similar_expert"] | ["metadata_reasoner", "similar_expert"] | [],
+    "parallel":          True | False,
+    "query_category":    "metadata | semantic | mixed",
+    "need_web":          True | False,
+    "reasoning":         "Planner 推理过程简述"
+}
+```
+
+---
+
+### 5. `query_processing` — 查询优化
+
+**文件**：`agents/graph.py` → `_query_processing_node()`
+
+**调用 LLM**：视策略而定（`multi_query_rewrite` 和 `hyde_generate` 调 LLM，`direct` 无）
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `plan.rewrite_strategy` | 优化策略 |
+| `resolved_query` | 当前查询 |
+
+**策略对应**：
+| 策略 | 工具函数 | 适用场景 |
+|------|----------|----------|
+| `direct` | 原样返回 | 精确番剧名查询 |
+| `rewrite` | `multi_query_rewrite()` | 多角度扩展（推荐类） |
+| `hyde` | `hyde_generate()` | 深度分析/评价类 |
+| `decompose` | `decompose()` | 含多子问题 |
+
+**输出**：
+```python
+{"shared_context": [查询1, 查询2, ...], "optimized_queries": [...], "query_strategy": "..."}
+```
+
+---
+
+### 6. `knowledge_retrieval` — 知识检索
+
+**文件**：`agents/graph.py` → `_knowledge_retrieval_node()`
+
+**调用 LLM**：否（含 rag_optimizer 改写时调 LLM，但检测到上游已优化则跳过）
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `plan.query_category` | 检索分类 |
+| `plan.query_type` | 查询类型 |
+| `resolved_query` | 当前查询 |
+| `shared_context` | 优化后的 queries |
+| `search_keywords` | alias 提取的关键词 |
+
+**三条检索路径**：
+
+| 路径 | 数据源 | 触发条件 |
+|------|--------|----------|
+| `metadata` | Metadata Index（本地） | 公司/声优/年份/评分/标签等结构化查询 |
+| `semantic` | Pinecone（向量）+ Whoosh（稀疏）→ Fusion + Rerank | 相似推荐/评价分析 |
+| `mixed` | 两者全路检索 + 融合 | 标签 + 推荐意图，或默认兜底 |
+
+**检索细节**：
+- 关键词优先：`search_keywords` 中的番剧名直接走 Metadata Index 精确查找 + 标签模糊匹配
+- 提取结构化过滤条件（`_extract_metadata_filters`）：标签、评分范围、年份
+- Semantic 检索会检测上游是否已优化，避免 `rag_optimizer` 二次改写
+
+**输出**：
+```python
+{"metadata": [...最多30条], "shared_context": [...最多10条]}
+```
+
+---
+
+### 7. `simple_fact_answer` — 简单事实快速通道
+
+**文件**：`agents/simple_fact_answer.py`
+
+**调用 LLM**：是（`simple_LLM`，轻量模型，一次调用）
+
+**路由条件**：`plan.query_type == "simple_fact"`
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `resolved_query` / `original_query` | 用户查询 |
+| `metadata` | 元数据条目 |
+| `search_keywords` | 用于优先展示匹配条目 |
+| `context.history` | 对话上下文（追问时注入 prompt） |
+
+**处理流程**：
+1. 优先展示匹配关键词的元数据条目
+2. 截断到 5 条，格式化为紧凑文本
+3. 追问时注入最近 3 轮对话历史到 system prompt
+4. 一次 LLM 调用直接输出回答
+5. 更新 `recent_entities`（实体追踪）
+
+**状态写入**：
+```python
+{
+    "messages": [AIMessage],
+    "previous_intent": "simple_fact",
+    "recent_entities": [...]
+}
+```
+
+**注意**：此节点直接连 `END`，完全跳过 `merge → answer_planner → answer` 三步流水线。
+
+---
+
+### 8. Expert 节点（`metadata_reasoner` / `similar_expert`）
+
+#### `metadata_reasoner`（文件：`agents/metadata_reasoner.py`）
+
+**调用 LLM**：是（默认 `answer_LLM`；`simple_fact` 查询自动切换 `simple_LLM`）
+
+**职责**：基于结构化元数据（评分/标签/制作/声优等）+ 语义上下文做推理推荐
+
+**输入**：`metadata`（结构化数据）+ `shared_context`（语义文本）+ `query`
+
+**输出**：`ExpertResult {answer, confidence, evidence}`
+
+#### `similar_expert`（文件：`agents/similar_expert.py`）
+
+**调用 LLM**：是（默认 `answer_LLM`；`simple_fact` 查询自动切换 `simple_LLM`）
+
+**职责**：基于 Embedding 向量 + Metadata Index 发现相似作品，LLM 排序并解释
+
+**工作流**：提取目标番剧 → 同标签/同公司结构相似 → Embedding 语义相似 TopK → 合并去重 → LLM 排序解释
+
+**输出**：`ExpertResult {answer, confidence, evidence}`
+
+#### 并行执行机制
+
+使用 LangGraph `Send` API 实现并行：
+- 2 个 Expert 时，`_route_after_retrieval` 返回 `[Send("metadata_reasoner", {...}), Send("similar_expert", {...})]`
+- 1 个 Expert 时，直接返回节点名，走正常边
+- Expert 需要从 `expert_input` 字典中显式拿到 state 字段（Send 不自动继承父 state）
+
+---
+
+### 9. `merge` — 结果合并
+
+**文件**：`agents/merge.py`
+
+**调用 LLM**：否（纯程序合并，零成本）
+
+**处理流程**：
+1. **去重**：基于 answer 5-gram Jaccard 相似度（阈值 0.5）
+2. **过滤**：舍弃 confidence < 0.3 的结果
+3. **排序**：按置信度降序
+4. **格式化**：生成 `[Expert N | 置信度: X%]\n...` 文本
+
+**输出**：`{"merged_results": "合并后的文本"}`
+
+---
+
+### 10. `web_fallback` — 联网回退
+
+**文件**：`agents/web_fallback.py`
+
+**调用 LLM**：是（`simple_LLM` 提取关键信息）
+
+**触发条件**（`should_trigger_web`，任一满足）：
+1. `plan.need_web == True`
+2. `shared_context` 为空（检索无结果）
+3. 所有 Expert 的 `confidence < CONFIDENCE_THRESHOLD`（默认 0.5）
+
+**处理流程**：联网搜索 → light LLM 提取关键信息 → 追加到 `merged_results`
+
+---
+
+### 11. `answer_planner` — 回答结构规划
+
+**文件**：`agents/graph.py` → `_answer_planner_node()`
+
+**调用 LLM**：否（随机选择，零成本）
+
+**职责**：为 `answer` 节点提供结构指引，避免千篇一律的回答
+
+**策略选择**（按 `query_type` 随机）：
+| query_type | 候选结构 |
+|------------|----------|
+| `recommendation` | top_pick / compare / theme / honest |
+| `simple_fact` | direct / expand |
+| `comparison` | vs / narration |
+
+---
+
+### 12. `answer` — 最终回答生成
+
+**文件**：`agents/answer.py`
+
+**调用 LLM**：是（`chat`/`simple_fact` 用 `simple_LLM`，其他用 `answer_LLM`）
+
+**输入**：
+| 字段 | 说明 |
+|------|------|
+| `original_query` | 用户原始查询 |
+| `plan.query_type` | 查询类型 |
+| `merged_results` | merge 后的综合结果 |
+| `answer_plan.structure` | 回答结构指引 |
+| `context.history` | 最近 3 轮对话（追问时注入） |
+
+**特殊处理**：
+- `chat` 类：跳过所有分析，直接 `simple_LLM.invoke([HumanMessage(content=query)])`
+- 从 `merged_results` 正则提取 `**粗体**` 内的番剧名，写入 `recent_entities`
+- 同时将 `entity_name`（角色/梗名）写入 `recent_entities`
+
+---
+
+## 路由函数
+
+### `_route_after_planner(state) → str`
+
+```python
+if plan.query_type == "chat":
+    return "answer"          # 闲聊直达回答
+return "query_processing"    # 其他走查询优化
+```
+
+### `_route_after_retrieval(state) → list[Send | str]`
+
+```python
+if plan.query_type == "simple_fact":
+    return "simple_fact_answer"   # 快速通道
+if not experts:
+    return "answer_planner"       # 无 Expert 直接规划
+# 1 个 Expert → 直接返回节点名
+# 2 个 Expert → Send API 并行分发
+```
+
+### `_route_after_merge(state) → str`
+
+```python
+if should_trigger_web(state):
+    return "web_fallback"
+return "answer_planner"
+```
+
+### `_route_after_expert(state) → str`
+
+```python
+return "merge"  # Expert 统一进入 merge
+```
+
+---
+
+## AgentState
+
+**文件**：`agents/state.py`
+
+```python
+class AgentState(TypedDict):
+    # ── 消息流 ──
+    messages:          Annotated[List[BaseMessage], add_messages]
+
+    # ── Planner 输出 ──
+    plan:              dict   # ExecutionPlan
+
+    # ── 检索结果 ──
+    metadata:          list[dict]          # Metadata Index 结果
+    shared_context:    list[str]           # Dense + Sparse 语义文本
+
+    # ── Expert 流水线 ──
+    expert_results:    Annotated[list[dict], add]  # 并行 Expert 累加写入
+    merged_results:    str                # Merge 后综合结果
+
+    # ── 查询相关 ──
+    original_query:    str                # 用户原始查询
+    resolved_query:    str                # 别名 + 指代解析后的查询
+    search_keywords:   list[str]          # alias 提取的番剧名
+    metadata_cache:    dict               # {name: metadata_dict}
+    alias_cache:       dict               # {alias: full_name}
+    answer_plan:       dict               # Answer Planner 的结构指引
+
+    # ── 实体解析 ──
+    entity_type:       str                # "character" | "meme" | "alias" | ""
+    entity_name:       str                # 解析出的实体名
+    entity_anime:      str                # 对应番剧名
+    entity_confidence: float              # 0.0–1.0
+    entity_source:     str                # "dict" | "llm" | "web"
+
+    # ── 对话上下文 ──
+    context:           ConversationContext # 当前轮上下文
+    recent_entities:   list[dict]         # 持久化: 最近讨论的实体 [{name, type}]
+    previous_intent:   str                # 持久化: 上一轮意图
+```
+
+---
+
+## ConversationContext
+
+**文件**：`agents/state.py`
+
+由 `context_builder` 生成，供 `planner`、`simple_fact_answer`、`answer` 消费：
+
+```python
+class ConversationContext(TypedDict):
+    history:          list[dict]   # 最近 N 轮: [{user: str, assistant: str}]
+    recent_entities:  list[dict]   # 最近讨论的实体: [{name: str, type: str}]
+    current_topic:    str          # 当前话题: 评分/声优/制作/推荐/对比/闲聊/通用
+    is_followup:      bool         # 是否为追问
+    resolved_query:   str          # 指代解析后的查询
+    previous_intent:  str          # 上一轮意图: recommend | fact | compare | chat
+```
+
+**数据流**：
+```
+history_extractor → context.history ──┐
+alias_resolve     → entity_type/name ─┤
+messages[-1]      → query ────────────┤
+                                      ├── context_builder ──→ ConversationContext
+recent_entities   (上轮持久化) ────────┤
+previous_intent   (上轮持久化) ────────┘
+```
+
+**跨轮持久化**：`recent_entities` 和 `previous_intent` 是 AgentState 顶层字段，由 `simple_fact_answer` 和 `answer` 在每轮末尾写入，下轮的 `context_builder` 消费。
+
+---
+
+## Simple Fact 快速通道
+
+**设计动机**：评分查询、声优查询、身份介绍等简单事实不需要走 `metadata_reasoner → merge → answer` 三步流水线（约 2–3 次 LLM 调用），一次 LLM 调用即可完成。
+
+**触发条件**：`plan.query_type == "simple_fact"`
+
+**流程差异**：
+```
+普通查询:  ... → retrieval → [experts] → merge → answer_planner → answer → END
+快速通道:  ... → retrieval → simple_fact_answer ──────────────────→ END
+```
+
+**优点**：
+- 减少 2–3 次 LLM 调用，延迟降低 60%+
+- 追问时自动注入对话上下文，不丢失多轮能力
+- 自动更新 `recent_entities`，不影响指代消解
+
+---
+
+## 记忆系统
+
+### MemorySaver（短期记忆）
+
+**文件**：`main.py`
+
+```python
+from langgraph.checkpoint.memory import MemorySaver
+
+g.compile(checkpointer=MemorySaver()).ainvoke(
+    {"messages": [HumanMessage(content=query)]},
+    config={"configurable": {"thread_id": thread_id}}
+)
+```
+
+- **类型**：内存型 Checkpointer（进程内，重启丢失）
+- **存储内容**：每个 `thread_id` 的完整 `AgentState` + `messages`
+- **容量控制**：`MEMORY_MAX_ROUNDS = 5`（`history_extractor` 只取最近 5 轮注入上下文；但 `messages` 全量保留在 checkpointer 中）
+- **线程隔离**：不同 `thread_id` 的对话互不影响
+
+### 对话上下文层（v1.1）
+
+在 MemorySaver 之上，引入了独立的上下文层：
+
+| 组件 | 作用 | 多轮表现 |
+|------|------|----------|
+| `history_extractor` | 提取最近 N 轮配对 | 保证上下文不超长 |
+| `context_builder` | 追问检测 + 指代消解 | `"它的评分" → "JOJO的评分"` |
+| `recent_entities` | 跨轮实体追踪 | 支持 `"第二部呢"` 序号指代 |
+| `previous_intent` | 跨轮意图追踪 | Planner/SimpleFact 消费 |
+
+---
+
+## 完整数据流示例
+
+以用户查询 `"推荐一部类似命运石之门的科幻番"` 为例：
+
+```
+1. alias_resolve
+   检测到 "命运石之门" 是已知番剧名
+   → search_keywords: ["命运石之门"]
+
+2. history_extractor
+   从 messages 提取最近 5 轮 → context.history
+
+3. context_builder
+   无追问 → is_followup=False, resolved_query=原样
+
+4. planner
+   规则判断: 含"类似" → semantic 类
+   → query_type="recommendation", experts=["similar_expert"]
+
+5. query_processing
+   rewrite → multi_query_rewrite(["命运石之门", "科幻 时间旅行", ...])
+
+6. knowledge_retrieval
+   mixed: 查 Metadata Index 拿命运石之门元数据 + Pinecone 找语义相似番剧
+
+7. similar_expert
+   分析向量检索结果 → LLM 推荐 "Re:0" "夏日重现" "异度侵入"
+   → ExpertResult {answer, confidence: 0.85, evidence}
+
+8. merge
+   仅 1 个 Expert，直接 format
+
+9. answer_planner
+   recommendation → 随机选 top_pick 结构
+
+10. answer
+    输入: merged_results + structure="top_pick"
+    → "命运石之门确实是时间旅行题材的标杆……我最想推的是 Re:0……"
+```

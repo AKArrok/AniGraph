@@ -1,7 +1,7 @@
 # ACG 番剧推荐 — LangGraph 多智能体系统项目总结
 
-> **文档版本**: v2.0 (升级版)  
-> **更新日期**: 2026-07-09  
+> **文档版本**: v2.1 (短期记忆 + 快速通道)  
+> **更新日期**: 2026-07-10  
 > **适用范围**: 项目交接、团队协作、后续迭代参考  
 > **项目定位**: 面向动漫推荐场景的 Hybrid RAG + Multi-Agent 智能推荐系统
 
@@ -39,10 +39,12 @@
 | 场景 | 示例查询 | 处理路径 |
 |------|----------|----------|
 | 智能推荐 | "推荐类似JOJO的番" | semantic → Pinecone+Whoosh → similar_expert |
-| 事实查询 | "京都动画有哪些作品" | metadata → MetadataIndex → metadata_reasoner |
+| 事实查询 | "京都动画有哪些作品" | metadata → MetadataIndex → simple_fact_answer (快速通道) |
+| 简单事实 | "夏亚是谁"、"素晴评分" | metadata → MetadataIndex → simple_fact_answer |
 | 对比分析 | "巨人vs鬼灭哪个好看" | mixed → 双路检索 → 双Expert并行 |
-| 实体解析 | "夏亚是谁" | L0字典命中 → 直接映射 |
+| 实体解析 | "夏亚是谁" | entity_resolver → L0/L1/L2 映射 |
 | 梗解释 | "典明粥是什么梗" | L0字典命中 → 直接映射 |
+| 多轮追问 | "推荐JOJO" → "它的评分" | context_builder 指代解析 → 消费历史 |
 
 ### 1.3 技术栈
 
@@ -50,7 +52,7 @@
 |------|----------|----------|
 | 智能体框架 | LangGraph 0.3+ | 状态机可维护、Send API 原生支持并行 |
 | 主 LLM | Qwen-Max (DashScope) | 中文 ACG 领域理解能力强、API 稳定 |
-| 轻量 LLM | Qwen-Flash (DashScope) | 低延迟、低成本、适合简单任务 |
+| 轻量 LLM | Qwen3.6-Max-Preview (DashScope) | 简单事实查询快速通道、降低延迟 |
 | 向量检索 | Pinecone (MMR) | 托管服务、零运维、MMR 保证多样性 |
 | 稀疏检索 | Whoosh (BM25F) | 本地部署、零网络延迟、中文分词友好 |
 | 精排 | bge-reranker-v2-m3 | SOTA 中文 CrossEncoder、CPU 可用 |
@@ -60,8 +62,8 @@
 
 ### 1.4 核心功能边界
 
-**覆盖**: 番剧推荐、事实查询、对比分析、角色/梗→番剧映射、昵称解析、闲聊  
-**不覆盖**: 多轮对话、用户画像、实时播放链接、非 ACG 领域
+**覆盖**: 番剧推荐、事实查询、对比分析、角色/梗→番剧映射、昵称解析、多轮追问、闲聊  
+**不覆盖**: 用户画像、实时播放链接、非 ACG 领域、长期记忆
 
 **关键结论**: 系统采用"规则优先，LLM 按需调用"原则，80% 查询零 LLM Planner 成本。
 
@@ -82,6 +84,8 @@ graph TB
     subgraph 编排层 LangGraph
         direction LR
         AR[alias_resolve<br/>别名+实体解析]
+        HE[history_extractor<br/>历史提取]
+        CB[context_builder<br/>上下文构建+指代解析]
         PL[planner<br/>规则优先规划]
         QP[query_processing<br/>查询改写]
     end
@@ -100,15 +104,18 @@ graph TB
 
     subgraph 生成层
         MG[merge<br/>融合去重]
+        SF[simple_fact_answer<br/>简单事实快速通道]
         AP[answer_planner<br/>结构规划]
         AN[answer<br/>回答生成]
     end
 
-    U --> AR --> PL --> QP
+    U --> AR --> HE --> CB --> PL --> QP
     QP --> MI & PC & WH
-    MI & PC & WH --> MR & SE
+    MI & PC & WH --> MR & SE & SF
     MR & SE --> MG --> AN
+    SF --> U
     MG -.->|低置信度| TV --> MG
+    AP --> AN
     AN --> U
 ```
 
@@ -150,13 +157,17 @@ flowchart LR
 
     subgraph 在线
         Q[用户查询] --> AR[别名解析]
-        AR --> PL[Planner]
+        AR --> HE[历史提取]
+        HE --> CB[上下文构建]
+        CB --> PL[Planner]
         PL --> QP[查询改写]
         QP --> KR[知识检索]
         KR --> MI & P & W
+        KR -->|simple_fact| SF[快速回答]
         KR --> EX[Experts]
         EX --> MG[Merge]
         MG --> AN[Answer]
+        SF --> U
     end
 
     MI & P & W -.-> KR
@@ -305,12 +316,16 @@ python data/build_kb.py --whoosh-only    # 仅 Whoosh
 ```mermaid
 graph TD
     START((START)) --> alias[alias_resolve<br/>别名+实体解析<br/>🟢 可缓存 | ⚡ 0-2 LLM调用]
-    alias --> planner[planner<br/>规则优先→执行计划<br/>🟢 80%零LLM | ⚡ 0-1 LLM调用]
+    alias --> hist[history_extractor<br/>提取最近N轮对话<br/>🟢 零LLM]
+    hist --> ctx[context_builder<br/>构建上下文+指代解析<br/>🟢 零LLM]
+    ctx --> planner[planner<br/>规则优先→执行计划<br/>🟢 80%零LLM | ⚡ 0-1 LLM调用]
 
     planner -->|chat| answer
     planner -->|其他| qp[query_processing<br/>查询改写<br/>⚡ 0-1 LLM调用]
 
     qp --> kr[knowledge_retrieval<br/>知识检索分流<br/>🟢 零LLM | ⚡ 并行检索]
+
+    kr -->|simple_fact| sf[simple_fact_answer<br/>单次LLM直接回答<br/>⚡ 1 LLM调用]
 
     kr -->|metadata| mi[Metadata Index<br/>结构化过滤]
     kr -->|semantic| pc[Pinecone + Whoosh<br/>混合检索 + RRF + Rerank]
@@ -339,9 +354,14 @@ graph TD
     ap --> answer[answer<br/>口语化回答<br/>⚡ 1 LLM调用]
     answer --> END((END))
 
+    sf --> END
+
     style alias fill:#e1f5fe
+    style hist fill:#f5f5f5
+    style ctx fill:#f5f5f5
     style planner fill:#fff9c4
     style kr fill:#e8f5e9
+    style sf fill:#c8e6c9
     style mr fill:#fce4ec
     style se fill:#fce4ec
     style merge fill:#f3e5f5
@@ -355,15 +375,18 @@ graph TD
 | 节点 | 文件 | 输入 | 输出 | LLM调用 | 模型 | 可缓存 | 时间复杂度 |
 |------|------|------|------|:---:|------|:---:|------|
 | alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 | qwen-flash | ✅ LRU(128) | O(1) 字典 / O(1) LLM |
-| planner | planner.py | original_query, entity_* | plan | 0-1 | qwen-max | ❌ | O(1) 规则 / O(1) LLM |
+| history_extractor | history_extractor.py | messages | context.history | 0 | - | ❌ | O(n) messages |
+| context_builder | context_builder.py | context.history, recent_entities, entity_* | context, resolved_query | 0 | - | ❌ | O(1) 规则 |
+| planner | planner.py | original_query, entity_*, context | plan | 0-1 | qwen-max | ❌ | O(1) 规则 / O(1) LLM |
 | query_processing | graph.py | plan, resolved_query | shared_context(查询) | 0-1 | qwen-max | ✅ MD5(500) | O(1) |
 | knowledge_retrieval | graph.py | plan, shared_context | metadata, shared_context(文档) | 0 | - | ❌ | O(n) Pinecone + O(n) Whoosh |
-| metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 | qwen-max | ❌ | O(1) LLM |
-| similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 | qwen-max | ❌ | O(1) LLM |
+| simple_fact_answer | simple_fact_answer.py | metadata, original_query, entity_* | messages, recent_entities | **1 (轻量)** | simple_LLM | ❌ | O(1) LLM |
+| metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 | qwen-max / simple_LLM | ❌ | O(1) LLM |
+| similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 | qwen-max / simple_LLM | ❌ | O(1) LLM |
 | merge | merge.py | expert_results | merged_results | 0 | - | ❌ | O(n²) Jaccard |
 | web_fallback | web_fallback.py | original_query, merged_results | merged_results(追加) | 0-1 | qwen-flash | ❌ | O(1) API |
 | answer_planner | graph.py | plan | answer_plan | 0 | - | ❌ | O(1) |
-| answer | answer.py | original_query, plan, merged_results | messages | 1 | qwen-max/flash | ❌ | O(1) LLM |
+| answer | answer.py | original_query, plan, merged_results, context | messages, recent_entities, previous_intent | 1 | qwen-max/flash | ❌ | O(1) LLM |
 
 ### 5.3 State Schema
 
@@ -405,6 +428,23 @@ class AgentState(TypedDict):
     # 缓存 (跨节点复用)
     metadata_cache: dict
     alias_cache: dict
+
+    # ── 对话上下文 (v1.1) ──
+    context: ConversationContext       # 当前轮上下文
+    recent_entities: list[dict]        # 持久化: 最近讨论的实体
+    previous_intent: str               # 持久化: 上一轮意图
+```
+
+#### ConversationContext (TypedDict — v1.1 新增)
+
+```python
+class ConversationContext(TypedDict):
+    history: list[dict]             # 最近 N 轮: [{user, assistant}]
+    recent_entities: list[dict]     # 最近实体: [{name, type}]
+    current_topic: str              # 当前话题
+    is_followup: bool               # 是否为追问
+    resolved_query: str             # 指代解析后的查询
+    previous_intent: str            # 上一轮意图
 ```
 
 #### ExecutionPlan (Pydantic — Graph 路由的核心驱动力)
@@ -435,10 +475,10 @@ class ExpertResult(BaseModel):
 | 路由点 | 函数 | 逻辑 |
 |--------|------|------|
 | Planner 后 | `_route_after_planner` | chat → answer，其余 → query_processing |
-| 检索后 | `_route_after_retrieval` | 0 Expert → answer_planner，1 Expert → 直接边，2 Experts → Send 并行 |
+| 检索后 | `_route_after_retrieval` | simple_fact → simple_fact_answer；0 Expert → answer_planner；1 Expert → 直接边；2 Experts → Send 并行 |
 | Merge 后 | `_route_after_merge` | need_web 或 无结果 或 低置信度 → web_fallback，否则 answer_planner |
 
-**关键结论**: Graph 通过 ExecutionPlan 驱动全部路由，Planner 是唯一的编排大脑，后续节点完全确定性执行。
+**关键结论**: Graph 通过 ExecutionPlan 驱动全部路由，simple_fact 走快速通道跳过 Expert+Merge+Answer 三步。
 
 ---
 
@@ -772,6 +812,22 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 **收益**: 角色/梗查询覆盖率从 0 到 ~70%，高置信度条目零 LLM。
 
+### 10.7 Short-term Memory (短期对话记忆)
+
+**问题**: 系统不支持多轮追问，"推荐JOJO" → "它的评分" 无法理解"它"指JOJO。
+
+**方案**: 新增 history_extractor + context_builder 两个零 LLM 节点，从 messages 提取最近 N 轮对话、检测追问模式、解析代词/序号指代，生成结构化 ConversationContext。Planner 和 Answer 注入历史到 prompt。
+
+**收益**: 支持"它"、"这部"、"第二部"、"还有吗"等多轮追问，零额外 LLM 成本。
+
+### 10.8 Simple Fact Fast Path (简单事实快速通道)
+
+**问题**: "谁是夏亚"走完整 metadata_reasoner → merge → answer 三步两 LLM 调用，延迟 136s。
+
+**方案**: simple_fact 查询在知识检索后直接路由到 simple_fact_answer 节点，一次 LLM 调用同时完成分析和回答，跳过 Expert+Merge+Answer。
+
+**收益**: 延迟从 136.8s 降至 58.0s（-57%），LLM 调用从 2 次减为 1 次。
+
 ---
 
 ## 11. 异常与边界处理
@@ -813,9 +869,11 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 | 场景 | 处理 |
 |------|------|
-| 多轮对话 | MemorySaver 保留 messages (当前 Expert 未利用) |
+| 多轮对话 | MemorySaver 保留 messages；history_extractor + context_builder 生成 ConversationContext；Planner/Answer 消费历史上下文 |
+| 指代解析 | context_builder 检测代词/序号指代 → 从 recent_entities + entity_name 解析 |
 | 长文本溢出 | metadata 截断3000字符, context 截断2000字符 |
 | 并发 | MemorySaver 内存，单线程无冲突 |
+| 对话隔离 | 不同 thread_id 完全隔离记忆 |
 
 ### 11.5 启动检查
 
@@ -842,15 +900,20 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | Answer Planner | 随机结构避免套路 |
 | 实体解析 | 角色/梗→番剧 L0+L1 |
 | Answer 温度 0.9→0.7 | 回答更快更稳定 |
+| **短期记忆 (v1.1)** | **history_extractor + context_builder，支持指代解析和多轮追问** |
+| **simple_fact 快速通道 (v1.1)** | **简单查询跳过 Expert+Merge+Answer，单次 LLM 直接回答，延迟 -57%** |
+| **LLM 超时 + 节点耗时日志** | **request_timeout=60s，各节点输出耗时** |
+| **轻量模型升级** | **qwen-flash → qwen3.6-max-preview** |
 
 ### 12.2 短期 (v1.1)
 
-| 优先级 | 优化项 | 预期收益 | 工作量 |
-|:---:|------|------|:---:|
-| P0 | 异步 LLM (.ainvoke) | Expert 真正并行, -4s | 高 |
-| P0 | 多轮对话上下文 | 用户体验 | 中 |
-| P1 | 系统化缓存层 | 热点查询零 LLM | 高 |
-| P1 | 增量索引更新 | 减少全量重建 | 中 |
+| 优先级 | 优化项 | 预期收益 | 工作量 | 状态 |
+|:---:|------|------|:---:|:---:|
+| P0 | 多轮对话上下文 | 用户体验 | 中 | ✅ 已完成 |
+| P0 | simple_fact 快速通道 | 延迟 -57% | 低 | ✅ 已完成 |
+| P0 | 异步 LLM (.ainvoke) | Expert 真正并行, -4s | 高 | 待实施 |
+| P1 | 系统化缓存层 | 热点查询零 LLM | 高 | 待实施 |
+| P1 | 增量索引更新 | 减少全量重建 | 中 | 待实施 |
 
 ### 12.3 中期 (v1.2)
 

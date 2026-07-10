@@ -1,5 +1,7 @@
 # 优化提示词 + 职责重构：让回答更自然、更可信
 
+> **状态**: ✅ 已实施 — Expert/Answer 职责分离、Answer Planner 随机结构、system prompt 优化均已实现。
+
 ## 核心理念
 
 > Expert 提供可信证据，Answer Agent 只负责重组表达，不做事实创造。

@@ -126,6 +126,12 @@ def detect_entity_type(query: str) -> str | None:
     """检测用户输入是否在询问角色/梗，返回 type 或 None"""
     q = query.strip()
 
+    # 含代词/追问词的查询不是实体查询（如"他的对手是谁""那个角色的声优"）
+    FOLLOWUP_PRONOUNS = [r"他的", r"她的", r"它的", r"他们的", r"她们的", r"它们的",
+                          r"这个", r"那个", r"这部", r"那部", r"还有吗", r"还有呢"]
+    if any(re.search(p, q) for p in FOLLOWUP_PRONOUNS):
+        return None
+
     # 先检测梗（更明确的关键词）
     for pat in MEME_PATTERNS:
         if re.search(pat, q):
@@ -136,7 +142,7 @@ def detect_entity_type(query: str) -> str | None:
         if re.search(pat, q):
             return "character"
 
-    # 短纯文本（2-6字纯中文+英文），可能是角色名
+    # 短纯文本（2-8字纯中文+英文），可能是角色名
     if 2 <= len(q) <= 8 and re.match(r'^[\u4e00-\u9fff·\w\-]+$', q):
         if q.lower() not in {"你好", "谢谢", "再见", "请问", "帮我", "你好呀"}:
             return "character"

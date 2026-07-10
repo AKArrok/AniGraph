@@ -1,5 +1,7 @@
 # ACG 番剧推荐 RAG 知识库搭建计划（WebBaseLoader 版）
 
+> **状态**: ✅ 已实施 — 知识库已搭建完成（~5000 部番剧），三套索引（Pinecone + Whoosh + MetadataIndex）可用。
+
 ## 摘要
 
 基于现有 LangGraph Multi-Agent 项目，使用 LangChain 内置的 `WebBaseLoader` 直接从 Bangumi 和 Bilibili 网页拉取番剧内容，分块后向量化导入 Pinecone。省去自定义爬虫层，用最少的代码搭建 ACG 番剧推荐 RAG 知识库。

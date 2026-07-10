@@ -1,5 +1,7 @@
 # Entity Resolver：从 Alias 升级到实体解析
 
+> **状态**: ✅ 已实施 — 三层实体解析（字典 → LLM → Web）已实现，entity_type/entity_name 字段已纳入 AgentState 和 ConversationContext。
+
 ## 核心理念（来自优化建议）
 
 > 角色、梗、作品简称、公司——它们不是同一种数据。应该输出结构化的实体信息，而不是简单地把所有东西映射成番剧名。

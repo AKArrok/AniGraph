@@ -6,6 +6,16 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel, Field
 
 
+class ConversationContext(TypedDict):
+    """对话上下文 — 由 context_builder 生成，Planner/Answer 消费"""
+    history: list[dict]             # 最近 N 轮: [{user: str, assistant: str}]
+    recent_entities: list[dict]     # 最近讨论的实体: [{name: str, type: str}]
+    current_topic: str              # 当前话题
+    is_followup: bool               # 是否为追问
+    resolved_query: str             # 指代解析后的查询
+    previous_intent: str            # 上一轮意图: recommend | fact | compare | chat
+
+
 class ExecutionPlan(BaseModel):
     """Planner 输出的完整执行计划，图根据此计划自动编排"""
     query_type: str = Field(
@@ -60,3 +70,7 @@ class AgentState(TypedDict):
     entity_anime: str                      # 对应番剧名
     entity_confidence: float               # 置信度 0.0-1.0
     entity_source: str                     # 解析来源: "dict" | "llm" | "web"
+    # ── 对话上下文 (v1.1) ──
+    context: ConversationContext            # 当前轮上下文（由 context_builder 生成）
+    recent_entities: list[dict]             # 持久化: 最近讨论的实体 [{name, type}]
+    previous_intent: str                    # 持久化: 上一轮意图

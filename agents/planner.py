@@ -13,8 +13,70 @@
 输出: ExecutionPlan dict
 """
 import re
+import time
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
 import config
+
+import functools
+
+logger = logging.getLogger(__name__)
+
+
+@functools.lru_cache(maxsize=256)
+def _quick_is_simple(query: str) -> bool | None:
+    """零 LLM 快速判断是否为简单事实查询。
+    返回 True/False 表示确定，None 表示需要 LLM 判断。
+    """
+    # 明确的事实询问词 → simple
+    SIMPLE_MARKERS = [
+        r"(评分|几分|多少分)",      # 评分查询
+        r"(声优|配音|CV|cv)",       # 声优查询
+        r"(导演|监督|执导)",         # 导演查询
+        r"(公司|制作|出品)",         # 公司查询
+        r"(是谁|谁是|是什么|叫什么|介绍)",   # 身份询问
+        r"(标签|类型|分类)",         # 标签查询
+        r"(什么时候|哪年|播出)",     # 时间查询
+    ]
+    if any(re.search(p, query) for p in SIMPLE_MARKERS):
+        return True
+
+    # 明确的推荐/发现词 → recommend
+    RECOMMEND_MARKERS = [
+        r"(推荐|求推荐|安利|求安利|找一部|找几部|有哪些|有什么好看的)",
+        r"(类似|像.{0,4}一样|同类型|差不多)",
+        r"(求番|找番|要几部|来几部)",
+    ]
+    if any(re.search(p, query) for p in RECOMMEND_MARKERS):
+        return False
+
+    return None  # 规则无法确定
+
+
+@functools.lru_cache(maxsize=256)
+def _is_simple_fact(query: str) -> bool:
+    """轻量 LLM 判断查询是否为简单事实（问某个已知事物的具体信息）vs 推荐/发现类
+
+    使用 simple_LLM (qwen-flash) 做二分类，速度快、成本极低。
+    注意: 此函数仅在 _quick_is_simple 无法确定时才被调用。
+    """
+    from llms import simple_LLM
+    from langchain_core.messages import HumanMessage
+
+    prompt = (
+        "判断用户意图: 是在询问一个已知事物的具体信息, 还是在要求推荐/发现新事物?\n"
+        "- 简单事实(simple): 问评分、声优、导演、公司、介绍、是谁、有什么标签等具体信息\n"
+        "- 推荐(recommend): 要求推荐、找番、求安利、有哪些好看的等\n"
+        f"查询: {query}\n"
+        "只输出 simple 或 recommend:"
+    )
+    try:
+        resp = simple_LLM.invoke([HumanMessage(content=prompt)])
+        text = resp.content.strip().lower()
+        return "simple" in text and "recommend" not in text
+    except Exception:
+        # fallback: 短查询默认为 simple
+        return len(query) <= 15
 
 # ── Query Classifier: 规则优先，LLM 补充 ─────────────────────────
 
@@ -160,8 +222,10 @@ _PLANNER_SYSTEM = """你是 ACG 番剧推荐系统的规划器。分析用户查
 - need_web=true: 查询可能超出知识库范围、需要最新数据、或昵称无法解析时
 - need_web=false: 知识库能覆盖的常规查询
 
+{history_section}
+
 输出必须是严格 JSON 格式，不要包含 markdown 标记:
-{
+{{
   "query_type": "recommendation",
   "alias_resolved": false,
   "rewrite_strategy": "rewrite",
@@ -169,12 +233,12 @@ _PLANNER_SYSTEM = """你是 ACG 番剧推荐系统的规划器。分析用户查
   "parallel": true,
   "need_web": false,
   "reasoning": "用户要求推荐动作热血番，需要元数据查询标签+评分，同时需要相似推荐"
-}"""
+}}"""
 
 _PLANNER_USER = "用户查询: {query}"
 
 
-def plan(query: str) -> dict:
+def plan(query: str, history_text: str = "") -> dict:
     """Planner 一次调用，输出完整 ExecutionPlan
 
     优化: 规则能决定时直接返回，零 LLM 调用
@@ -203,9 +267,11 @@ def plan(query: str) -> dict:
 
     # 2. 纯 metadata 查询（公司/声优/年份/评分/标签）→ 只需 metadata_reasoner
     if query_category == "metadata":
-        is_simple = bool(re.search(r"(评分|声优|导演|公司|制作|标签|类型|介绍|是什么)", query))
+        qs = _quick_is_simple(query)
+        if qs is None:
+            qs = _is_simple_fact(query)
         return {
-            "query_type": "simple_fact" if is_simple else "recommendation",
+            "query_type": "simple_fact" if qs else "recommendation",
             "alias_resolved": False,
             "rewrite_strategy": "direct",
             "experts": ["metadata_reasoner"],
@@ -231,8 +297,19 @@ def plan(query: str) -> dict:
     # ── mixed / 复杂查询走 LLM ──
     llm = answer_LLM.bind(temperature=config.PLANNER_TEMPERATURE)
 
+    # 构建历史段落
+    history_section = ""
+    if history_text:
+        history_section = (
+            f"## 对话历史（仅供参考，用于理解指代和上下文）\n"
+            f"{history_text}\n\n"
+            f"注意: 即使有历史，仍需独立判断当前查询的真实意图。followup 不代表延续上一轮的 query_type。"
+        )
+
+    system_prompt = _PLANNER_SYSTEM.format(history_section=history_section)
+
     resp = llm.invoke([
-        SystemMessage(content=_PLANNER_SYSTEM),
+        SystemMessage(content=system_prompt),
         HumanMessage(content=_PLANNER_USER.format(query=query)),
     ])
 
@@ -291,11 +368,23 @@ def plan(query: str) -> dict:
 
 async def planner_node(state: dict) -> dict:
     """LangGraph 节点: Planner"""
-    query = state.get("original_query", "")
+    t0 = time.time()
+    # 优先使用 context_builder 解析后的 query（已做指代消解），再 fallback 到原始 query
+    query = state.get("resolved_query", "") or state.get("original_query", "")
     if not query and state.get("messages"):
         query = state["messages"][-1].content
 
-    execution_plan = plan(query)
+    # 构建对话历史文本（注入 LLM prompt）
+    context = state.get("context", {})
+    history_text = ""
+    if isinstance(context, dict) and context.get("history"):
+        lines = []
+        for r in context["history"]:
+            lines.append(f"用户: {r['user']}")
+            lines.append(f"助手: {r['assistant']}")
+        history_text = "\n".join(lines)
+
+    execution_plan = plan(query, history_text=history_text)
 
     # 根据实体解析结果调整 plan
     entity_confidence = state.get("entity_confidence", 1.0)
@@ -313,4 +402,15 @@ async def planner_node(state: dict) -> dict:
     if entity_type == "meme" and entity_source != "dict":
         execution_plan["need_web"] = True
 
+    # 角色实体 + 身份询问（"谁是X"/"X是谁"/"介绍X"）→ 更正为 simple_fact
+    if entity_type == "character" and entity_confidence >= 0.5:
+        identity_patterns = [r"谁", r"介绍", r"是什么", r"是怎样的", r"是什么人"]
+        if any(re.search(p, query) for p in identity_patterns):
+            execution_plan["query_type"] = "simple_fact"
+            execution_plan["experts"] = ["metadata_reasoner"]
+            execution_plan["parallel"] = False
+            execution_plan["rewrite_strategy"] = "direct"
+            execution_plan["reasoning"] = "规则判断：角色身份查询 → simple_fact"
+
+    logger.info(f"  planner 耗时 {time.time()-t0:.1f}s (query_type={execution_plan.get('query_type')})")
     return {"plan": execution_plan, "original_query": query}

@@ -5,6 +5,7 @@
     → [metadata_reasoner || similar_expert] (parallel via Send)
     → merge → web_fallback? → answer_planner → answer → END
 """
+import time
 from langgraph.graph import StateGraph, START, END
 from langgraph.types import Send
 import re
@@ -13,8 +14,11 @@ import logging
 
 from agents.state import AgentState
 from agents.planner import planner_node
+from agents.history_extractor import history_extractor_node
+from agents.context_builder import context_builder_node
 from agents.metadata_reasoner import metadata_reasoner_node
 from agents.similar_expert import similar_expert_node
+from agents.simple_fact_answer import simple_fact_answer_node
 from agents.answer import answer_node
 from agents.web_fallback import web_fallback_node, should_trigger_web
 from agents.merge import merge_expert_results
@@ -42,25 +46,34 @@ async def _alias_resolve_node(state: AgentState) -> dict:
     entity = resolve_entity(query)
 
     # ── 3. 番剧别名命中 → 正常流程 ──
-    if was_resolved and len(query) > 15 and resolved != query:
-        from agents.cache import metadata_cache
-        result = {
-            "resolved_query": query,
-            "search_keywords": [resolved],
-            "entity_type": "alias",
-            "entity_name": resolved,
-            "entity_anime": resolved,
-            "entity_confidence": 0.90,
-            "entity_source": "dict",
-        }
-        _, meta = metadata_cache.resolve(resolved)
-        if meta:
-            result["metadata"] = [meta]
-        return result
+    # 但如果 entity resolver 已高置信度命中角色/梗，alias 路径不拦截
+    entity_is_strong = (
+        entity
+        and entity["confidence"] >= 0.8
+        and entity["type"] in ("character", "meme")
+        and entity["source"] == "dict"
+    )
+    if was_resolved and not entity_is_strong:
+        if len(query) > 15 and resolved != query:
+            from agents.cache import metadata_cache
+            result = {
+                "original_query": query,
+                "resolved_query": query,
+                "search_keywords": [resolved],
+                "entity_type": "alias",
+                "entity_name": resolved,
+                "entity_anime": resolved,
+                "entity_confidence": 0.90,
+                "entity_source": "dict",
+            }
+            _, meta = metadata_cache.resolve(resolved)
+            if meta:
+                result["metadata"] = [meta]
+            return result
 
-    if was_resolved:
         from agents.cache import metadata_cache
         result = {
+            "original_query": query,
             "resolved_query": resolved,
             "entity_type": "alias",
             "entity_name": resolved,
@@ -76,6 +89,7 @@ async def _alias_resolve_node(state: AgentState) -> dict:
     # ── 4. 角色/梗实体命中（高置信度）→ 记录番剧名到 search_keywords ──
     if entity and entity["confidence"] >= 0.5 and entity["anime"]:
         return {
+            "original_query": query,
             "resolved_query": query,
             "search_keywords": [entity["anime"]],
             "entity_type": entity["type"],
@@ -88,6 +102,7 @@ async def _alias_resolve_node(state: AgentState) -> dict:
     # ── 5. 角色/梗低置信度 → 标记，planner 决定是否联网 ──
     if entity:
         return {
+            "original_query": query,
             "resolved_query": query,
             "entity_type": entity["type"],
             "entity_name": entity["entity"],
@@ -97,7 +112,7 @@ async def _alias_resolve_node(state: AgentState) -> dict:
         }
 
     # ── 6. 无实体 ──
-    return {"resolved_query": query}
+    return {"original_query": query, "resolved_query": query}
 
 
 def _might_be_alias(query: str) -> bool:
@@ -144,6 +159,7 @@ async def _knowledge_retrieval_node(state: AgentState) -> dict:
     semantic  → Pinecone + Whoosh（向量检索 + 稀疏检索  → Fusion + Rerank）
     mixed     → 两者全路检索 + 融合
     """
+    t0 = time.time()
     plan = state.get("plan", {})
     query_category = plan.get("query_category", "mixed")
     query = state.get("resolved_query", "") or state.get("original_query", "")
@@ -232,7 +248,7 @@ async def _knowledge_retrieval_node(state: AgentState) -> dict:
         except Exception as e:
             logger.warning(f"Pinecone/Whoosh 检索失败: {e}")
 
-    logger.info(f"知识检索完成: 返回 metadata {len(metadata_results[:30])} 条, shared_context {len(shared_context[:10])} 条")
+    logger.info(f"知识检索完成: 返回 metadata {len(metadata_results[:30])} 条, shared_context {len(shared_context[:10])} 条 (耗时 {time.time()-t0:.1f}s)")
     return {
         "metadata": metadata_results[:30],
         "shared_context": shared_context[:10],
@@ -297,6 +313,10 @@ def _route_after_retrieval(state: AgentState) -> list[Send | str]:
     plan = state.get("plan", {})
     experts = plan.get("experts", [])
 
+    # simple_fact 走快速通道：跳过 Expert + Merge + Answer，一次 LLM 直接回答
+    if plan.get("query_type") == "simple_fact":
+        return "simple_fact_answer"
+
     if not experts:
         return "answer_planner"
 
@@ -308,6 +328,7 @@ def _route_after_retrieval(state: AgentState) -> list[Send | str]:
         "original_query": state.get("original_query", ""),
         "plan": state.get("plan", {}),
         "search_keywords": state.get("search_keywords", []),
+        "context": state.get("context", {}),
     }
 
     # 使用 Send API 并行发送，显式传递完整输入
@@ -369,12 +390,13 @@ def _answer_planner_node(state: AgentState) -> dict:
 
 
 def _get_query(state: dict) -> str:
-    """从 state 提取用户查询"""
-    q = state.get("original_query", "")
-    if not q and state.get("messages"):
+    """从 state 提取用户查询（优先 messages[-1]，跨轮最可靠）"""
+    if state.get("messages"):
         last_msg = state["messages"][-1]
         q = last_msg.content if hasattr(last_msg, "content") else str(last_msg)
-    return q
+        if q:
+            return q
+    return state.get("original_query", "")
 
 
 # ── 构建图 ────────────────────────────────────────────────────────
@@ -384,19 +406,24 @@ def build_graph():
 
     # 注册节点
     g.add_node("alias_resolve", _alias_resolve_node)
+    g.add_node("history_extractor", history_extractor_node)
+    g.add_node("context_builder", context_builder_node)
     g.add_node("planner", planner_node)
     g.add_node("query_processing", _query_processing_node)
     g.add_node("knowledge_retrieval", _knowledge_retrieval_node)
     g.add_node("metadata_reasoner", metadata_reasoner_node)
     g.add_node("similar_expert", similar_expert_node)
     g.add_node("merge", merge_expert_results)
+    g.add_node("simple_fact_answer", simple_fact_answer_node)
     g.add_node("web_fallback", web_fallback_node)
     g.add_node("answer_planner", _answer_planner_node)
     g.add_node("answer", answer_node)
 
     # 边
     g.add_edge(START, "alias_resolve")
-    g.add_edge("alias_resolve", "planner")
+    g.add_edge("alias_resolve", "history_extractor")
+    g.add_edge("history_extractor", "context_builder")
+    g.add_edge("context_builder", "planner")
 
     # planner → query_processing 或 answer (chat)
     g.add_conditional_edges("planner", _route_after_planner, {
@@ -411,6 +438,7 @@ def build_graph():
         "metadata_reasoner": "metadata_reasoner",
         "similar_expert": "similar_expert",
         "answer_planner": "answer_planner",
+        "simple_fact_answer": "simple_fact_answer",
     })
 
     # experts → merge
@@ -425,6 +453,7 @@ def build_graph():
 
     g.add_edge("web_fallback", "answer_planner")
     g.add_edge("answer_planner", "answer")
+    g.add_edge("simple_fact_answer", END)
     g.add_edge("answer", END)
 
     return g

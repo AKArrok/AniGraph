@@ -1,0 +1,124 @@
+"""Simple Fact Answer — 简单事实查询用单次 LLM 调用直接回答
+
+跳过 metadata_reasoner → merge → answer 三步流水线，
+对 simple_fact 类查询（评分/声优/是谁/哪部等）一次完成分析和回答。
+"""
+import time
+import logging
+from langchain_core.messages import HumanMessage, SystemMessage
+import config
+
+logger = logging.getLogger(__name__)
+
+_SIMPLE_FACT_SYSTEM = """你是 ACG 番剧专家。基于元数据回答用户问题。元数据里没有直接答案时必须根据线索进行推理——标签、声优、番剧名、评分都是线索。
+
+## 核心原则
+- 元数据有直接答案 → 直接引用回答
+- 元数据没有直接答案 → 根据线索推理，大胆给出合理推断
+- 用口语化中文，像跟朋友聊天，简洁直接别啰嗦
+- 只有完全没有任何线索时才说"不太确定"
+- 追问场景：别从头介绍已讨论过的人物/作品，直接答问题
+
+## 禁止
+- 禁止: "推荐理由""综合分析""值得注意的是""综上所述"
+- 禁止: 编造元数据里不存在的人名、评分、日期
+- 禁止: 轻易放弃说"元数据里没有"——大部分问题标签和声优表就有答案
+
+{context_section}"""
+
+_SIMPLE_FACT_USER = """## 用户问题
+{query}
+
+## 元数据
+{metadata}
+"""
+
+
+async def simple_fact_answer_node(state: dict) -> dict:
+    """简单事实查询：一次 LLM 调用直接输出回答"""
+    t0 = time.time()
+    from llms import simple_LLM
+
+    query = state.get("resolved_query") or state.get("original_query", "")
+    metadata = state.get("metadata", [])
+    keywords = state.get("search_keywords", [])
+
+    # 构建对话上下文段落（追问时帮助 LLM 理解指代）
+    context = state.get("context", {})
+    context_section = ""
+    if isinstance(context, dict) and context.get("history"):
+        lines = []
+        for r in context["history"][-3:]:
+            lines.append(f"用户: {r['user']}")
+            lines.append(f"助手: {r['assistant']}")
+        history_text = "\n".join(lines)
+        context_section = (
+            f"## 对话上下文（这是追问，别从头介绍）\n{history_text}"
+        )
+
+    # 优先展示匹配关键词的条目，其余截断到 5 条
+    prioritized = _prioritize_metadata(metadata, keywords)[:5]
+    md_text = _format_metadata(prioritized) if prioritized else "(无相关数据)"
+
+    llm = simple_LLM.bind(temperature=config.ANSWER_TEMPERATURE)
+
+    resp = llm.invoke([
+        SystemMessage(content=_SIMPLE_FACT_SYSTEM.format(context_section=context_section)),
+        HumanMessage(content=_SIMPLE_FACT_USER.format(query=query, metadata=md_text)),
+    ])
+
+    # 追加当前实体到 recent_entities（保留历史实体）
+    entity_name = state.get("entity_name", "")
+    entity_type = state.get("entity_type", "")
+    existing_recent = state.get("recent_entities", [])
+    if entity_name and entity_type in ("character", "alias"):
+        if not any(e.get("name") == entity_name for e in existing_recent):
+            existing_recent = [{"name": entity_name, "type": entity_type}] + existing_recent
+
+    logger.info(f"  simple_fact_answer 耗时 {time.time()-t0:.1f}s")
+    return {
+        "messages": [resp],
+        "previous_intent": "simple_fact",
+        "recent_entities": existing_recent,
+    }
+
+
+def _prioritize_metadata(metadata: list[dict], keywords: list[str]) -> list[dict]:
+    """优先保留匹配关键词的元数据条目"""
+    if not keywords:
+        return metadata
+    matched = []
+    others = []
+    for m in metadata:
+        name = str(m.get("name", "") or m.get("title", ""))
+        if any(kw.lower() in name.lower() for kw in keywords):
+            matched.append(m)
+        else:
+            others.append(m)
+    return matched + others
+
+
+def _format_metadata(entries: list[dict]) -> str:
+    """格式化为紧凑文本，每个条目一行关键信息"""
+    lines = []
+    for m in entries:
+        name = m.get("name", "") or m.get("title", "")
+        score = m.get("score", "") or m.get("rating", "")
+        rank = m.get("rank", "")
+        tags = m.get("tags", [])
+        staff = m.get("staff", []) or m.get("seiyuu", [])
+        if isinstance(tags, str):
+            tags = [tags]
+        if isinstance(staff, str):
+            staff = [staff]
+        parts = [name]
+        if score:
+            parts.append(f"评分{score}")
+        if rank:
+            parts.append(f"排名{rank}")
+        if tags:
+            parts.append(f"标签:{','.join(str(t) for t in tags[:5])}")
+        if staff:
+            parts.append(f"人员:{','.join(str(s) for s in staff[:3])}")
+        lines.append(" | ".join(str(p) for p in parts))
+    return "\n".join(lines)

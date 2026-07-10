@@ -1,5 +1,7 @@
 # ACG 番剧推荐 — 路由工作流（Workflow）架构改造计划
 
+> **状态**: 📦 已归档 — 此为旧版 domain_router + dimension experts 架构计划，未实施。当前系统采用 planner-based 多 Agent 协作架构，详见 [project-summary.md](project-summary.md)。
+
 ## 摘要
 
 将现有线性 Graph 改造为**多维度路由工作流**：Router 识别问题涉及的 ACG 维度（评分/类型/导演/声优/相似推荐），动态路由到对应维度的专家 Node，各专家用专属 Prompt 重写检索 Query，调度器根据上下文决定是否需要追加维度，最后由 Answer 综合回答。

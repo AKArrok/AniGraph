@@ -1,5 +1,7 @@
 # ACG 番剧推荐 — Graph 适配计划
 
+> **状态**: 📦 已归档 — 此为旧版 router-based 架构的计划文档。当前系统已升级为 planner-based 多 Agent 协作架构，详见 [project-summary.md](project-summary.md) 和 [short-term-memory-plan.md](short-term-memory-plan.md)。
+
 ## 摘要
 
 现有 Graph 结构（Router → LLM Tool → Tools → Answer）无需改动。只需更新 3 个节点和 1 个工具的 Prompt/描述，让 Agent 从"通用助手"变为"ACG 番剧推荐专家"。

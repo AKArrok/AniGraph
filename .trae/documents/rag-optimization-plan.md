@@ -1,5 +1,7 @@
 # RAG 多层级检索优化 实施计划（修订版）
 
+> **状态**: ✅ 已实施 — 三路索引（Metadata + Pinecone + Whoosh）+ RRF 融合 + CrossEncoder 精排 已实现。
+
 ## 总览
 
 基于建议优化后的三层 RAG 架构：

@@ -131,7 +131,7 @@ graph LR
     end
 
     subgraph 云服务
-        D[DeepSeek API<br/>DeepSeek]
+        D[DashScope API<br/>Qwen LLM]
         P[Pinecone<br/>Vector DB]
         T[Tavily<br/>Web Search]
     end
@@ -315,17 +315,17 @@ python data/build_kb.py --whoosh-only    # 仅 Whoosh
 
 ```mermaid
 graph TD
-    START((START)) --> alias[alias_resolve<br/>别名+实体解析<br/>🟢 可缓存 | ⚡ 0-2 LLM调用]
-    alias --> hist[history_extractor<br/>提取最近N轮对话<br/>🟢 零LLM]
-    hist --> ctx[context_builder<br/>构建上下文+指代解析<br/>🟢 零LLM]
-    ctx --> planner[planner<br/>规则优先→执行计划<br/>🟢 80%零LLM | ⚡ 0-1 LLM调用]
+    START((START)) --> alias["alias_resolve<br/>别名+实体解析<br/>可缓存 · 0-2 LLM调用"]
+    alias --> hist["history_extractor<br/>提取最近N轮对话<br/>零LLM"]
+    hist --> ctx["context_builder<br/>构建上下文+指代解析<br/>零LLM"]
+    ctx --> planner["planner<br/>规则优先→执行计划<br/>80%零LLM · 0-1 LLM调用"]
 
     planner -->|chat| answer
-    planner -->|其他| qp[query_processing<br/>查询改写<br/>⚡ 0-1 LLM调用]
+    planner -->|其他| qp["query_processing<br/>查询改写<br/>0-1 LLM调用"]
 
-    qp --> kr[knowledge_retrieval<br/>知识检索分流<br/>🟢 零LLM | ⚡ 并行检索]
+    qp --> kr["knowledge_retrieval<br/>知识检索分流<br/>零LLM · 并行检索"]
 
-    kr -->|simple_fact| sf[simple_fact_answer<br/>单次LLM直接回答<br/>⚡ 1 LLM调用]
+    kr -->|simple_fact| sf["simple_fact_answer<br/>单次LLM直接回答<br/>1 LLM调用"]
 
     kr -->|metadata| mi[Metadata Index<br/>结构化过滤]
     kr -->|semantic| pc[Pinecone + Whoosh<br/>混合检索 + RRF + Rerank]
@@ -335,23 +335,23 @@ graph TD
     pc --> route
     both --> route
 
-    route -->|0 expert| ap[answer_planner<br/>随机结构<br/>🟢 零LLM]
+    route -->|0 expert| ap["answer_planner<br/>随机结构<br/>零LLM"]
     route -->|1 expert| expert_direct[直接调用]
-    route -->|2 experts| parallel[Send API 并行]
+    route -->|2 experts| parallel["Send API 并行"]
 
-    parallel --> mr[metadata_reasoner<br/>元数据推理<br/>⚡ 1 LLM调用]
-    parallel --> se[similar_expert<br/>相似推荐<br/>⚡ 1 LLM调用]
+    parallel --> mr["metadata_reasoner<br/>元数据推理<br/>1 LLM调用"]
+    parallel --> se["similar_expert<br/>相似推荐<br/>1 LLM调用"]
     expert_direct --> mr
     expert_direct --> se
 
-    mr --> merge[merge<br/>Jaccard去重+过滤+排序<br/>🟢 零LLM]
+    mr --> merge["merge<br/>Jaccard去重+过滤+排序<br/>零LLM"]
     se --> merge
 
-    merge -->|触发 Web| wf[web_fallback<br/>Tavily搜索<br/>⚡ 0-1 LLM调用]
+    merge -->|触发 Web| wf["web_fallback<br/>Tavily搜索<br/>0-1 LLM调用"]
     merge -->|不触发| ap
 
     wf --> ap
-    ap --> answer[answer<br/>口语化回答<br/>⚡ 1 LLM调用]
+    ap --> answer["answer<br/>口语化回答<br/>1 LLM调用"]
     answer --> END((END))
 
     sf --> END

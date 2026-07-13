@@ -4,6 +4,11 @@
     from main import run
     result = await run("推荐一部类似命运石之门的科幻番")
 
+流式调用 (Trace 面板):
+    from main import run_stream
+    async for event in run_stream("进击的巨人评分多少"):
+        print(event["type"], event["node"])
+
 交互式终端:
     python main.py              # 默认会话
     python main.py --session my  # 指定会话 ID
@@ -11,9 +16,11 @@
 
 import asyncio
 import sys
+from typing import AsyncIterator
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from graph import build_graph
+from trace import TraceCollector
 import config
 
 config.validate()
@@ -49,6 +56,26 @@ async def run(query: str, thread_id: str = "1") -> str:
     )
     msgs = resp.get("messages", [])
     return msgs[-1].content if msgs else "(无回答)"
+
+
+async def run_stream(query: str, thread_id: str = "1") -> AsyncIterator[dict]:
+    """向 AniGraph 发送一条查询，流式返回 Trace 事件。
+
+    用于 Web Trace 面板（SSE）实时展示 Agent 执行过程。
+
+    Args:
+        query:     用户输入文本。
+        thread_id: 会话标识符，用于隔离多轮对话。
+
+    Yields:
+        TraceEvent dict，按时间顺序: node_start → node_end → ... → answer_chunk → done.
+    """
+    collector = TraceCollector()
+    app = _get_app(thread_id)
+    input_state = {"messages": [HumanMessage(content=query)]}
+    config_dict = {"configurable": {"thread_id": thread_id}}
+    async for event in collector.collect(app, input_state, config_dict):
+        yield event
 
 
 if __name__ == "__main__":

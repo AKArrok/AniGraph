@@ -48,6 +48,10 @@ async def chat_loop(app, thread_id: str):
             print("  /exit, /quit   退出对话")
             print("  /clear         清空本轮会话记忆")
             print("  /session       显示当前会话 ID")
+            print("  /trace         提示 Web Trace 面板 (先 python server.py)")
+            continue
+        if query == "/trace":
+            print("  Web Trace 面板: 先在新终端运行 python server.py，然后打开 http://localhost:8000")
             continue
         if query == "/session":
             print(f"  当前会话 ID: {thread_id}")

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AniGraph — Trace Panel</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="header">
+      <div id="header-left">
+        <h1>AniGraph</h1>
+        <span class="badge">TRACE</span>
+      </div>
+      <div id="model-info">加载中...</div>
+    </header>
+
+    <div id="main-layout">
+      <!-- 左侧: 聊天对话区 -->
+      <div id="left-panel">
+        <div id="chat-messages">
+          <div id="chat-empty">输入问题开始对话</div>
+        </div>
+        <div id="chat-input-bar">
+          <div id="chat-input-row">
+            <input type="text" id="query-input" placeholder="输入查询... 例如: 进击的巨人评分多少" autofocus>
+            <button id="send-btn">发 送</button>
+          </div>
+          <div id="thread-row">
+            会话 <span id="thread-id">default</span>
+            <button id="clear-btn">清空记忆</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 右侧: 执行链路流程图 -->
+      <div id="right-panel">
+        <h3>执行链路</h3>
+        <div id="flowchart">
+          <div id="flowchart-empty">等待查询...</div>
+        </div>
+        <div id="node-detail" style="display:none">
+          <h4 id="detail-title"></h4>
+          <div id="detail-body"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

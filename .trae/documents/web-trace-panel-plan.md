@@ -1,48 +1,48 @@
-# Web Trace 面板 — 实施计划
+# Web Trace 面板 — 实施计划（评审修订版）
 
 ## 摘要
 
-为 AniGraph 构建实时 Trace 面板：一个 **FastAPI + SSE** 后端驱动、**单文件 HTML/JS** 渲染的 Web 界面。用户输入查询后，通过 SSE 流式展示每个 Agent 节点的执行过程——节点名、状态变化、耗时、并行关系、LLM Token 用量——以瀑布图（Gantt chart）形式呈现。
+为 AniGraph 构建实时 Trace 面板：FastAPI + SSE 后端，独立 static/ 前端。用户输入查询后，通过 SSE 流式展示 Agent 节点执行过程——瀑布图、Graph Path、State Diff、Prompt Viewer、Token 用量与成本。
 
-***
+---
+
+## 评审吸收
+
+从评审建议中吸收的关键改进：
+
+| 评审建议 | 采纳 | 实施方式 |
+|----------|:----:|----------|
+| EventAdapter 解耦 | ✅ | `trace/adapter.py` 将 LangGraph raw events → TraceEvent |
+| 数据模型分层 | ✅ | 拆为 NodeInfo / NodeRuntime / LLMTrace / StateDiff |
+| State 只传 diff | ✅ | 只发送变化字段，不传 full state（尤其是 messages） |
+| TokenProvider 抽象 | ✅ | `trace/pricing.py` 支持 DeepSeek / OpenAI |
+| 前端独立文件 | ✅ | `static/index.html` + `style.css` + `app.js` |
+| Graph Path | ✅ | 节点列表 + 箭头连线展示执行路径 |
+| Prompt Viewer | ✅ | 点击 LLM 节点展开 System/User/最终 Prompt |
+| State Diff Viewer | ✅ | before → after，高亮变化字段 |
+| 现成框架 | 暂不接入 | 目标仍是自己实现以展示工程能力 |
+
+---
 
 ## 当前状态分析
 
 ### 已有能力
-
-* `build_graph()` 返回 `StateGraph`，调用方用 `.compile(checkpointer)` 编译
-
-* 编译后的 `CompiledStateGraph` 支持 `astream(stream_mode=["tasks", "updates"])`
-
-* `"tasks"` mode 返回 `TaskPayload`（start）和 `TaskResultPayload`（end），含 `name`、`run_id`、`result`
-
-* `"updates"` mode 返回 `{节点名: 输出 dict}`
-
-* 各节点已有 `logger.info(f"  {节点名} 耗时 {t:.1f}s")` 风格日志（但不完整覆盖）
-
-* `main.py` 和 `chat.py` 是现有调用入口，均使用 `ainvoke`（阻塞等待完整结果）
+- `build_graph()` → `StateGraph`，`.compile(checkpointer)` → `CompiledStateGraph`
+- `CompiledStateGraph.astream(stream_mode=["tasks", "updates"])` 可获取每个节点的 start/end 事件
+- 各节点已有 `logger.info(f"  {name} 耗时 {t:.1f}s")` 风格日志
+- `main.py` 和 `chat.py` 使用 `ainvoke`
 
 ### 缺失项
-
-* 无任何 Web 框架（FastAPI、uvicorn、SSE 等）
-
-* 无 `astream` 调用代码（全部用 `ainvoke`）
-
-* 无统一 Trace 数据模型
-
-* 无前端代码
-
-* 7 个节点缺少耗时日志（alias\_resolve、history\_extractor、context\_builder、query\_processing、merge、answer\_planner、web\_fallback）
+- 无 Web 框架 / SSE / 前端
+- 无 `astream` 调用代码（全部用 `ainvoke`）
+- 无统一 Trace 数据模型
 
 ### 关键约束
+- Trace 逻辑放在编译后调用方，不侵入图定义
+- Windows 环境注意 SSE 编码
+- 并行 Expert（Send）各自独立产生 streaming 事件
 
-* 并行 Expert（`Send`）通过 `operator.add` 合并 `expert_results`，但 streaming 事件中各自独立出现
-
-* `build_graph()` 返回未编译图，因此 trace 逻辑放在 **编译后调用方**，不侵入图定义
-
-* Windows 环境，注意 SSE 编码问题
-
-***
+---
 
 ## 实施计划
 
@@ -50,222 +50,235 @@
 
 **文件**: `requirements.txt`
 
-添加：
-
-```
+```txt
 fastapi>=0.115.0
 uvicorn[standard]>=0.32.0
 sse-starlette>=2.1.0
-httpx>=0.27.0                   # async HTTP client，用于 config.validate() 联网测试
 ```
 
-### Step 2: 创建 Trace 数据模型
+### Step 2: 创建 trace/ 模块
 
-**新文件**: `trace/models.py`
+```
+trace/
+├── __init__.py       # re-export TraceCollector
+├── models.py         # 数据模型: NodeInfo, NodeRuntime, LLMTrace, StateDiff, TraceEvent
+├── adapter.py        # EventAdapter: LangGraph raw events → TraceEvent
+├── pricing.py        # TokenProvider: DeepSeek/OpenAI 定价 + 成本计算
+└── collector.py      # TraceCollector: 包装 astream, 协调 adapter + pricing
+```
 
-定义 Trace 事件的数据结构（不使用 Pydantic，用 `TypedDict` 以减少序列化开销）：
+**models.py** — 分层数据模型：
 
 ```python
-class TraceNode(TypedDict):
-    id: str           # run_id，用于前端匹配 start/end
-    name: str         # 节点注册名 e.g. "planner"
-    display: str      # 显示名 e.g. "规划器"
-    start: float      # timestamp
-    end: float        # timestamp (0 if still running)
-    state_before: dict | None   # 节点输入 state (浅层，不传 messages 全链)
-    state_after: dict | None    # 节点输出 state
-    llm_calls: list[LLMCall]    # 节点内 LLM 调用记录
-    error: str | None
+class NodeInfo(TypedDict):     # 静态信息
+    name: str                  # e.g. "planner"
+    display: str               # e.g. "规划器"
 
-class LLMCall(TypedDict):
+class LLMTrace(TypedDict):     # LLM 调用记录
     model: str
     input_tokens: int
     output_tokens: int
-    cost: str          # "$0.0012"
+    cost: str                  # "$0.0012"
     elapsed: float
+    system_prompt: str | None  # Prompt Viewer 用
+    user_prompt: str | None
+
+class StateDiff(TypedDict):    # 状态变化
+    added: dict                # 新增/修改的字段
+    changed: list[str]         # 变化的键名列表
+
+class NodeRuntime(TypedDict):  # 运行时信息
+    start: float
+    end: float                 # 0 = running
+    state_diff: StateDiff | None
+    llm_calls: list[LLMTrace]
+    error: str | None
+
+class TraceEvent(TypedDict):   # 发送到前端的统一事件
+    type: str                  # "node_start" | "node_end" | "answer_chunk" | "done" | "graph_path"
+    node: NodeInfo | None
+    runtime: NodeRuntime | None
+    answer_text: str           # 打字机流用的增量文本
+    graph_path: list[str]      # 最终的执行路径
+    summary: dict | None       # 总耗时/总token/总成本
 ```
 
-维护节点名→显示名映射表：
+**adapter.py** — EventAdapter：
 
 ```python
-NODE_DISPLAY = {
-    "alias_resolve": "别名/实体解析",
-    "history_extractor": "历史提取",
-    "context_builder": "上下文构建",
-    "planner": "规划器",
-    "query_processing": "查询优化",
-    "knowledge_retrieval": "知识检索",
-    "metadata_reasoner": "元数据推理专家",
-    "similar_expert": "相似推荐专家",
-    "merge": "结果合并",
-    "simple_fact_answer": "简单事实回答",
-    "web_fallback": "联网兜底",
-    "answer_planner": "回答结构规划",
-    "answer": "回答生成",
-}
+class EventAdapter:
+    """将 LangGraph astream task events 转为 TraceEvent。
+    解耦 LangGraph 版本，以后换版本只需改此类。
+    """
+    def adapt_task_start(self, payload: TaskPayload) -> TraceEvent: ...
+    def adapt_task_end(self, payload: TaskResultPayload) -> TraceEvent: ...
+    def adapt_updates(self, data: dict) -> TraceEvent: ...
+    def build_summary(self) -> TraceEvent: ...
 ```
 
-### Step 3: 创建 Trace 收集器
+**pricing.py** — TokenProvider：
 
-**新文件**: `trace/collector.py`
+```python
+class TokenProvider:
+    PROVIDERS = {
+        "deepseek": {
+            "deepseek-v4-pro":   {"input": 0.55, "output": 2.19},
+            "deepseek-v4-flash": {"input": 0.14, "output": 0.56},
+        }
+    }
+    @classmethod
+    def calculate(cls, model: str, input_tokens: int, output_tokens: int) -> str:
+        """返回 "$0.0012" 格式的成本字符串。"""
+```
 
-核心类 `TraceCollector`，包装 `astream(stream_mode=["tasks", "updates"])`：
+**collector.py** — TraceCollector：
 
 ```python
 class TraceCollector:
-    """收集 ainvoke 过程中的节点事件，产出 TraceNode 列表 + 最终回答。"""
-    
-    def __init__(self):
-        self.nodes: dict[str, TraceNode] = {}  # run_id -> TraceNode
-        self.final_answer: str = ""
-    
-    async def collect(self, app, input_state, config) -> AsyncIterator[dict]:
-        """SSE 事件生产者。每次有新事件时 yield 给前端。"""
+    async def collect(self, app, input_state, config) -> AsyncIterator[TraceEvent]:
+        """用 astream(stream_mode=["tasks","updates"]) 收集事件，通过 adapter 转换后 yield。"""
 ```
 
 实现要点：
+1. `TaskPayload` → adapter → `node_start` TraceEvent
+2. `TaskResultPayload` → adapter → `node_end` TraceEvent（含 state_diff、llm_calls）
+3. `UpdatesStreamPart` → 提取 `__metadata__` 判断路由
+4. 并行 Expert 通过时间戳重叠自动检测
+5. 最终 answer 从 messages[-1].content 提取，分块发送 `answer_chunk`
+6. 结束发送 `done` + summary（总耗时、总token、总成本、graph_path）
 
-1. 用 `astream` 同时监听 `"tasks"` 和 `"updates"` 两种 mode
-2. `TaskPayload` → 创建 TraceNode（`end=0`），记录 `start` 时间，转为 SSE 事件
-3. `TaskResultPayload` → 匹配同 `run_id` 的 TraceNode，记录 `end` 时间和 `result`
-4. `UpdatesStreamPart` → 提取 `__metadata__`（含 `langgraph_node`），确认路由跳转
-5. 用 `astream_events` 的子流（以 `run_id` 过滤）监听 `on_chat_model_end` → 提取 `usage_metadata` 中的 token 数
-
-Token 成本计算（DeepSeek 定价）：
-
-```python
-DEEPSEEK_PRICING = {
-    "deepseek-v4-pro":   {"input": 0.55, "output": 2.19},   # $/1M tokens
-    "deepseek-v4-flash": {"input": 0.14, "output": 0.56},
-}
-```
-
-### Step 4: 重构 `main.py` 的 `run()` 以支持 streaming
+### Step 3: main.py 新增 run_stream()
 
 **修改文件**: `main.py`
 
-当前 `run()` 使用 `ainvoke` 返回完整 state。新增一个 `run_stream(query, thread_id)` 函数，返回 `AsyncIterator[SSEEvent]`。原有 `run()` 保持不变（向后兼容）。
-
 ```python
-async def run(query: str, thread_id: str = "1") -> str:
-    """阻塞式调用，向后兼容。"""
-    # 不变
-
 async def run_stream(query: str, thread_id: str = "1") -> AsyncIterator[dict]:
-    """流式调用，yield SSE 事件 dict。"""
+    """流式调用，yield TraceEvent dict。"""
     collector = TraceCollector()
     app = _get_app(thread_id)
-    input_state = {"messages": [HumanMessage(content=query)]}
-    config = {"configurable": {"thread_id": thread_id}}
-    async for event in collector.collect(app, input_state, config):
+    async for event in collector.collect(app, {"messages": [HumanMessage(content=query)]},
+                                          {"configurable": {"thread_id": thread_id}}):
         yield event
 ```
 
-### Step 5: 创建 FastAPI 服务
+原 `run()` 不变。
+
+### Step 4: 创建 server.py
 
 **新文件**: `server.py`
 
-端点和功能：
+端点：
 
-| 端点                                    | 方法   | 功能                |
-| ------------------------------------- | ---- | ----------------- |
-| `/`                                   | GET  | 返回单文件 HTML 界面     |
-| `/chat/stream`                        | POST | SSE 流式 Trace + 回答 |
-| `/chat/stream?query=xxx&thread_id=t1` | GET  | 同上，GET 参数版本       |
-| `/models`                             | GET  | 返回当前模型配置          |
-| `/health`                             | GET  | 存活检测              |
+| 端点 | 方法 | 功能 |
+|------|------|------|
+| `/` | GET | 返回 `static/index.html` |
+| `/chat/stream` | POST | SSE 流式 Trace + answer |
+| `/api/models` | GET | JSON: 当前 LLM/Embedding 配置 |
+| `/api/health` | GET | JSON: {"status":"ok"} |
 
-SSE 端点核心逻辑：
-
+SSE 端点：
 ```python
 @app.post("/chat/stream")
 async def chat_stream(body: ChatRequest):
-    async def event_generator():
-        async for event in run_stream(body.query, body.thread_id):
-            yield {"event": "trace", "data": json.dumps(event, ensure_ascii=False)}
+    async def gen():
+        async for evt in run_stream(body.query, body.thread_id):
+            yield {"event": evt["type"], "data": json.dumps(evt, ensure_ascii=False)}
         yield {"event": "done", "data": ""}
-    
-    return EventSourceResponse(event_generator())
+    return EventSourceResponse(gen())
 ```
 
-注意：
+静态文件挂载：`app.mount("/static", StaticFiles(directory="static"), name="static")`
 
-* SSE Response 设置 `Cache-Control: no-cache`、`X-Accel-Buffering: no`
+启动入口：
+```python
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=True)
+```
 
-* Windows GBK 问题：所有 JSON 用 `ensure_ascii=False`，Response 设 `Content-Type: text/event-stream; charset=utf-8`
+### Step 5: 创建 static/ 前端
 
-### Step 6: 创建前端 HTML 面板
+```
+static/
+├── index.html    # 主页面布局
+├── style.css     # 样式
+└── app.js        # SSE 连接 + 瀑布图 + 详情面板
+```
 
-**内嵌在** **`server.py`** **中**（单文件方案，直接 return HTML 字符串），约 300-400 行 JS。
+**页面布局**（左右分栏）：
 
-核心组件：
+```
+┌────────────────────────────────────────────────────────┐
+│  [AniGraph Trace]         模型: deepseek-v4-pro        │
+├──────────────────────┬─────────────────────────────────┤
+│  搜索栏              │                                 │
+│  [______________] 🔍 │         Trace 瀑布图            │
+│                      │                                 │
+│  回复区 (打字机)     │   alias_resolve ████ 0.1s      │
+│  Lorem ipsum...      │   planner         ████ 0.3s    │
+│                      │   knowledge_ret.. ████████ 2.1s │
+│                      │   metadata_reas.. ██████ 1.5s   │
+│                      │   answer          ████ 0.4s     │
+├──────────────────────┴─────────────────────────────────┤
+│  汇总: 总耗时 4.8s | Tokens: 1,234 in + 567 out | $0.0021 │
+│  Path: alias → planner → retrieval → expert → answer     │
+└────────────────────────────────────────────────────────┘
+```
 
-1. **搜索栏** — 输入框 + 发送按钮 + 会话 ID 显示
-2. **回复区** — 打字机效果渐进显示最终回答
-3. **Trace 瀑布图** — SVG/Canvas 绘制，纵轴节点列表，横轴时间，bar 宽度 = 耗时
+**核心功能**：
+1. **SSE 连接** — `EventSource` 监听 `/chat/stream`
+2. **瀑布图** — SVG 绘制，纵轴节点，横轴时间，蓝色 bar 实时增长
+3. **点击节点** — 右侧展开详情：State Diff（红色删除/绿色新增）、LLM 调用详情、Prompt（collapsible）
+4. **颜色**：蓝色=运行中，绿色=完成，红色=错误，灰色=跳过
+5. **汇总栏** — 底部显示总耗时、总 Token、总成本、Graph Path
+6. **打字机** — `answer_chunk` 事件逐步追加文本
 
-   * 颜色：蓝色=运行中，绿色=完成，红色=错误，灰色=跳过
+纯原生 HTML/CSS/JS，零框架依赖。
 
-   * 并行 Expert 的 bar 上下叠放但时间重叠
-4. **节点详情面板** — 点击任意节点 bar 展开：输入/输出 state diff、LLM Token 用量、成本
-5. **汇总栏** — 总耗时、总 Token 用量、总成本、Graph 路径
-
-不使用任何前端框架，纯原生 JS + CSS Grid（面试展示时无需装依赖）。
-
-### Step 7: 更新入口脚本
+### Step 6: chat.py 加 /trace 命令
 
 **修改文件**: `chat.py`
 
-在 `chat_loop` 中加一个 `/trace` 命令，提示用户打开 `http://localhost:8000` 使用 Web Trace 面板。
-
-**修改文件**: `README.md` 和 `docs/`
-
-添加 Trace 面板使用说明：
-
-```markdown
-## Web Trace 面板
-python server.py
-# 打开 http://localhost:8000
+在 `/help` 和命令处理中加入：
 ```
+/trace   打开 Web Trace 面板 (http://localhost:8000)
+```
+提示用户先启动 `python server.py`。
 
-***
+### Step 7: 端到端验证
+
+1. `python server.py` 启动成功
+2. 浏览器 `http://localhost:8000` 正常渲染
+3. "进击的巨人评分多少" → 瀑布图完整，节点耗时合理
+4. "推荐一部类似命运石之门的科幻番" → 复杂查询全链路 Trace
+5. 点击节点展开 State Diff / Prompt 正常
+6. 汇总栏数据正确
+
+---
 
 ## 设计决策
 
-1. **不侵入图定义** — Trace 逻辑只在 `server.py` 调用层，不影响现有 `ainvoke` 流程和测试
-2. **SSE 而非 WebSocket** — SSE 单向推送足够（服务器→前端），实现更简单，HTTP/1.1 兼容好
-3. **单文件 HTML** — 内嵌在 `server.py`，零前端安装，直接 `python server.py` 出结果
-4. **向后兼容** — 原有 `main.py` 的 `run()` 和 `chat.py` 不变
-5. **Token 成本用 DeepSeek 官方定价** — 硬编码定价表，不做 API 查询（避免额外开销）
+1. **EventAdapter 解耦** — 前端不直接消费 LangGraph events，中间加 adapter
+2. **数据模型分层** — NodeInfo / NodeRuntime / LLMTrace / StateDiff 独立
+3. **State 只传 diff** — 不传输 full state（尤其是 messages），只传变化键
+4. **TokenProvider 抽象** — 定价独立模块，方便切换 LLM 提供商
+5. **前端独立文件** — `static/` 三文件，利于维护
+6. **不侵入图定义** — Trace 全在调用层
+7. **SSE 单向推送** — 足够用，实现简单
 
 ## 文件清单
 
-| 操作 | 文件                   | 说明                                        |
-| -- | -------------------- | ----------------------------------------- |
-| 修改 | `requirements.txt`   | 添加 fastapi, uvicorn, sse-starlette, httpx |
-| 新建 | `trace/__init__.py`  | 包初始化                                      |
-| 新建 | `trace/models.py`    | TraceNode, LLMCall 数据模型 + 节点映射表           |
-| 新建 | `trace/collector.py` | TraceCollector 类，包装 astream               |
-| 修改 | `main.py`            | 新增 `run_stream()` 函数                      |
-| 新建 | `server.py`          | FastAPI 应用 + 内嵌 HTML 前端                   |
-| 修改 | `chat.py`            | 加 `/trace` 命令提示                           |
-
-## 验证步骤
-
-1. `python server.py` → 确认启动无报错
-2. 浏览器打开 `http://localhost:8000` → 确认 HTML 正常渲染
-3. 输入 "进击的巨人评分多少" → 确认：
-
-   * 回复区渐进显示打字机效果
-
-   * Trace 瀑布图显示所有经过的节点
-
-   * 节点耗时与日志序一致
-
-   * 并行 Expert 时间重叠
-
-   * Token 使用量显示正确
-4. 输入 "推荐一部类似命运石之门的科幻番" → 确认复杂查询的完整 Trace
-5. `python main.py` → 确认原有 CLI 不受影响
-6. `python chat.py` → 确认 `/trace` 提示正常
-
+| 操作 | 文件 | 说明 |
+|------|------|------|
+| 修改 | `requirements.txt` | +fastapi, uvicorn, sse-starlette |
+| 新建 | `trace/__init__.py` | 包初始化 |
+| 新建 | `trace/models.py` | TraceEvent, NodeInfo, NodeRuntime, LLMTrace, StateDiff |
+| 新建 | `trace/adapter.py` | EventAdapter: LangGraph events → TraceEvent |
+| 新建 | `trace/pricing.py` | TokenProvider: 成本计算 |
+| 新建 | `trace/collector.py` | TraceCollector: 协调 astream + adapter |
+| 修改 | `main.py` | +run_stream() |
+| 新建 | `server.py` | FastAPI app |
+| 新建 | `static/index.html` | 页面布局 |
+| 新建 | `static/style.css` | 样式 |
+| 新建 | `static/app.js` | SSE + 瀑布图 + 详情 |
+| 修改 | `chat.py` | +/trace 命令 |

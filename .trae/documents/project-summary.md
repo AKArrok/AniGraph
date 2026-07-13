@@ -51,8 +51,8 @@
 | 层级 | 技术选型 | 选型理由 |
 |------|----------|----------|
 | 智能体框架 | LangGraph 0.3+ | 状态机可维护、Send API 原生支持并行 |
-| 主 LLM | Qwen-Max (DashScope) | 中文 ACG 领域理解能力强、API 稳定 |
-| 轻量 LLM | Qwen3.6-Max-Preview (DashScope) | 简单事实查询快速通道、降低延迟 |
+| 主 LLM | DeepSeek-V4-Pro (DeepSeek) | 中文 ACG 领域理解能力强、API 稳定 |
+| 轻量 LLM | DeepSeek-V4-Flash (DeepSeek) | 简单事实查询快速通道、降低延迟 |
 | 向量检索 | Pinecone (MMR) | 托管服务、零运维、MMR 保证多样性 |
 | 稀疏检索 | Whoosh (BM25F) | 本地部署、零网络延迟、中文分词友好 |
 | 精排 | bge-reranker-v2-m3 | SOTA 中文 CrossEncoder、CPU 可用 |
@@ -131,7 +131,7 @@ graph LR
     end
 
     subgraph 云服务
-        D[Qwen API<br/>DashScope]
+        D[DeepSeek API<br/>DeepSeek]
         P[Pinecone<br/>Vector DB]
         T[Tavily<br/>Web Search]
     end
@@ -203,8 +203,8 @@ flowchart LR
 
 | 阶段 | 策略 | LLM 调用 | 查询占比 (估) |
 |------|------|----------|:---:|
-| v0 (全 LLM) | 所有查询调 LLM Planner | 4-6 次 qwen-max | 100% |
-| v1 (规则优先) | metadata/chat/semantic 跳过 | 1-2 次 qwen-max | ~30% |
+| v0 (全 LLM) | 所有查询调 LLM Planner | 4-6 次 deepseek-v4-pro | 100% |
+| v1 (规则优先) | metadata/chat/semantic 跳过 | 1-2 次 deepseek-v4-pro | ~30% |
 
 **Trade-off**: 规则可能误判边缘 case，但省下的 ~70% LLM 成本远超修复成本。
 
@@ -374,19 +374,19 @@ graph TD
 
 | 节点 | 文件 | 输入 | 输出 | LLM调用 | 模型 | 可缓存 | 时间复杂度 |
 |------|------|------|------|:---:|------|:---:|------|
-| alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 | qwen-flash | ✅ LRU(128) | O(1) 字典 / O(1) LLM |
+| alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 | deepseek-v4-flash | ✅ LRU(128) | O(1) 字典 / O(1) LLM |
 | history_extractor | history_extractor.py | messages | context.history | 0 | - | ❌ | O(n) messages |
 | context_builder | context_builder.py | context.history, recent_entities, entity_* | context, resolved_query | 0 | - | ❌ | O(1) 规则 |
-| planner | planner.py | original_query, entity_*, context | plan | 0-1 | qwen-max | ❌ | O(1) 规则 / O(1) LLM |
-| query_processing | graph.py | plan, resolved_query | shared_context(查询) | 0-1 | qwen-max | ✅ MD5(500) | O(1) |
+| planner | planner.py | original_query, entity_*, context | plan | 0-1 | deepseek-v4-pro | ❌ | O(1) 规则 / O(1) LLM |
+| query_processing | graph.py | plan, resolved_query | shared_context(查询) | 0-1 | deepseek-v4-pro | ✅ MD5(500) | O(1) |
 | knowledge_retrieval | graph.py | plan, shared_context | metadata, shared_context(文档) | 0 | - | ❌ | O(n) Pinecone + O(n) Whoosh |
 | simple_fact_answer | simple_fact_answer.py | metadata, original_query, entity_* | messages, recent_entities | **1 (轻量)** | simple_LLM | ❌ | O(1) LLM |
-| metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 | qwen-max / simple_LLM | ❌ | O(1) LLM |
-| similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 | qwen-max / simple_LLM | ❌ | O(1) LLM |
+| metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 | deepseek-v4-pro / simple_LLM | ❌ | O(1) LLM |
+| similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 | deepseek-v4-pro / simple_LLM | ❌ | O(1) LLM |
 | merge | merge.py | expert_results | merged_results | 0 | - | ❌ | O(n²) Jaccard |
-| web_fallback | web_fallback.py | original_query, merged_results | merged_results(追加) | 0-1 | qwen-flash | ❌ | O(1) API |
+| web_fallback | web_fallback.py | original_query, merged_results | merged_results(追加) | 0-1 | deepseek-v4-flash | ❌ | O(1) API |
 | answer_planner | graph.py | plan | answer_plan | 0 | - | ❌ | O(1) |
-| answer | answer.py | original_query, plan, merged_results, context | messages, recent_entities, previous_intent | 1 | qwen-max/flash | ❌ | O(1) LLM |
+| answer | answer.py | original_query, plan, merged_results, context | messages, recent_entities, previous_intent | 1 | deepseek-v4-pro/deepseek-v4-flash | ❌ | O(1) LLM |
 
 ### 5.3 State Schema
 
@@ -524,7 +524,7 @@ sequenceDiagram
 
     par 并行 Expert (仅 similar_expert)
         EX->>EX: _find_structured_similar: 从 metadata 查同标签作品
-        EX->>EX: LLM (qwen-max): 结合语义候选+结构化候选 → 推荐
+        EX->>EX: LLM (deepseek-v4-pro): 结合语义候选+结构化候选 → 推荐
     end
 
     EX->>MG: expert_results = [{answer, confidence:0.85, evidence:[...]}]
@@ -534,7 +534,7 @@ sequenceDiagram
     AP->>AP: random.choice: "top_pick — 先重点安利最推荐的1-2部"
     AP->>AN: answer_plan
 
-    AN->>AN: query_type=recommendation → qwen-max
+    AN->>AN: query_type=recommendation → deepseek-v4-pro
     AN->>U: "JOJO的话，我个人最推荐..."
 ```
 
@@ -543,9 +543,9 @@ sequenceDiagram
 | 策略 | 触发条件 | 操作 | LLM | Token 消耗 |
 |------|----------|------|-----|:---:|
 | `direct` | 闲聊/短查询/纯 metadata | 原样透传 | 0 | 0 |
-| `rewrite` | 默认 | 从3个视角生成改写查询 | 1 (qwen-max t=0.7) | ~500 |
-| `hyde` | 深度评价类 ("为什么""好在哪") | 生成假设性答案作为检索文本 | 1 (qwen-max t=0.8) | ~800 |
-| `decompose` | 含多个子问题 ("分别""还有") | 拆分为独立子问题 | 1 (qwen-max t=0.5) | ~400 |
+| `rewrite` | 默认 | 从3个视角生成改写查询 | 1 (deepseek-v4-pro t=0.7) | ~500 |
+| `hyde` | 深度评价类 ("为什么""好在哪") | 生成假设性答案作为检索文本 | 1 (deepseek-v4-pro t=0.8) | ~800 |
+| `decompose` | 含多个子问题 ("分别""还有") | 拆分为独立子问题 | 1 (deepseek-v4-pro t=0.5) | ~400 |
 
 **缓存**: MD5 前缀内存 dict (max 500) + `@lru_cache(256)` 双重缓存，热点查询秒级命中。
 
@@ -631,12 +631,12 @@ def retrieve_with_optimization(..., skip_optimization: bool = False):
 
 | 节点 | 角色 | 模型 | 温度 | 输出格式 | 核心约束 |
 |------|------|------|:---:|------|------|
-| Planner | 规划师 | qwen-max | 0.3 | JSON | 分类+策略+专家选择 |
-| Metadata Reasoner | 元数据专家 | qwen-max | 0.7 | JSON | 证据导向、引用评论、不编造 |
-| Similar Expert | 推荐专家 | qwen-max | 0.7 | JSON | 多维度、引用评论、口语化 |
-| Answer (复杂) | 回答者 | qwen-max | 0.7 | 自然语言 | 只重组不创造、换花样、反AI套话 |
-| Answer (简单) | 回答者 | qwen-flash | 0.7 | 自然语言 | 同上 |
-| 别名/实体 | 解析器 | qwen-flash | 0.5 | 纯文本/JSON | 简短输出、置信度标注 |
+| Planner | 规划师 | deepseek-v4-pro | 0.3 | JSON | 分类+策略+专家选择 |
+| Metadata Reasoner | 元数据专家 | deepseek-v4-pro | 0.7 | JSON | 证据导向、引用评论、不编造 |
+| Similar Expert | 推荐专家 | deepseek-v4-pro | 0.7 | JSON | 多维度、引用评论、口语化 |
+| Answer (复杂) | 回答者 | deepseek-v4-pro | 0.7 | 自然语言 | 只重组不创造、换花样、反AI套话 |
+| Answer (简单) | 回答者 | deepseek-v4-flash | 0.7 | 自然语言 | 同上 |
+| 别名/实体 | 解析器 | deepseek-v4-flash | 0.5 | 纯文本/JSON | 简短输出、置信度标注 |
 
 ### 7.2 Answer 提示词迭代历史
 
@@ -711,13 +711,13 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 | LLM 调用节点 | 典型输入 | 典型输出 | 模型 |
 |------|:---:|:---:|------|
-| Planner (mixed) | ~500 | ~200 | qwen-max |
-| Query Rewrite | ~100 | ~150 | qwen-max |
-| Metadata Reasoner | ~2500 | ~300 | qwen-max |
-| Similar Expert | ~2500 | ~300 | qwen-max |
-| Web Fallback Extract | ~1500 | ~300 | qwen-flash |
-| Answer (复杂) | ~2000 | ~500 | qwen-max |
-| Answer (简单) | ~500 | ~200 | qwen-flash |
+| Planner (mixed) | ~500 | ~200 | deepseek-v4-pro |
+| Query Rewrite | ~100 | ~150 | deepseek-v4-pro |
+| Metadata Reasoner | ~2500 | ~300 | deepseek-v4-pro |
+| Similar Expert | ~2500 | ~300 | deepseek-v4-pro |
+| Web Fallback Extract | ~1500 | ~300 | deepseek-v4-flash |
+| Answer (复杂) | ~2000 | ~500 | deepseek-v4-pro |
+| Answer (简单) | ~500 | ~200 | deepseek-v4-flash |
 
 **典型查询 Token 总量**: ~3,000-8,000 tokens / 次
 
@@ -766,7 +766,7 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 ### 10.1 Planner 规则优先 (Rule-First Planner)
 
-**问题**: 所有查询调 LLM Planner，4-6 次 qwen-max 调用，延迟 8-10s。
+**问题**: 所有查询调 LLM Planner，4-6 次 deepseek-v4-pro 调用，延迟 8-10s。
 
 **方案**: 通过正则 + 实体标记分类 metadata / semantic / mixed / chat，仅 mixed 类走 LLM。
 
@@ -895,7 +895,7 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 |--------|------|
 | 消除双重查询优化 | -1~2 LLM, 8→2 Pinecone |
 | Planner 规则优先 | metadata/chat/semantic 零 Planner LLM |
-| Answer Router | simple_fact → qwen-flash |
+| Answer Router | simple_fact → deepseek-v4-flash |
 | 检索并行化 | Pinecone+Whoosh 并发 |
 | Answer Planner | 随机结构避免套路 |
 | 实体解析 | 角色/梗→番剧 L0+L1 |
@@ -903,7 +903,7 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | **短期记忆 (v1.1)** | **history_extractor + context_builder，支持指代解析和多轮追问** |
 | **simple_fact 快速通道 (v1.1)** | **简单查询跳过 Expert+Merge+Answer，单次 LLM 直接回答，延迟 -57%** |
 | **LLM 超时 + 节点耗时日志** | **request_timeout=60s，各节点输出耗时** |
-| **轻量模型升级** | **qwen-flash → qwen3.6-max-preview** |
+| **轻量模型升级** | **deepseek-v4-flash → deepseek-v4-flash** |
 
 ### 12.2 短期 (v1.1)
 
@@ -942,7 +942,7 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 |------|------|------|
 | **Query Rewrite 过度导致延迟爆炸** | v0 设计中 query_processing 和 rag_optimizer 各自改写，导致 N×M 次 Pinecone 调用 | 检索优化应在**一个入口**统一，避免管线重复 |
 | **CrossEncoder 收益递减** | 候选文档 ≤5 时，Fusion 已足够排序，CrossEncoder 增加 ~300ms 延迟但几乎无质量提升 | 大模型精排应**动态启用**，候选少时跳过 |
-| **全 LLM Planner 成本过高** | v0 每个查询调 qwen-max Planner (~2s)，即使结果被规则覆盖 | **规则优先**原则适用于所有分类/路由场景 |
+| **全 LLM Planner 成本过高** | v0 每个查询调 deepseek-v4-pro Planner (~2s)，即使结果被规则覆盖 | **规则优先**原则适用于所有分类/路由场景 |
 | **Metadata 过滤优于纯 Embedding** | "京都动画有哪些作品"用 Embedding 检索效果差（不理解制作公司属性） | 结构化查询需要**结构化索引**，Embedding 不能替代 |
 
 ### 13.2 工程实践教训
@@ -969,11 +969,11 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|:---:|--------|------|
-| `DASHSCOPE_API_KEY` | ✅ | - | LLM + Embeddings |
+| `LLM_API_KEY` | ✅ | - | LLM + Embeddings |
 | `PINECONE_API_KEY` | ✅ | - | 向量数据库 |
 | `TAVILY_API_KEY` | ✅ | - | 联网搜索 |
-| `QWEN_LLM_MODEL` | ❌ | qwen-max | 主 LLM |
-| `SIMPLE_LLM_MODEL` | ❌ | qwen-flash | 轻量 LLM |
+| `LLM_MODEL` | ❌ | deepseek-v4-pro | 主 LLM |
+| `SIMPLE_LLM_MODEL` | ❌ | deepseek-v4-flash | 轻量 LLM |
 | `EMBEDDING_BACKEND` | ❌ | local | local / dashscope |
 | `ENABLE_RERANKING` | ❌ | true | CrossEncoder 开关 |
 | `ENABLE_QUERY_OPTIMIZATION` | ❌ | true | 查询优化开关 |
@@ -1040,7 +1040,7 @@ answer = asyncio.run(run("推荐类似JOJO的番"))
 ### G. FAQ
 
 **Q: 为什么答案有时很慢 (>15s)?**
-A: 可能触发了 Web Fallback (Tavily + LLM 提取)，或两个 Expert 都调用了 qwen-max。检查 `need_web` 标志和 `query_category` 是否为 `mixed`。
+A: 可能触发了 Web Fallback (Tavily + LLM 提取)，或两个 Expert 都调用了 deepseek-v4-pro。检查 `need_web` 标志和 `query_category` 是否为 `mixed`。
 
 **Q: 如何添加新番剧?**
 A: 更新 `data/anime_data.db`，然后运行 `python data/build_kb.py --resume` 增量构建（当前不支持单条增量）。

@@ -47,7 +47,7 @@
                                      ▼
                           ┌─────────────────────┐
                           │      Planner         │  ← LLM 一次调用，输出完整 ExecutionPlan
-                          │   (qwen-max t=0.3)   │
+│   (deepseek-v4-pro t=0.3)   │
                           └──────────┬──────────┘
                                      │ ExecutionPlan {alias, rewrite, retrieval, experts, parallel, need_web}
                                      ▼
@@ -95,7 +95,7 @@
                                          │ merged_results
                                          ▼
                           ┌─────────────────────┐
-                          │   Answer Agent      │  ← qwen-max (t=0.9)
+                          │   Answer Agent      │  ← deepseek-v4-pro (t=0.9)
                           │   综合生成自然回答    │
                           └──────────┬──────────┘
                                      ▼
@@ -108,11 +108,11 @@
 
 | Agent | 模型 | 输入 | 职责 |
 |-------|------|------|------|
-| **Planner** | qwen-max (t=0.3) | 用户查询 | 输出 ExecutionPlan（分类/策略/Agent列表/并串行/联网） |
-| **Metadata Reasoner** | qwen-max (t=0.7) | 结构化元数据 + 语义 Context | 基于精确数据分析推荐，LLM 只负责推理和语言组织 |
-| **Similar Expert** | qwen-max (t=0.7) | Embedding 召回 TopK | 相似作品发现 + 排序 + 解释 |
-| **Answer Agent** | qwen-max (t=0.9) | 所有 Expert 结果 | 综合生成口语化回答 |
-| **Tool Agent**（预留） | qwen-max (t=0.3) | 工具列表 | 未来 OCR/翻译/识图统一入口 |
+| **Planner** | deepseek-v4-pro (t=0.3) | 用户查询 | 输出 ExecutionPlan（分类/策略/Agent列表/并串行/联网） |
+| **Metadata Reasoner** | deepseek-v4-pro (t=0.7) | 结构化元数据 + 语义 Context | 基于精确数据分析推荐，LLM 只负责推理和语言组织 |
+| **Similar Expert** | deepseek-v4-pro (t=0.7) | Embedding 召回 TopK | 相似作品发现 + 排序 + 解释 |
+| **Answer Agent** | deepseek-v4-pro (t=0.9) | 所有 Expert 结果 | 综合生成口语化回答 |
+| **Tool Agent**（预留） | deepseek-v4-pro (t=0.3) | 工具列表 | 未来 OCR/翻译/识图统一入口 |
 
 > Web Expert 降级为**按需触发的回退节点**，不作为常驻 Agent。
 

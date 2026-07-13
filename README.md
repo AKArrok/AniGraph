@@ -5,7 +5,7 @@
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?style=for-the-badge&logo=python)
 ![LangGraph](https://img.shields.io/badge/LangGraph-0.3%2B-green?style=for-the-badge)
 ![LangChain](https://img.shields.io/badge/LangChain-0.3%2B-orange?style=for-the-badge)
-![Qwen](https://img.shields.io/badge/LLM-Qwen--Max-red?style=for-the-badge)
+![DeepSeek](https://img.shields.io/badge/LLM-DeepSeek-blue?style=for-the-badge)
 ![Pinecone](https://img.shields.io/badge/VectorDB-Pinecone-blueviolet?style=for-the-badge)
 ![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
 
@@ -79,8 +79,8 @@ answer            — 口语化自然回答（含对话历史衔接）
 | 层级 | 技术 |
 |------|------|
 | Agent 框架 | LangGraph |
-| 主 LLM | Qwen-Max（阿里 DashScope） |
-| 轻量 LLM | Qwen3.6-Max-Preview（阿里 DashScope） |
+| 主 LLM | DeepSeek-V4-Pro（OpenAI 兼容协议） |
+| 轻量 LLM | DeepSeek-V4-Flash（OpenAI 兼容协议） |
 | Embedding | Qwen3-Embedding-0.6B（本地, CPU） / DashScope API 可选 |
 | 向量数据库 | Pinecone |
 | 稀疏检索 | Whoosh BM25F（本地） |
@@ -110,7 +110,7 @@ cp .env.example .env
 
 | 变量 | 说明 | 获取地址 |
 |------|------|----------|
-| `DASHSCOPE_API_KEY` | 阿里云 DashScope（LLM + Embeddings） | [dashscope.aliyun.com](https://dashscope.aliyun.com) |
+| `LLM_API_KEY` | DeepSeek / OpenAI 兼容 API Key | [deepseek.com](https://platform.deepseek.com) |
 | `PINECONE_API_KEY` | Pinecone 向量数据库 | [pinecone.io](https://pinecone.io) |
 | `TAVILY_API_KEY` | Tavily 联网搜索 | [tavily.com](https://tavily.com) |
 
@@ -198,13 +198,13 @@ AniGraph/
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| `DASHSCOPE_API_KEY` | ✅ | - | 阿里云 DashScope API Key |
-| `DASHSCOPE_BASE_URL` | - | `https://dashscope.aliyuncs.com/compatible-mode/v1` | DashScope 端点 |
+| `LLM_API_KEY` | ✅ | - | LLM API Key（DeepSeek 等 OpenAI 兼容） |
+| `LLM_BASE_URL` | - | `https://api.deepseek.com/v1` | LLM API 端点 |
 | `PINECONE_API_KEY` | ✅ | - | Pinecone API Key |
 | `PINECONE_INDEX` | - | `vector` | Pinecone 索引名 |
 | `TAVILY_API_KEY` | ✅ | - | Tavily 联网搜索 Key |
-| `QWEN_LLM_MODEL` | - | `qwen-max` | 主 LLM 模型 |
-| `SIMPLE_LLM_MODEL` | - | `qwen-flash` | 轻量 LLM 模型 |
+| `LLM_MODEL` | - | `deepseek-v4-pro` | 主 LLM 模型名 |
+| `SIMPLE_LLM_MODEL` | - | `deepseek-v4-flash` | 轻量 LLM 模型名 |
 | `EMBEDDING_BACKEND` | - | `local` | Embedding 后端：`local` / `dashscope` |
 | `ENABLE_RERANKING` | - | `true` | 是否启用 CrossEncoder 精排 |
 | `MAX_ITERATIONS` | - | `3` | 最大迭代次数 |

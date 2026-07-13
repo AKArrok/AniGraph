@@ -20,7 +20,7 @@
   ↓
 Entity Resolver (agents/entity_resolver.py)
   ├── L0: 高频字典 (≈100 条，零成本)
-  ├── L1: LLM 推理 (qwen-flash，覆盖常见实体)
+  ├── L1: LLM 推理 (deepseek-v4-flash，覆盖常见实体)
   └── L2: 联网兜底 (Tavily，仅在 confidence < 0.5 时触发)
   ↓
 结构化实体: { type, entity, anime, confidence, source }

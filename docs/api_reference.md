@@ -72,12 +72,12 @@ from llms import answer_LLM, router_LLM, tool_LLM, simple_LLM
 
 | 实例 | 模型（.env） | 温度 | 用途 |
 |------|------------|:---:|------|
-| `answer_LLM` | `QWEN_LLM_MODEL` | 0.9 | 主 LLM：Planner、Expert、复杂回答 |
+| `answer_LLM` | `LLM_MODEL` | 0.9 | 主 LLM：Planner、Expert、复杂回答 |
 | `simple_LLM` | `SIMPLE_LLM_MODEL` | 0.5 | 轻量 LLM：simple_fact、chat 回答 |
-| `router_LLM` | `QWEN_LLM_MODEL` | 0 | 路由 LLM（当前未使用） |
-| `tool_LLM` | `QWEN_LLM_MODEL` | 0.3 | 工具 LLM（当前未使用） |
+| `router_LLM` | `LLM_MODEL` | 0 | 路由 LLM（当前未使用） |
+| `tool_LLM` | `LLM_MODEL` | 0.3 | 工具 LLM（当前未使用） |
 
-所有 LLM 实例均设置 `request_timeout=60` 秒。
+所有 LLM 实例均设置 `request_timeout=120` 秒。
 
 ---
 
@@ -103,10 +103,10 @@ from llms import embeddings
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `QWEN_LLM_MODEL` | `qwen-max` | 主 LLM 模型名 |
-| `SIMPLE_LLM_MODEL` | `qwen-flash` | 轻量 LLM 模型名 |
-| `DASHSCOPE_API_KEY` | - | 阿里云 DashScope API Key（必填） |
-| `DASHSCOPE_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | API 端点 |
+| `LLM_MODEL` | `deepseek-v4-pro` | 主 LLM 模型名 |
+| `SIMPLE_LLM_MODEL` | `deepseek-v4-flash` | 轻量 LLM 模型名 |
+| `LLM_API_KEY` | - | LLM API Key（必填） |
+| `LLM_BASE_URL` | `https://api.deepseek.com/v1` | API 端点 |
 
 ### Embedding 相关
 

@@ -14,14 +14,14 @@
 
 | 步骤 | 节点                   | LLM 调用             | 模型             | 延迟         | 问题                                        |
 | -- | -------------------- | ------------------ | -------------- | ---------- | ----------------------------------------- |
-| 1  | alias\_resolve       | 0-2 次              | qwen-flash     | 0-2s       | 条件触发，可接受                                  |
-| 2  | planner              | **1 次**            | qwen-max       | 1-3s       | 所有查询都调 LLM，metadata/chat 结果被规则覆盖          |
-| 3  | query\_processing    | 0-1 次              | qwen-max       | 0-3s       | 与 rag\_optimizer 二次改写，重复浪费                |
+| 1  | alias\_resolve       | 0-2 次              | deepseek-v4-flash     | 0-2s       | 条件触发，可接受                                  |
+| 2  | planner              | **1 次**            | deepseek-v4-pro       | 1-3s       | 所有查询都调 LLM，metadata/chat 结果被规则覆盖          |
+| 3  | query\_processing    | 0-1 次              | deepseek-v4-pro       | 0-3s       | 与 rag\_optimizer 二次改写，重复浪费                |
 | 4  | knowledge\_retrieval | 0 次                | -              | 0.5-2s     | 乘法膨胀（N queries × M rewrites）+ 串行 Pinecone |
-| 5  | experts (2x)         | 2 次                | qwen-max       | 3-5s       | 并行 Send 但 sync invoke 阻塞                  |
-| 6  | web\_fallback        | 0-1 次              | qwen-flash     | 0-4s       | 条件触发，可接受                                  |
-| 7  | answer               | **1 次**            | qwen-max T=0.9 | 3-5s       | 简单问题也用大模型 + 温度过高                          |
-| -  | **合计**               | **4-6 次 qwen-max** | -              | **12-18s** | -                                         |
+| 5  | experts (2x)         | 2 次                | deepseek-v4-pro       | 3-5s       | 并行 Send 但 sync invoke 阻塞                  |
+| 6  | web\_fallback        | 0-1 次              | deepseek-v4-flash     | 0-4s       | 条件触发，可接受                                  |
+| 7  | answer               | **1 次**            | deepseek-v4-pro T=0.9 | 3-5s       | 简单问题也用大模型 + 温度过高                          |
+| -  | **合计**               | **4-6 次 deepseek-v4-pro** | -              | **12-18s** | -                                         |
 
 ***
 
@@ -166,7 +166,7 @@ def plan(query: str) -> dict:
     # ... 原有 LLM invoke 逻辑 ...
 ```
 
-**预期收益**：metadata/chat/semantic 类查询省 1 次 qwen-max。数据查询场景多时效果显著。**\~2s**。
+**预期收益**：metadata/chat/semantic 类查询省 1 次 deepseek-v4-pro。数据查询场景多时效果显著。**\~2s**。
 
 ***
 
@@ -186,7 +186,7 @@ def plan(query: str) -> dict:
 
 ### P1-2：Answer Router — 简单问题用小模型（收益 \~1-3s，低工作量）
 
-**问题**：当前只有 `chat` 类型用 qwen-flash，`simple_fact`（如"xx评分多少"）仍然走 qwen-max。
+**问题**：当前只有 `chat` 类型用 deepseek-v4-flash，`simple_fact`（如"xx评分多少"）仍然走 deepseek-v4-pro。
 
 **修改**：`agents/answer.py` `answer_node()` 扩展 flash 使用范围：
 
@@ -203,7 +203,7 @@ llm = simple_LLM if use_fast else answer_LLM
 ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.7"))  # 0.9 → 0.7
 ```
 
-**预期收益**：simple\_fact 查询 answer 从 qwen-max(\~4s) → qwen-flash(\~1s)，省 **\~3s**。降低温度后复杂查询 answer 省 **\~1s**。
+**预期收益**：simple\_fact 查询 answer 从 deepseek-v4-pro(\~4s) → deepseek-v4-flash(\~1s)，省 **\~3s**。降低温度后复杂查询 answer 省 **\~1s**。
 
 ***
 
@@ -303,7 +303,7 @@ ENABLE_RERANKING=false
 
 ## 假设与决策
 
-1. **保留 qwen-max 作为复杂查询主力** — 简单问题用 flash，复杂推理用 max
+1. **保留 deepseek-v4-pro 作为复杂查询主力** — 简单问题用 flash，复杂推理用 max
 2. **保留双 Expert 并行架构** — 通过 Send API 分发，已是最优
 3. **不改动 Web Fallback 路径** — 条件触发，不影响常规查询
 4. **不引入大重构**（同步→异步 LLM 全面改造）— 风险高，作为后续迭代

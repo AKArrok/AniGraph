@@ -4,15 +4,22 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-# ── DashScope 共享密钥（LLM + Embeddings 共用）──
-DASHSCOPE_API_KEY  = os.getenv("DASHSCOPE_API_KEY")
-DASHSCOPE_BASE_URL = os.getenv("DASHSCOPE_BASE_URL", "https://dashscope.aliyuncs.com/compatible-mode/v1")
+# ── LLM 通用配置（OpenAI 兼容协议）──
+# 新变量名优先，旧 DashScope 变量名作为 fallback
+LLM_API_KEY  = os.getenv("LLM_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
+LLM_BASE_URL = os.getenv("LLM_BASE_URL", os.getenv("DASHSCOPE_BASE_URL",
+                       "https://api.deepseek.com/v1"))
 
-# ── LLM (Qwen-Max) ──
-QWEN_LLM_MODEL = os.getenv("QWEN_LLM_MODEL", "qwen-max")
+# ── LLM (主模型) ──
+LLM_MODEL = os.getenv("LLM_MODEL") or os.getenv("QWEN_LLM_MODEL", "deepseek-v4-pro")
 
 # ── 轻量 LLM（简单事实查询）──
-SIMPLE_LLM_MODEL = os.getenv("SIMPLE_LLM_MODEL", "qwen-flash")
+SIMPLE_LLM_MODEL = os.getenv("SIMPLE_LLM_MODEL", "deepseek-v4-flash")
+
+# 向后兼容别名（旧代码可能引用）
+DASHSCOPE_API_KEY = LLM_API_KEY
+DASHSCOPE_BASE_URL = LLM_BASE_URL
+QWEN_LLM_MODEL = LLM_MODEL
 
 # ── Embeddings ──
 # 后端选择: "dashscope" (API) | "local" (HuggingFace 本地模型，零配额)
@@ -26,15 +33,15 @@ if HF_ENDPOINT:
     os.environ.setdefault("HF_ENDPOINT", HF_ENDPOINT)
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")  # 禁用 Xet，避免 401 错误
 # DashScope 模型（仅 EMBEDDING_BACKEND=dashscope 时生效）
-QWEN_EMBEDDING_MODEL = os.getenv("QWEN_EMBEDDING_MODEL", "text-embedding-v4")
-QWEN_EMBEDDING_FALLBACKS = os.getenv(
-    "QWEN_EMBEDDING_FALLBACKS",
+EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-v4")
+EMBEDDING_FALLBACKS = os.getenv(
+    "EMBEDDING_FALLBACKS",
     "text-embedding-v2,text-embedding-v1,qwen3-vl-rerank"
 )
 # 完整模型列表: 主模型 + 备用模型（按优先级降序）
 EMBEDDING_MODELS = (
-    [QWEN_EMBEDDING_MODEL] +
-    [m.strip() for m in QWEN_EMBEDDING_FALLBACKS.split(",") if m.strip()]
+    [EMBEDDING_MODEL] +
+    [m.strip() for m in EMBEDDING_FALLBACKS.split(",") if m.strip()]
 )
 
 # Vector DB (Pinecone)
@@ -81,7 +88,7 @@ METADATA_INDEX_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 METADATA_CACHE_SIZE = int(os.getenv("METADATA_CACHE_SIZE", "2000"))
 
 # ── Multi-Agent ──
-PLANNER_MODEL = os.getenv("PLANNER_MODEL", "qwen-max")
+PLANNER_MODEL = os.getenv("PLANNER_MODEL", "deepseek-v4-pro")
 PLANNER_TEMPERATURE = float(os.getenv("PLANNER_TEMPERATURE", "0.3"))
 EXPERT_TEMPERATURE = float(os.getenv("EXPERT_TEMPERATURE", "0.7"))
 ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.7"))
@@ -93,9 +100,9 @@ MEMORY_MAX_ROUNDS = int(os.getenv("MEMORY_MAX_ROUNDS", "5"))
 # Validation
 def validate():
     missing = [k for k, v in {
-        "DASHSCOPE_API_KEY":  DASHSCOPE_API_KEY,
-        "PINECONE_API_KEY":   PINECONE_API_KEY,
-        "TAVILY_API_KEY":     TAVILY_API_KEY,
+        "LLM_API_KEY":       LLM_API_KEY,
+        "PINECONE_API_KEY":  PINECONE_API_KEY,
+        "TAVILY_API_KEY":    TAVILY_API_KEY,
     }.items() if not v]
     if missing:
         raise EnvironmentError(f"Missing env vars: {missing}. Copy .env.example to .env")

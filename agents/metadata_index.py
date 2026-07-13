@@ -76,7 +76,11 @@ class MetadataIndex:
         return None
 
     def search_by_name(self, name: str) -> list[dict]:
-        """名称模糊搜索（包含匹配）"""
+        """名称模糊搜索（双向包含匹配）
+
+        - 正向: 搜索词是番剧名的子串（如搜"进击"命中"进击的巨人"）
+        - 反向: 番剧名是搜索词的子串（如搜"进击的巨人出了几季"命中"进击的巨人"）
+        """
         if not self._loaded:
             self.load()
         n = name.strip().lower()
@@ -84,11 +88,23 @@ class MetadataIndex:
         for item in self._data:
             cn = item.get("name_cn", "").lower()
             jp = item.get("name", "").lower()
+            # 正向: 搜索词 ⊆ 番剧名
             if n in cn or n in jp:
                 results.append(item)
                 continue
+            # 反向: 番剧名 ⊆ 搜索词（番剧名至少 2 字，避免单字误匹配）
+            if cn and len(cn) >= 2 and cn in n:
+                results.append(item)
+                continue
+            if jp and len(jp) >= 2 and jp in n:
+                results.append(item)
+                continue
             for alias in item.get("alias", []):
-                if n in alias.lower():
+                al = alias.lower()
+                if n in al:
+                    results.append(item)
+                    break
+                if len(al) >= 2 and al in n:
                     results.append(item)
                     break
         return results

@@ -65,7 +65,7 @@
 **覆盖**: 番剧推荐、事实查询、对比分析、角色/梗→番剧映射、昵称解析、多轮追问、闲聊  
 **不覆盖**: 用户画像、实时播放链接、非 ACG 领域、长期记忆
 
-**关键结论**: 系统采用"规则优先，LLM 按需调用"原则，80% 查询零 LLM Planner 成本。
+**关键结论**: 系统采用"全 LLM 分类"设计，simple_LLM 一次调用完成全部意图判断（query_category / query_type / strategy / experts），无正则硬编码。
 
 ---
 
@@ -124,22 +124,24 @@ graph TB
 ```mermaid
 graph LR
     subgraph 本地
+        W[Web Trace Server<br/>FastAPI + SSE :9527]
         L[LangGraph Runtime<br/>Python 3.11]
-        W[Whoosh 索引<br/>本地文件]
+        WHO[Whoosh 索引<br/>本地文件]
         E[Embedding Model<br/>Qwen3-0.6B CPU]
         R[CrossEncoder<br/>bge-reranker CPU]
     end
 
     subgraph 云服务
-        D[DashScope API<br/>Qwen LLM]
+        D[DeepSeek API<br/>LLM]
         P[Pinecone<br/>Vector DB]
         T[Tavily<br/>Web Search]
     end
 
+    W --> L
     L --> D
     L --> P
     L --> T
-    L --> W
+    L --> WHO
     L --> E
     L --> R
 ```
@@ -199,14 +201,15 @@ flowchart LR
 
 **关键发现**: 纯 Embedding 检索对"京都动画有哪些作品"这类查询效果差（Embedding 不理解"制作公司"属性），必须引入结构化索引。
 
-### 3.3 为什么 Planner 使用规则优先
+### 3.3 为什么 Planner 使用 LLM 分类
 
-| 阶段 | 策略 | LLM 调用 | 查询占比 (估) |
-|------|------|----------|:---:|
-| v0 (全 LLM) | 所有查询调 LLM Planner | 4-6 次 deepseek-v4-pro | 100% |
-| v1 (规则优先) | metadata/chat/semantic 跳过 | 1-2 次 deepseek-v4-pro | ~30% |
+| 阶段 | 策略 | LLM 调用 | 说明 |
+|------|------|:---:|------|
+| v0 (全 LLM) | 所有查询调 LLM Planner | 4-6 次 | 成本高、延迟大 |
+| v1 (规则优先) | 正则 + 实体标记分类 | 0-1 次 | 规则维护困难、边缘 case 误判 |
+| v2 (LLM 分类) ✅ | simple_LLM 一次分类 | 1 次 | 精确可靠、无正则维护、可处理复杂意图 |
 
-**Trade-off**: 规则可能误判边缘 case，但省下的 ~70% LLM 成本远超修复成本。
+**Trade-off**: 相比规则优先（零 LLM），每次查询多 1 次 simple_LLM 调用（~0.5s），但消除了正则维护成本和边缘 case 误判。
 
 ### 3.4 为什么使用两个 Expert 并行而非单一 Agent
 
@@ -318,8 +321,7 @@ graph TD
     START((START)) --> alias["alias_resolve<br/>别名+实体解析<br/>可缓存 · 0-2 LLM调用"]
     alias --> hist["history_extractor<br/>提取最近N轮对话<br/>零LLM"]
     hist --> ctx["context_builder<br/>构建上下文+指代解析<br/>零LLM"]
-    ctx --> planner["planner<br/>规则优先→执行计划<br/>80%零LLM · 0-1 LLM调用"]
-
+    ctx --> planner["planner<br/>LLM分类→执行计划<br/>1 LLM调用"]
     planner -->|chat| answer
     planner -->|其他| qp["query_processing<br/>查询改写<br/>0-1 LLM调用"]
 
@@ -377,7 +379,7 @@ graph TD
 | alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 | deepseek-v4-flash | ✅ LRU(128) | O(1) 字典 / O(1) LLM |
 | history_extractor | history_extractor.py | messages | context.history | 0 | - | ❌ | O(n) messages |
 | context_builder | context_builder.py | context.history, recent_entities, entity_* | context, resolved_query | 0 | - | ❌ | O(1) 规则 |
-| planner | planner.py | original_query, entity_*, context | plan | 0-1 | deepseek-v4-pro | ❌ | O(1) 规则 / O(1) LLM |
+| planner | planner.py | original_query, entity_*, context | plan | **1 (轻量)** | deepseek-v4-flash | ❌ | O(1) LLM |
 | query_processing | graph.py | plan, resolved_query | shared_context(查询) | 0-1 | deepseek-v4-pro | ✅ MD5(500) | O(1) |
 | knowledge_retrieval | graph.py | plan, shared_context | metadata, shared_context(文档) | 0 | - | ❌ | O(n) Pinecone + O(n) Whoosh |
 | simple_fact_answer | simple_fact_answer.py | metadata, original_query, entity_* | messages, recent_entities | **1 (轻量)** | simple_LLM | ❌ | O(1) LLM |
@@ -631,7 +633,7 @@ def retrieve_with_optimization(..., skip_optimization: bool = False):
 
 | 节点 | 角色 | 模型 | 温度 | 输出格式 | 核心约束 |
 |------|------|------|:---:|------|------|
-| Planner | 规划师 | deepseek-v4-pro | 0.3 | JSON | 分类+策略+专家选择 |
+| Planner | 规划师 | deepseek-v4-flash | 0.3 | JSON | 分类+策略+专家选择 |
 | Metadata Reasoner | 元数据专家 | deepseek-v4-pro | 0.7 | JSON | 证据导向、引用评论、不编造 |
 | Similar Expert | 推荐专家 | deepseek-v4-pro | 0.7 | JSON | 多维度、引用评论、口语化 |
 | Answer (复杂) | 回答者 | deepseek-v4-pro | 0.7 | 自然语言 | 只重组不创造、换花样、反AI套话 |
@@ -663,7 +665,29 @@ def retrieve_with_optimization(..., skip_optimization: bool = False):
 
 > **本章目标**: 了解系统的监控、日志和调试手段。
 
-### 8.1 LangSmith / LangFuse 追踪
+### 8.1 Web Trace 面板
+
+**文件**：`server.py` + `static/` + `trace/`
+
+基于 FastAPI + SSE（Server-Sent Events）的实时执行追踪面板，左栏聊天气泡 + 右栏流程图：
+
+- **SSE 实时推送**：节点开始/结束、LLM Token 用量、回答文本流式传输
+- **聊天气泡**：对话式 UI，打字机流式输出
+- **流程图**：显示完整执行链路，每个节点标注耗时和 LLM 调用倍数
+- **节点详情**：点击节点查看 State 变化、LLM 调用明细
+- **模型选择**：下拉切换 deepseek-v4-pro / deepseek-v4-flash
+
+**启动**：`python server.py` → http://localhost:9527
+
+**trace/ 模块**：
+| 文件 | 职责 |
+|------|------|
+| `collector.py` | 单一 `astream_events(version="v2")` 流收集所有事件（避免双流导致图执行两次） |
+| `adapter.py` | LangGraph 事件 → 前端 TraceEvent 格式适配 |
+| `models.py` | TraceEvent / NodeInfo / NodeRuntime / LLMTrace 类型定义 |
+| `pricing.py` | DeepSeek Token 计价 |
+
+### 8.2 LangSmith / LangFuse 追踪
 
 ```python
 # config.py
@@ -764,13 +788,13 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 > **本章目标**: 提炼项目的核心技术亮点，便于答辩/分享/简历。
 
-### 10.1 Planner 规则优先 (Rule-First Planner)
+### 10.1 Planner LLM 分类 (LLM-First Intent Classification)
 
-**问题**: 所有查询调 LLM Planner，4-6 次 deepseek-v4-pro 调用，延迟 8-10s。
+**问题**: 正则规则难以覆盖所有查询模式，"碧蓝之海怎么样？"被误判为纯 semantic（丢失 metadata 检索）。
 
-**方案**: 通过正则 + 实体标记分类 metadata / semantic / mixed / chat，仅 mixed 类走 LLM。
+**方案**: 全 LLM 驱动——simple_LLM 一次调用输出完整分类 JSON（query_category / query_type / strategy / experts / parallel / need_web），100% 消除正则维护。
 
-**收益**: 80% 查询零 LLM Planner 成本，延迟 -2s。
+**收益**: 意图分类准确率大幅提升，零正则维护成本，边缘 case 自动正确处理。
 
 ### 10.2 Metadata + Semantic Hybrid Retrieval
 
@@ -904,6 +928,8 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | **simple_fact 快速通道 (v1.1)** | **简单查询跳过 Expert+Merge+Answer，单次 LLM 直接回答，延迟 -57%** |
 | **LLM 超时 + 节点耗时日志** | **request_timeout=60s，各节点输出耗时** |
 | **轻量模型升级** | **deepseek-v4-flash → deepseek-v4-flash** |
+| **Web Trace 面板** | **FastAPI + SSE 实时执行追踪面板（聊天气泡 + 流程图）** |
+| **Planner LLM 分类** | **全面移除正则，改用 simple_LLM 一次分类** |
 
 ### 12.2 短期 (v1.1)
 
@@ -920,7 +946,7 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 - 知识库扩展 (更多番剧、多平台评论)
 - 图片识别 (trace.moe API)
 - 个性化推荐 (用户偏好学习)
-- SSE 流式输出
+- 自动化 RAGAS 评测
 
 ### 12.4 长期 (v2.0)
 
@@ -952,7 +978,7 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | **LangGraph Send API 不自动继承 State** | `Send(expert, {})` 传递空 dict 导致 Expert 收到空 state，置信度 0% | 必须**显式传递**所有需要的 state 字段 |
 | **sync .invoke() 阻塞 asyncio** | 所有 LLM 调用用同步 `.invoke()`，即使 LangGraph Send 分发也无法真正并行 | 生产环境应整体迁移 `.ainvoke()` |
 | **shared_context 字段语义复用** | graph.py 中 shared_context 先存查询文本，后被覆盖为检索文档 | 字段重命名或拆分为两个字段更清晰 |
-| **正则 bug 隐藏深** | `^{1,6}` 少写 `.` 导致运行时 re.error，特定查询才触发 | 正则需要**单元测试覆盖所有 pattern** |
+| **意图分类用 LLM 替代正则** | 正则规则越写越多（~150 行），"碧蓝之海怎么样？"被误判为纯 semantic | 意图分类用 LLM 比正则更可靠，simple_LLM 成本极低可承受 |
 
 ### 13.3 Prompt 工程教训
 
@@ -995,12 +1021,19 @@ CLI 参数 > 环境变量 > config.py 默认值
 ### C. API 接口
 
 ```python
-# main.py — 唯一对外接口
+# main.py — 单次查询
 async def run(query: str, thread_id: str = "1") -> str:
     """同步式调用（内部 async）"""
-    app = build_graph().compile(checkpointer=MemorySaver())
-    result = await app.ainvoke({"messages": [HumanMessage(content=query)]})
-    return result["messages"][-1].content
+
+# main.py — 流式执行（带 Trace）
+async def run_stream(query: str, thread_id: str = "1") -> AsyncIterator[dict]:
+    """返回 TraceEvent 流，供 Web Trace 面板使用"""
+
+# server.py — Web Trace Server
+# python server.py → http://localhost:9527
+# GET  /chat/stream?query=...&thread_id=...  → SSE 流
+# GET  /api/models                            → 模型列表
+# GET  /api/health                            → 健康检查
 
 # 使用示例
 import asyncio
@@ -1022,11 +1055,10 @@ answer = asyncio.run(run("推荐类似JOJO的番"))
 
 | 限制 | 影响 | 计划 |
 |------|------|------|
-| 单轮对话 | 无法利用上下文追问 | v1.1 |
 | 无增量索引更新 | 新增番剧需全量重建 | v1.1 |
 | sync LLM 调用 | Expert 无法真正并行 | v1.1 |
-| 规则可能误判 | 边缘查询分类不准 | 持续完善 |
 | 无 GPU 推理 | CrossEncoder 在 CPU 上较慢 | 中期 |
+| 无自动测试 | 回归靠手动 | P0 |
 
 ### F. 性能调优指南
 

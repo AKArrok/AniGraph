@@ -27,6 +27,18 @@ asyncio.run(main())
 
 **注意**: 每次 `run()` 新建 `MemorySaver()`，代表一次新对话。同一会话内的多轮调用需在外部持有 `MemorySaver` 实例（参见 `tests/test_agent.py`）。
 
+### `run_stream(query, thread_id)` — 流式执行（带 Trace）
+
+```python
+# main.py
+from main import run_stream
+
+async for evt in run_stream("无职转生的主角是谁？", thread_id="user_001"):
+    print(evt)  # TraceEvent dict
+```
+
+用于 Web Trace 面板的后端，`server.py` 中的 SSE 端点调用此函数。
+
 ---
 
 ## 图构建
@@ -321,6 +333,46 @@ class MetadataIndex:
 ```
 
 结构化元数据索引（JSON/SQLite）。
+
+---
+
+## Web Trace Server
+
+### 启动
+
+```bash
+python server.py [port]
+# 默认端口 9527
+# python server.py 8080  # 自定义端口
+```
+
+### SSE 端点: `GET /chat/stream`
+
+实时流式推送节点事件 + LLM Token + 回答文本。
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|:---:|------|
+| `query` | `str` | ✅ | 用户查询（URL 编码） |
+| `thread_id` | `str` | ❌ | 对话线程 ID，默认自动生成 |
+
+**响应**: `text/event-stream`（SSE 格式）
+
+**事件类型**:
+| event | 说明 |
+|-------|------|
+| `node_start` | 节点开始执行 |
+| `node_end` | 节点执行完毕，含 runtime（耗时、LLM 调用、State 变化） |
+| `answer_chunk` | 回答文本片段（流式打字机效果） |
+| `done` | 全部完成，含 summary（总耗时、总 Token、图路径） |
+
+### 其他端点
+
+| 端点 | 说明 |
+|------|------|
+| `GET /` | Web Trace 面板 HTML |
+| `GET /static/{file}` | 静态资源（CSS / JS） |
+| `GET /api/models` | 返回可用模型列表 `["deepseek-v4-pro", "deepseek-v4-flash"]` |
+| `GET /api/health` | 健康检查 `{"status": "ok"}` |
 
 ---
 

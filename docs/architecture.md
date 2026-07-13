@@ -6,10 +6,11 @@ AniGraph 是一个基于 LangGraph 的多 Agent 协作 ACG 番剧推荐系统。
 
 关键特性：
 
-- **规则优先 + LLM 兜底**：大部分路由和分类由正则/关键词规则完成（零 LLM 成本），仅复杂查询才走 LLM
+- **LLM 意图分类**：全 LLM 驱动（simple_LLM），一次调用完成查询类别/类型/策略/Expert 选择，无正则硬编码
 - **三层检索路径**：Metadata Index（结构化过滤）、Pinecone + Whoosh（向量 + 稀疏检索）、联网回退
 - **Simple Fact 快速通道**：简单事实查询跳过 Expert → Merge → Answer 三步流水线，一次 LLM 调用直接作答
 - **对话上下文感知**：追问检测、指代消解、多轮话题推断
+- **Web Trace 面板**：FastAPI + SSE 实时推送执行过程——聊天气泡 + 流程图 + Token 用量
 
 ---
 
@@ -55,7 +56,26 @@ planner                ← 分析查询，输出 ExecutionPlan（query_type / ex
                                                   END
 ```
 
-图定义文件：`agents/graph.py` → `build_graph()`
+- **图定义文件**：`agents/graph.py` → `build_graph()`
+
+### Web Trace 面板
+
+**文件**：`server.py` + `static/` + `trace/`
+
+基于 FastAPI + SSE（Server-Sent Events）的实时执行追踪面板：
+- `GET /` — Web 面板（聊天气泡 + 流程图）
+- `GET /chat/stream?query=...` — SSE 流式推送节点事件 + LLM Token + 回答文本
+- `GET /api/models` / `GET /api/health`
+
+**trace/ 模块**：
+| 文件 | 职责 |
+|------|------|
+| `collector.py` | 单一 `astream_events(version="v2")` 流收集所有事件 |
+| `adapter.py` | LangGraph 事件 → 前端 TraceEvent 格式适配 |
+| `models.py` | TraceEvent / NodeInfo / NodeRuntime / LLMTrace 类型 |
+| `pricing.py` | DeepSeek Token 计价（$0.55 / $2.19 per 1M） |
+
+**启动**：`python server.py` → http://localhost:9527
 
 ---
 
@@ -149,7 +169,7 @@ planner                ← 分析查询，输出 ExecutionPlan（query_type / ex
 
 **文件**：`agents/planner.py`
 
-**调用 LLM**：视情况 — 很大一部分查询走规则（零 LLM），仅 `mixed` 类复杂查询走 `answer_LLM`
+**调用 LLM**：总是 1 次 `simple_LLM`（deepseek-v4-flash）；`mixed` 查询额外 1 次 `answer_LLM` 深化
 
 **输入**：
 | 字段 | 说明 |
@@ -161,23 +181,23 @@ planner                ← 分析查询，输出 ExecutionPlan（query_type / ex
 **核心逻辑**：
 
 ```
-规则分类（零 LLM）
-├── _classify_query_category(query)
-│   ├── metadata: 公司/声优/导演/年份/评分/标签查询
-│   ├── semantic: 相似推荐/评价分析/对比/深度讨论
-│   └── mixed:   两者兼有（如 "推荐热血异世界"）
-│
-├── 闲聊检测 → query_type=chat, experts=[]
-├── metadata 类 → 规则判断 simple_fact / recommendation
-├── semantic 类 → query_type=recommendation, experts=[similar_expert]
-│
-└── mixed 类 → 调用 LLM 生成完整 ExecutionPlan
+LLM 一次分类（_classify_with_llm → simple_LLM）
+├── query_category: metadata | semantic | mixed | chat
+├── query_type: simple_fact | recommendation | comparison | chat
+├── rewrite_strategy: direct | rewrite | hyde | decompose
+├── experts: [metadata_reasoner] | [similar_expert] | 两者
+├── parallel: true | false
+└── need_web: true | false
+
+chat          → 直接返回 answer 节点
+metadata      → 单路 metadata_reasoner，direct 策略
+semantic      → 单路 similar_expert
+mixed / 复杂   → answer_LLM 深化（验证分类 + 细化计划）
 ```
 
 **Planner 还会根据实体解析结果调整 plan**：
 - `entity_confidence < 0.5` → `need_web = True`
-- `entity_type == "meme" and source != "dict"` → `need_web = True`
-- `entity_type == "character"` + 身份询问 → 更正为 `simple_fact`
+- `entity_type == "meme"` → `need_web = True`
 
 **输出**（`ExecutionPlan`）：
 ```python

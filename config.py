@@ -26,7 +26,24 @@ QWEN_LLM_MODEL = LLM_MODEL
 EMBEDDING_BACKEND = os.getenv("EMBEDDING_BACKEND", "local")
 # 本地模型（HuggingFace sentence-transformers）
 LOCAL_EMBEDDING_MODEL = os.getenv("LOCAL_EMBEDDING_MODEL", "Qwen/Qwen3-Embedding-0.6B")
-LOCAL_EMBEDDING_DEVICE = os.getenv("LOCAL_EMBEDDING_DEVICE", "cpu")  # cpu | cuda
+# 运行设备: "cpu" | "cuda" | "auto" (自动检测 CUDA，不可用时回退 cpu)
+_LOCAL_EMBEDDING_DEVICE_RAW = os.getenv("LOCAL_EMBEDDING_DEVICE", "auto")
+
+
+def _resolve_embedding_device() -> str:
+    """解析 embedding 运行设备，支持 auto 自动检测 CUDA。"""
+    if _LOCAL_EMBEDDING_DEVICE_RAW != "auto":
+        return _LOCAL_EMBEDDING_DEVICE_RAW
+    try:
+        import torch
+        if torch.cuda.is_available():
+            return "cuda"
+    except Exception:
+        pass
+    return "cpu"
+
+
+LOCAL_EMBEDDING_DEVICE = _resolve_embedding_device()
 # HuggingFace 加速
 HF_ENDPOINT = os.getenv("HF_ENDPOINT", "")
 if HF_ENDPOINT:

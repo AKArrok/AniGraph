@@ -6,11 +6,51 @@ AniGraph 是一个基于 LangGraph 的多 Agent 协作 ACG 番剧推荐系统。
 
 关键特性：
 
-- **LLM 意图分类**：全 LLM 驱动（simple_LLM），一次调用完成查询类别/类型/策略/Expert 选择，无正则硬编码
+- **双层意图分类**：Embedding 粗筛（4 类别质心匹配）排除不相关类别 → LLM 精分类（simple_LLM），含复杂度分析
+- **按需节点路由**：alias_resolve 通过条件 START 边按需加入；web_fallback 通过 ToolRegistry 开关控制
 - **三层检索路径**：Metadata Index（结构化过滤）、Pinecone + Whoosh（向量 + 稀疏检索）、联网回退
 - **Simple Fact 快速通道**：简单事实查询跳过 Expert → Merge → Answer 三步流水线，一次 LLM 调用直接作答
-- **对话上下文感知**：追问检测、指代消解、多轮话题推断
+- **对话上下文感知**：追问检测、指代消解、多轮话题推断，history 分版（完整版/截断版）
+- **ToolRegistry**：统一工具注册表，12 个工具懒加载、集中开关控制
+- **LLM 健壮性**：Structured Output 自动降级 + tenacity 指数退避重试
 - **Web Trace 面板**：FastAPI + SSE 实时推送执行过程——聊天气泡 + 流程图 + Token 用量
+
+---
+
+## LLM 健壮性（v2.2 新增）
+
+### Structured Output 降级
+
+**文件**：`llms.py` → `invoke_structured()`
+
+部分模型（如 deepseek-v4-flash）不支持 `with_structured_output()`，返回 `"response_format type is unavailable"`。
+
+**降级策略**：
+1. 首选 `llm.with_structured_output(model)` 直接获取 Pydantic 对象
+2. 失败时自动降级为 `_json_fallback_invoke()` — 在 prompt 中追加 JSON 格式要求，手动解析 response 内容
+3. 解析失败再抛异常
+
+```python
+def invoke_structured(llm, prompt, model: Type[BaseModel], **kwargs) -> BaseModel:
+    try:
+        return llm.with_structured_output(model).invoke(prompt, **kwargs)
+    except Exception:
+        return _json_fallback_invoke(llm, prompt, model, **kwargs)
+```
+
+### LLM 重试
+
+**文件**：`llms.py` → `llm_invoke_with_retry()`
+
+使用 tenacity 库实现指数退避重试（max 2 retries），应对 API 瞬时故障：
+
+```python
+@_make_retry(max_retries=2)
+def llm_invoke_with_retry(llm, messages, **kwargs):
+    return llm.invoke(messages, **kwargs)
+```
+
+重试条件：`APIError`、`APITimeoutError`、`RateLimitError`；非可重试异常（如 `BadRequestError`）直接抛出。
 
 ---
 
@@ -19,17 +59,19 @@ AniGraph 是一个基于 LangGraph 的多 Agent 协作 ACG 番剧推荐系统。
 ```
 START
   │
-  ▼
-alias_resolve          ← 别名/实体解析：番剧别名 → 正名，角色/梗识别
+  │  route_from_start()  ← v2.2: 条件路由
+  ├── 需解析别名 ──→ alias_resolve → history_extractor
+  └── 无需解析 ──────────────────→ history_extractor
   │
   ▼
 history_extractor      ← 从 messages 提取最近 N 轮对话历史
   │
   ▼
 context_builder        ← 构建 ConversationContext：追问检测、指代消解、话题推断
-  │
+  │                       同时生成 history_text（完整版）和 history_text_recent（截断版）
   ▼
-planner                ← 分析查询，输出 ExecutionPlan（query_type / experts / rewrite_strategy 等）
+planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 → LLM分类 → 复杂度分析）
+  │                       输出 ExecutionPlan（query_type / experts / rewrite_strategy 等）
   │
   │  route_after_planner()
   ├── chat ────────────────────────────────────→ answer（闲聊直达回答）
@@ -81,11 +123,13 @@ planner                ← 分析查询，输出 ExecutionPlan（query_type / ex
 
 ## 节点详解
 
-### 1. `alias_resolve` — 别名/实体解析
+### 1. `alias_resolve` — 别名/实体解析（按需）
 
 **文件**：`agents/graph.py` → `_alias_resolve_node()`
 
-**调用 LLM**：否（别名解析走 dict + LLM 兜底，实体解析走内置词典）
+**调用 LLM**：0-2 次（按需，条件触发）
+
+**触发条件**：START 节点的 `_route_from_start()` 预检——查询中包含别名特征（如短名称、已知角色/梗名）时才路由到 alias_resolve；纯闲聊/精确番剧名查询则跳过。可通过 `ENABLE_ALIAS_RESOLVE` 配置开关。
 
 **输入**：
 | 字段 | 说明 |
@@ -151,12 +195,13 @@ planner                ← 分析查询，输出 ExecutionPlan（query_type / ex
 | `previous_intent` | 上轮意图 |
 
 **处理流程**：
-1. **追问检测**（`_detect_followup`）：正则匹配代词开头、追问词（"还有吗""再""继续"）、对比词
+1. **追问检测**（`_detect_followup`）：正则匹配代词开头、追问词（"还有吗""再""继续"）、对比词（使用模块级预编译常量）
 2. **指代解析**（`_resolve_reference`）：
-   - 序号指代：`"第二部的评分"` → 替换为 `recent_entities[1].name` + "的评分"
+   - 序号指代：`"第二部的评分"` → 从预编译的序数词映射表替换为 `recent_entities[1].name` + "的评分"
    - 代词指代：`"它的评分"` → 替换为 `recent_entities[0].name` + "的评分"
    - 特殊处理 `"那"` 字避免误匹配（如 `"那祢豆子呢"` 不解析）
 3. **话题推断**（`_infer_topic`）：匹配关键词推断当前话题（评分/声优/制作/推荐/对比/闲聊/通用）
+4. **history 预拼接**（v2.2）：一次性生成 `history_text`（完整版，供 planner）和 `history_text_recent`（截断版=最近3轮=6行，供 answer/simple_fact_answer），避免各节点重复拼接，同时防止 answer 节点 token 膨胀
 
 **输出**：
 ```python
@@ -169,30 +214,35 @@ planner                ← 分析查询，输出 ExecutionPlan（query_type / ex
 
 **文件**：`agents/planner.py`
 
-**调用 LLM**：总是 1 次 `simple_LLM`（deepseek-v4-flash）；`mixed` 查询额外 1 次 `answer_LLM` 深化
+**调用 LLM**：1 次 `simple_LLM`（deepseek-v4-flash），含自动重试；另有 1 次 embedding 计算（本地 CPU，~50ms）
 
 **输入**：
 | 字段 | 说明 |
 |------|------|
 | `resolved_query` | context_builder 指代消解后的查询 |
 | `context.history` | 对话历史 |
+| `context.history_text` | v2.2: 预拼接的完整对话历史文本 |
 | `entity_confidence` / `entity_type` / `entity_source` | 实体解析结果 |
 
-**核心逻辑**：
+**v2.2 核心逻辑（4 层路由）**：
 
 ```
-LLM 一次分类（_classify_with_llm → simple_LLM）
-├── query_category: metadata | semantic | mixed | chat
-├── query_type: simple_fact | recommendation | comparison | chat
-├── rewrite_strategy: direct | rewrite | hyde | decompose
-├── experts: [metadata_reasoner] | [similar_expert] | 两者
-├── parallel: true | false
-└── need_web: true | false
+1. Embedding 预过滤 (_prefilter)
+   查询 embedding 与 4 类别质心计算余弦相似度
+   → 排除低于 EMBEDDING_EXCLUDE_MARGIN 阈值的类别
+   → 返回 (best_category, score, all_scores_dict)
 
-chat          → 直接返回 answer 节点
-metadata      → 单路 metadata_reasoner，direct 策略
-semantic      → 单路 similar_expert
-mixed / 复杂   → answer_LLM 深化（验证分类 + 细化计划）
+2. 分类缓存
+   相似历史查询命中 → 直接复用缓存结果
+
+3. LLM 意图分类 (_classify_intent)
+   在排除后的候选类别中做精确分类
+   → query_category, query_type, experts, parallel, need_web
+
+4. 复杂度分析 (_analyze_complexity, v2.2)
+   LLM 判断查询是否需要多查询扩展
+   → 简单查询: direct 策略，跳过 query_processing 的 LLM 调用
+   → 复杂查询: rephrase / hyde / decompose
 ```
 
 **Planner 还会根据实体解析结果调整 plan**：
@@ -291,7 +341,7 @@ mixed / 复杂   → answer_LLM 深化（验证分类 + 细化计划）
 | `resolved_query` / `original_query` | 用户查询 |
 | `metadata` | 元数据条目 |
 | `search_keywords` | 用于优先展示匹配条目 |
-| `context.history` | 对话上下文（追问时注入 prompt） |
+| `context.history_text_recent` | v2.2: 预拼接的截断对话历史（最近3轮） |
 
 **处理流程**：
 1. 优先展示匹配关键词的元数据条目
@@ -360,11 +410,13 @@ mixed / 复杂   → answer_LLM 深化（验证分类 + 细化计划）
 
 ---
 
-### 10. `web_fallback` — 联网回退
+### 10. `web_fallback` — 联网回退（按需）
 
 **文件**：`agents/web_fallback.py`
 
 **调用 LLM**：是（`simple_LLM` 提取关键信息）
+
+**开关控制**：通过 `ToolRegistry.is_enabled("search_web")` + `config.ENABLE_WEB_SEARCH` 双重开关，可通过配置关闭整个联网搜索功能。
 
 **触发条件**（`should_trigger_web`，任一满足）：
 1. `plan.need_web == True`
@@ -405,7 +457,7 @@ mixed / 复杂   → answer_LLM 深化（验证分类 + 细化计划）
 | `plan.query_type` | 查询类型 |
 | `merged_results` | merge 后的综合结果 |
 | `answer_plan.structure` | 回答结构指引 |
-| `context.history` | 最近 3 轮对话（追问时注入） |
+| `context.history_text_recent` | v2.2: 预拼接的截断对话历史（最近3轮，追问时注入） |
 
 **特殊处理**：
 - `chat` 类：跳过所有分析，直接 `simple_LLM.invoke([HumanMessage(content=query)])`
@@ -415,6 +467,14 @@ mixed / 复杂   → answer_LLM 深化（验证分类 + 细化计划）
 ---
 
 ## 路由函数
+
+### `_route_from_start(state) → str` (v2.2 新增)
+
+```python
+if _should_skip_alias(state):
+    return "history_extractor"   # 跳过别名解析
+return "alias_resolve"           # 按需加入
+```
 
 ### `_route_after_planner(state) → str`
 
@@ -508,7 +568,13 @@ class ConversationContext(TypedDict):
     is_followup:      bool         # 是否为追问
     resolved_query:   str          # 指代解析后的查询
     previous_intent:  str          # 上一轮意图: recommend | fact | compare | chat
+    history_text:     str          # v2.2: 完整对话历史文本（供 planner）
+    history_text_recent: str       # v2.2: 截断版（最近3轮），供 answer/simple_fact_answer
 ```
+
+**history_text 分版策略**（v2.2）：
+- `history_text`：完整版，供 planner 做意图分类和复杂度分析
+- `history_text_recent`：截断版（最近3轮 = 6行），防止 answer 节点上下文过长、token 膨胀
 
 **数据流**：
 ```
@@ -540,6 +606,74 @@ previous_intent   (上轮持久化) ────────┘
 - 减少 2–3 次 LLM 调用，延迟降低 60%+
 - 追问时自动注入对话上下文，不丢失多轮能力
 - 自动更新 `recent_entities`，不影响指代消解
+
+---
+
+## ToolRegistry（v2.2 新增）
+
+**文件**：`tools/registry.py`
+
+统一工具注册表，集中管理所有工具的全生命周期（注册 → 懒加载 → 调用 → 开关控制）。
+
+### 设计动机
+
+v2.1 中工具散落在各处：`search_web` 在 `tools/web_search.py`，`retrieve_optimized` 在 `tools/rag_optimizer.py`，LLM 实例在 `llms.py`。依赖关系不清晰，且 web_fallback 需要按需控制是否启用 Tavily。
+
+### 核心类
+
+```python
+@dataclass
+class ToolSpec:
+    name: str              # 工具名
+    import_path: str       # 懒加载路径 "module.path:function_name"
+    category: str          # llm_tool | pipeline | debug
+    enabled: bool = True   # 是否启用
+    description: str = ""
+
+class ToolRegistry:
+    """单例模式，统一管理"""
+    _instance = None
+    _tools: Dict[str, ToolSpec]
+    _cache: Dict[str, Callable]  # 懒加载缓存
+
+    def register(tool: ToolSpec) -> None
+    def get_callable(name: str) -> Callable
+    def is_enabled(name: str) -> bool
+    def get_llm_tools() -> List[ToolSpec]
+```
+
+### 工具清单
+
+| 类别 | 工具 | 用途 |
+|------|------|------|
+| llm_tool | answer_LLM | 主 LLM 实例 |
+| llm_tool | simple_LLM | 轻量 LLM 实例 |
+| pipeline | retrieve_optimized | RAG 检索优化 |
+| pipeline | search_web | Tavily 联网搜索 |
+| pipeline | multi_query_rewrite | 多查询改写 |
+| pipeline | hyde_generate | HyDE 假设答案生成 |
+| pipeline | decompose | 查询分解 |
+| pipeline | classify_query | 查询分类 |
+| pipeline | rag_search | RAG 搜索 |
+| pipeline | metadata_search | 元数据搜索 |
+| pipeline | resolve_alias | 别名解析 |
+| debug | get_last_debug | 检索调试信息 |
+
+### 使用方式
+
+```python
+# 在 graph.py 启动时注册所有工具
+from tools import register_default_tools
+register_default_tools()
+
+# 按需调用（带懒加载）
+from tools import tool_registry
+result = tool_registry.get_callable("search_web")(query)
+
+# 开关检查
+if tool_registry.is_enabled("search_web"):
+    # 触发 web_fallback
+```
 
 ---
 

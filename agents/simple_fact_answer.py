@@ -46,13 +46,9 @@ async def simple_fact_answer_node(state: dict) -> dict:
 
     # 构建对话上下文段落（追问时帮助 LLM 理解指代）
     context = state.get("context", {})
+    history_text = context.get("history_text_recent", "") if isinstance(context, dict) else ""
     context_section = ""
-    if isinstance(context, dict) and context.get("history"):
-        lines = []
-        for r in context["history"][-3:]:
-            lines.append(f"用户: {r['user']}")
-            lines.append(f"助手: {r['assistant']}")
-        history_text = "\n".join(lines)
+    if history_text:
         context_section = (
             f"## 对话上下文（这是追问，别从头介绍）\n{history_text}"
         )

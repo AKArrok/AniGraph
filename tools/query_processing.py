@@ -5,7 +5,6 @@
   QueryOptimizer    — Multi-Query Rewrite / HyDE / Decompose
   NicknameResolver  — 昵称/别名解析
 """
-import re
 import hashlib
 import functools
 from typing import Literal
@@ -32,45 +31,55 @@ def _cache_set(query: str, prefix: str, value: list[str]):
 
 
 # ══════════════════════════════════════════════════════════════════════
-# 1. QueryClassifier — 规则分类器
+# 1. QueryOptimizer — LLM 结构化分类（替代旧正则分类器）
 # ══════════════════════════════════════════════════════════════════════
 
-_HYDE_KEYWORDS = [
-    "为什么", "比.*更好", "比.*强", "深度分析", "评价", "解读",
-    "好在哪", "区别", "有何不同", "解析", "到底", "怎么样才算",
-]
-
-_DECOMPOSE_MARKERS = ["分别", "还有.*问题", "另外.*也", "并且.*还", "和.*有什么区别"]
-
-_DIRECT_PATTERNS = [
-    r"^(你好|hi|hello|谢谢|再见|bye)[\s!！。.]*$",
-    r"^[\u4e00-\u9fff]{1,5}$",
-    r"什么是RAG|什么是AI",
-]
+from pydantic import BaseModel, Field
 
 StrategyType = Literal["direct", "rewrite", "hyde", "decompose"]
 
 
+class StrategyClassifyOutput(BaseModel):
+    """查询优化策略分类"""
+    strategy: StrategyType = Field(
+        description=(
+            "direct: 简单短查询（闲聊/问候/短关键词），不需重写; "
+            "rewrite: 需从多角度扩展查询以提升召回; "
+            "hyde: 深度分析/评价类（含'为什么''好在哪''区别''解析'等），先生成假设性答案再检索; "
+            "decompose: 含多个独立子问题（含'分别''还有''和X有什么区别'等）"
+        )
+    )
+
+
+_CLASSIFY_PROMPT = """你是查询优化策略分类器。判断如何优化给定的 ACG 番剧查询以提升检索效果。
+
+策略说明:
+- direct: 简单直接（闲聊/问候/简短关键词），直接检索
+- rewrite: 适合多角度扩展，生成多个改写查询
+- hyde: 深度分析/评价类，先生成假设性答案再检索
+- decompose: 含多个子问题，拆分为独立查询分别检索
+
+只输出策略名。"""
+
+
 def classify(query: str) -> StrategyType:
-    """规则分类器，零 LLM 调用"""
-    q = query.strip()
+    """LLM 结构化分类器（替代旧正则匹配）
 
-    for pat in _DIRECT_PATTERNS:
-        if re.match(pat, q, re.I):
+    用轻量模型做策略判断，避免正则的误判和漏判。
+    """
+    try:
+        from llms import simple_LLM
+        structured = simple_LLM.with_structured_output(StrategyClassifyOutput)
+        result = structured.invoke(
+            f"{_CLASSIFY_PROMPT}\n\n用户查询: {query}"
+        )
+        return result.strategy
+    except Exception:
+        # 降级: 短查询 direct，其他默认 rewrite
+        q = query.strip()
+        if len(q) <= 5:
             return "direct"
-
-    if len(q) <= 5 and not any(kw in q for kw in ["推荐", "评分", "番剧", "动画", "动漫"]):
-        return "direct"
-
-    for m in _DECOMPOSE_MARKERS:
-        if re.search(m, q):
-            return "decompose"
-
-    for kw in _HYDE_KEYWORDS:
-        if re.search(kw, q):
-            return "hyde"
-
-    return "rewrite"
+        return "rewrite"
 
 
 # ══════════════════════════════════════════════════════════════════════

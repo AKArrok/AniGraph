@@ -1,9 +1,29 @@
 """多 Agent 协作图 — 基于 ExecutionPlan 动态编排
 
 流程:
-  START → alias_resolve → planner → query_processing → knowledge_retrieval
+  START → [alias_resolve]? → history_extractor → context_builder → planner
+    → query_processing → knowledge_retrieval
     → [metadata_reasoner || similar_expert] (parallel via Send)
-    → merge → web_fallback? → answer_planner → answer → END
+    → merge → [web_fallback]? → answer_planner → answer → END
+    → [simple_fact_answer] → END (快速通道)
+
+节点分类:
+  必备 (每轮必走):
+    history_extractor  — 提取对话历史
+    context_builder    — 构建对话上下文
+    planner            — 意图分类 + 策略决策
+    query_processing   — 查询优化 (direct策略零LLM)
+    knowledge_retrieval— 知识检索 (按plan分流)
+    merge              — 合并Expert结果
+    answer_planner     — 回答结构规划 (零LLM)
+    answer             — 生成最终回答
+
+  按需 (动态加入):
+    alias_resolve      — 仅在查询可能含别名/角色/梗时启用
+    metadata_reasoner  — 仅 plan.experts 包含时启用
+    similar_expert     — 仅 plan.experts 包含时启用
+    web_fallback       — 仅 plan.need_web 或合并结果低置信时启用
+    simple_fact_answer — 仅 plan.query_type == simple_fact 时走快速通道
 """
 import time
 from langgraph.graph import StateGraph, START, END
@@ -126,29 +146,56 @@ def _might_be_alias(query: str) -> bool:
     return True
 
 
+def _should_skip_alias(query: str) -> bool:
+    """快速判断是否可跳过 alias_resolve 节点（按需启用）
+
+    以下场景跳过别名/实体解析:
+      - 纯闲聊/问候（零信息量）
+      - 明确元数据查询不含番剧名（如"2024年有哪些热血番"——查的是标签不是具体番名）
+      - 全局开关关闭
+    """
+    if not config.ENABLE_ALIAS_RESOLVE:
+        return True
+
+    q = query.strip().lower()
+
+    # 纯闲聊 / 英文问候
+    simple_greetings = {"你好", "谢谢", "再见", "早上好", "晚上好", "晚安",
+                        "hi", "hello", "hey", "help", "thanks", "bye"}
+    if q in simple_greetings or len(q) <= 2:
+        return True
+
+    # 纯英文短查询（不太可能涉及中文番剧别名）
+    if len(q) <= 10 and q.isascii() and not any(w in q for w in ["re0", "eva", "sao"]):
+        return True
+
+    return False
+
+
 async def _query_processing_node(state: AgentState) -> dict:
     """查询处理节点: 根据 plan.rewrite_strategy 执行 Rewrite/HyDE/Decompose/Direct"""
     plan = state.get("plan", {})
     strategy = plan.get("rewrite_strategy", "rewrite")
     query = state.get("resolved_query", "") or state.get("original_query", "")
 
-    from tools.query_processing import (
-        classify, multi_query_rewrite, hyde_generate, decompose,
-    )
+    from tools.registry import tool_registry
 
     if strategy == "direct":
         queries = [query]
     elif strategy == "hyde":
-        queries = hyde_generate(query)
+        fn = tool_registry.get_callable("hyde_generate")
+        queries = fn(query) if fn else [query]
     elif strategy == "decompose":
-        queries = decompose(query)
+        fn = tool_registry.get_callable("decompose")
+        queries = fn(query) if fn else [query]
     else:  # rewrite
-        queries = multi_query_rewrite(query)
+        fn = tool_registry.get_callable("multi_query_rewrite")
+        queries = fn(query) if fn else [query]
 
     return {
-        "shared_context": queries,          # 暂存优化的 queries
-        "optimized_queries": queries,       # 标记：上游已做查询优化
-        "query_strategy": strategy,         # 标记：使用的优化策略
+        "shared_context": queries,
+        "optimized_queries": queries,
+        "query_strategy": strategy,
     }
 
 
@@ -232,19 +279,20 @@ async def _knowledge_retrieval_node(state: AgentState) -> dict:
     # ── Pinecone + Whoosh 检索（semantic / mixed 两类才走）──
     if query_category in ("semantic", "mixed"):
         try:
-            from tools.rag_optimizer import retrieve_with_optimization
+            from tools.registry import tool_registry
             from tools.rag import _get_retriever
 
+            retrieve_opt = tool_registry.get_callable("retrieve_optimized")
             retriever = _get_retriever()
-            # 检测上游是否已做查询优化，避免 rag_optimizer 二次改写
             already_optimized = state.get("query_strategy") in ("rewrite", "hyde", "decompose") \
                                 and bool(state.get("optimized_queries"))
             for q in search_queries[:2]:
-                docs, _ = retrieve_with_optimization(
-                    q, retriever, k_final=config.RETRIEVER_K,
-                    skip_optimization=already_optimized,
-                )
-                shared_context.extend(docs)
+                if retrieve_opt:
+                    docs, _ = retrieve_opt(
+                        q, retriever, k_final=config.RETRIEVER_K,
+                        skip_optimization=already_optimized,
+                    )
+                    shared_context.extend(docs)
         except Exception as e:
             logger.warning(f"Pinecone/Whoosh 检索失败: {e}")
 
@@ -295,6 +343,23 @@ def _extract_metadata_filters(query: str, plan: dict) -> dict | None:
 
 
 # ── 路由函数 ──────────────────────────────────────────────────────
+
+def _route_from_start(state: AgentState) -> str:
+    """START → alias_resolve (按需) 或直接跳过到 history_extractor"""
+    query = _get_query(state)
+    if _should_skip_alias(query):
+        logger.info(f"  [按需跳过] alias_resolve — 查询无需别名解析")
+        return "alias_skip"
+    return "alias_resolve"
+
+
+async def _alias_skip_node(state: AgentState) -> dict:
+    """alias_resolve 被跳过时设置必需字段的默认值"""
+    query = _get_query(state)
+    return {
+        "original_query": query,
+        "resolved_query": query,
+    }
 
 def _route_after_planner(state: AgentState) -> str:
     """Planner 处理完的路由"""
@@ -402,10 +467,14 @@ def _get_query(state: dict) -> str:
 # ── 构建图 ────────────────────────────────────────────────────────
 
 def build_graph():
+    from tools.registry import register_default_tools
+    register_default_tools()
+
     g = StateGraph(AgentState)
 
     # 注册节点
     g.add_node("alias_resolve", _alias_resolve_node)
+    g.add_node("alias_skip", _alias_skip_node)
     g.add_node("history_extractor", history_extractor_node)
     g.add_node("context_builder", context_builder_node)
     g.add_node("planner", planner_node)
@@ -419,9 +488,16 @@ def build_graph():
     g.add_node("answer_planner", _answer_planner_node)
     g.add_node("answer", answer_node)
 
-    # 边
-    g.add_edge(START, "alias_resolve")
+    # ── START 条件边: alias_resolve 按需启用 ──
+    g.add_conditional_edges(START, _route_from_start, {
+        "alias_resolve": "alias_resolve",
+        "alias_skip": "alias_skip",
+    })
+
+    # alias → history_extractor（两条路径汇合）
     g.add_edge("alias_resolve", "history_extractor")
+    g.add_edge("alias_skip", "history_extractor")
+
     g.add_edge("history_extractor", "context_builder")
     g.add_edge("context_builder", "planner")
 

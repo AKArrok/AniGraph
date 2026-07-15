@@ -1,23 +1,105 @@
 """LLM and embedding instances — imported across all nodes."""
+import json
 import logging
-from typing import List
+from typing import List, Type, TypeVar
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
 from langchain_core.embeddings import Embeddings
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
+from pydantic import BaseModel
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from openai import APIError, APITimeoutError, RateLimitError
 import config
+
+T = TypeVar("T", bound=BaseModel)
 
 # ── 主 LLM（OpenAI 兼容协议）──
 _base = dict(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY,
-             model=config.LLM_MODEL, request_timeout=120)
+             model=config.LLM_MODEL, request_timeout=45, max_retries=2)
 
 answer_LLM = ChatOpenAI(**_base, temperature=0.9)
-router_LLM = ChatOpenAI(**_base, temperature=0, max_tokens=512)
-tool_LLM    = ChatOpenAI(**_base, temperature=0.3)  # 低温度，确保稳定调工具
+# router_LLM / tool_LLM 未使用，已移除
 
 # ── 轻量 LLM（简单事实查询：评分/声优/公司等）──
 _base_simple = dict(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY,
-                    model=config.SIMPLE_LLM_MODEL, request_timeout=120)
+                    model=config.SIMPLE_LLM_MODEL, request_timeout=30, max_retries=2)
 simple_LLM = ChatOpenAI(**_base_simple, temperature=0.5)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 结构化输出 — 自动降级（with_structured_output → JSON fallback）
+# ══════════════════════════════════════════════════════════════════════
+
+def invoke_structured(llm: ChatOpenAI, output_class: Type[T],
+                      messages: list[BaseMessage],
+                      max_retries: int = 3) -> T:
+    """带降级+重试的结构化输出。
+
+    1. 优先 with_structured_output（OpenAI/GPT 原生支持）
+    2. 失败降级为 JSON prompt + 手动解析（deepseek 等不支持 response_format）
+    3. 网络/限流错误自动指数退避重试
+    """
+    invoke = _make_retry(max_retries)(llm.invoke)
+
+    try:
+        structured_llm = llm.with_structured_output(output_class)
+        # 包装 invoke 以加重试
+        structured_llm.invoke = _make_retry(max_retries)(structured_llm.invoke)
+        return structured_llm.invoke(messages)
+    except Exception as e:
+        err_str = str(e).lower()
+        if "response_format" in err_str or "unavailable" in err_str:
+            logging.info(f"  [降级] with_structured_output 不可用，改用 JSON 模式")
+            return _json_fallback_invoke(llm, output_class, messages, max_retries)
+        raise
+
+
+def _json_fallback_invoke(llm: ChatOpenAI, output_class: Type[T],
+                           messages: list[BaseMessage],
+                           max_retries: int = 3) -> T:
+    """JSON 模式降级: 在 prompt 中要求输出 JSON，手动解析。"""
+    invoke = _make_retry(max_retries)(llm.invoke)
+    schema = output_class.model_json_schema()
+    schema_json = json.dumps(schema, ensure_ascii=False)
+
+    prompt_text = (
+        f"请严格按照以下 JSON Schema 输出，不要包含额外文字，不要用 markdown 代码块包裹:\n"
+        f"{schema_json}"
+    )
+    try:
+        json_llm = llm.bind(response_format={"type": "json_object"})
+        resp = invoke([*messages, HumanMessage(content=prompt_text)])
+    except Exception:
+        resp = invoke([*messages, SystemMessage(
+            content="你只输出 JSON，不要包含任何解释、markdown 标记或额外文字。"
+        )])
+
+    text = resp.content.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+    return output_class.model_validate_json(text)
+
+
+# ══════════════════════════════════════════════════════════════════════
+# LLM 调用重试 — 指数退避（网络抖动/限流自动恢复）
+# ══════════════════════════════════════════════════════════════════════
+
+_RETRYABLE = (APIError, APITimeoutError, RateLimitError)
+
+def _make_retry(max_attempts: int = 3):
+    return retry(
+        stop=stop_after_attempt(max_attempts),
+        wait=wait_exponential(multiplier=1, min=1, max=10),
+        retry=retry_if_exception_type(_RETRYABLE),
+        reraise=True,
+    )
+
+
+def llm_invoke_with_retry(llm: ChatOpenAI, messages: list[BaseMessage],
+                           max_retries: int = 3) -> BaseMessage:
+    """对 LLM 调用加指数退避重试（仅对可恢复错误重试）。"""
+    return _make_retry(max_retries)(llm.invoke)(messages)
 
 
 # ── 本地 HuggingFace Embeddings（零 API 调用，零配额）──

@@ -12,6 +12,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 def should_trigger_web(state: dict) -> bool:
     """判断是否需要触发 Web fallback"""
+    from tools.registry import tool_registry
+
+    if not tool_registry.is_enabled("search_web"):
+        return False
+
     plan = state.get("plan", {})
     if plan.get("need_web"):
         return True
@@ -28,14 +33,20 @@ def should_trigger_web(state: dict) -> bool:
 
 
 async def web_fallback_node(state: dict) -> dict:
-    """LangGraph 节点: Web Fallback — 联网搜索补充信息"""
+    """LangGraph 节点: Web Fallback — 联网搜索补充信息（按需启用）"""
+    from tools.registry import tool_registry
+
+    if not tool_registry.is_enabled("search_web"):
+        return {"merged_results": state.get("merged_results", "")}
+
     query = state.get("resolved_query") or state.get("original_query", "")
+    search_web = tool_registry.get_callable("search_web")
+    if not search_web:
+        return {"merged_results": state.get("merged_results", "")}
+
+    from llms import simple_LLM
 
     try:
-        from tools.web_search import search_web
-        from llms import simple_LLM
-
-        # 1. 联网搜索
         search_text = search_web.invoke(f"{query} 动漫 番剧 推荐 评分 评价")
         if not search_text or len(search_text) < 30:
             return {

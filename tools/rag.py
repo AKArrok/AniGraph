@@ -1,12 +1,14 @@
 """RAG tool — ACG 番剧知识库检索（全链路优化版）"""
+from functools import lru_cache
 from langchain_core.tools import tool
 from langchain_pinecone import PineconeVectorStore
 from llms import embeddings
 import config
 
 
+@lru_cache(maxsize=1)
 def _get_retriever():
-    """创建 Pinecone retriever"""
+    """创建 Pinecone retriever（缓存，避免每次调用重建连接）"""
     return PineconeVectorStore(
         index_name=config.PINECONE_INDEX,
         embedding=embeddings,

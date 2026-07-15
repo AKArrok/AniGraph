@@ -111,6 +111,20 @@ EXPERT_TEMPERATURE = float(os.getenv("EXPERT_TEMPERATURE", "0.7"))
 ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.7"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))  # Web fallback 触发阈值
 
+# ── Embedding 预检（零 LLM 成本拦截闲聊/简单查询）──
+ENABLE_EMBEDDING_PREFILTER = os.getenv("ENABLE_EMBEDDING_PREFILTER", "true").lower() == "true"
+EMBEDDING_PREFILTER_THRESHOLD = float(os.getenv("EMBEDDING_PREFILTER_THRESHOLD", "0.85"))
+# embedding 粗筛排除间距: 最佳匹配与某类别得分差超过此值，该类别视为明显不相关
+EMBEDDING_EXCLUDE_MARGIN = float(os.getenv("EMBEDDING_EXCLUDE_MARGIN", "0.15"))
+# 复杂度分析: 是否用小模型判断是否需要多查询扩展（省去不必要的策略细化）
+ENABLE_COMPLEXITY_CHECK = os.getenv("ENABLE_COMPLEXITY_CHECK", "true").lower() == "true"
+
+# ── 按需节点开关 ──
+# 别名/实体解析: 是否启用（关闭后所有查询跳过 alias_resolve 节点）
+ENABLE_ALIAS_RESOLVE = os.getenv("ENABLE_ALIAS_RESOLVE", "true").lower() == "true"
+# 联网搜索: 是否允许触发 Tavily（不影响 plan.need_web 标记，只影响实际调用）
+ENABLE_WEB_SEARCH = os.getenv("ENABLE_WEB_SEARCH", "true").lower() == "true"
+
 # ── Short-term Memory ──
 MEMORY_MAX_ROUNDS = int(os.getenv("MEMORY_MAX_ROUNDS", "5"))
 

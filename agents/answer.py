@@ -116,13 +116,9 @@ async def answer_node(state: dict) -> dict:
     structure = answer_plan.get("structure", "自由发挥")
 
     # 构建对话上下文段落
+    history_text = context.get("history_text_recent", "") if isinstance(context, dict) else ""
     context_section = ""
-    if isinstance(context, dict) and context.get("history"):
-        lines = []
-        for r in context["history"][-3:]:  # Answer 只看最近 3 轮
-            lines.append(f"用户: {r['user']}")
-            lines.append(f"助手: {r['assistant']}")
-        history_text = "\n".join(lines)
+    if history_text:
         context_section = (
             f"## 对话上下文（请自然衔接）\n"
             f"{history_text}\n\n"

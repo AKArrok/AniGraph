@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field
 class ConversationContext(TypedDict):
     """对话上下文 — 由 context_builder 生成，Planner/Answer 消费"""
     history: list[dict]             # 最近 N 轮: [{user: str, assistant: str}]
+    history_text: str               # 完整拼接文本（planner 用，做意图分类需全量上下文）
+    history_text_recent: str        # 最近 3 轮截断版（answer 用，避免 token 膨胀）
     recent_entities: list[dict]     # 最近讨论的实体: [{name: str, type: str}]
     current_topic: str              # 当前话题
     is_followup: bool               # 是否为追问

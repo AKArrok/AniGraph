@@ -1,7 +1,7 @@
 # ACG 番剧推荐 — LangGraph 多智能体系统项目总结
 
-> **文档版本**: v2.1 (短期记忆 + 快速通道)  
-> **更新日期**: 2026-07-10  
+> **文档版本**: v2.2 (智能路由 + 成本优化)  
+> **更新日期**: 2026-07-15  
 > **适用范围**: 项目交接、团队协作、后续迭代参考  
 > **项目定位**: 面向动漫推荐场景的 Hybrid RAG + Multi-Agent 智能推荐系统
 
@@ -65,7 +65,7 @@
 **覆盖**: 番剧推荐、事实查询、对比分析、角色/梗→番剧映射、昵称解析、多轮追问、闲聊  
 **不覆盖**: 用户画像、实时播放链接、非 ACG 领域、长期记忆
 
-**关键结论**: 系统采用"全 LLM 分类"设计，simple_LLM 一次调用完成全部意图判断（query_category / query_type / strategy / experts），无正则硬编码。
+**关键结论**: 系统采用"Embedding 粗筛 + LLM 精分类"双层分类设计，先通过 embedding 质心匹配过滤明显不相关类别，再由 LLM 分析查询复杂度决定是否需要多查询扩展，按需路由 alias_resolve 和 web_fallback。
 
 ---
 
@@ -83,10 +83,10 @@ graph TB
 
     subgraph 编排层 LangGraph
         direction LR
-        AR[alias_resolve<br/>别名+实体解析]
+        AR[alias_resolve<br/>别名+实体解析<br/>按需加入]
         HE[history_extractor<br/>历史提取]
         CB[context_builder<br/>上下文构建+指代解析]
-        PL[planner<br/>规则优先规划]
+        PL[planner<br/>Embedding粗筛+LLM分类<br/>复杂度分析]
         QP[query_processing<br/>查询改写]
     end
 
@@ -109,7 +109,9 @@ graph TB
         AN[answer<br/>回答生成]
     end
 
-    U --> AR --> HE --> CB --> PL --> QP
+    U -->|需解析别名| AR --> HE
+    U -->|无需解析| HE
+    HE --> CB --> PL --> QP
     QP --> MI & PC & WH
     MI & PC & WH --> MR & SE & SF
     MR & SE --> MG --> AN
@@ -158,8 +160,9 @@ flowchart LR
     end
 
     subgraph 在线
-        Q[用户查询] --> AR[别名解析]
-        AR --> HE[历史提取]
+        Q[用户查询] -->|需解析| AR[别名解析]
+        Q -->|无需解析| HE[历史提取]
+        AR --> HE
         HE --> CB[上下文构建]
         CB --> PL[Planner]
         PL --> QP[查询改写]
@@ -201,15 +204,22 @@ flowchart LR
 
 **关键发现**: 纯 Embedding 检索对"京都动画有哪些作品"这类查询效果差（Embedding 不理解"制作公司"属性），必须引入结构化索引。
 
-### 3.3 为什么 Planner 使用 LLM 分类
+### 3.3 为什么 Planner 使用 Embedding 粗筛 + LLM 精分类
 
 | 阶段 | 策略 | LLM 调用 | 说明 |
 |------|------|:---:|------|
 | v0 (全 LLM) | 所有查询调 LLM Planner | 4-6 次 | 成本高、延迟大 |
 | v1 (规则优先) | 正则 + 实体标记分类 | 0-1 次 | 规则维护困难、边缘 case 误判 |
-| v2 (LLM 分类) ✅ | simple_LLM 一次分类 | 1 次 | 精确可靠、无正则维护、可处理复杂意图 |
+| v2 (LLM 分类) | simple_LLM 一次分类 | 1 次 | 精确可靠、无正则维护 |
+| v2.2 (双层分类) ✅ | Embedding 粗筛 + LLM 精分类 | 1 次 | 先过滤不相关类别，再分析复杂度决定扩展策略 |
 
-**Trade-off**: 相比规则优先（零 LLM），每次查询多 1 次 simple_LLM 调用（~0.5s），但消除了正则维护成本和边缘 case 误判。
+**4 层路由流程**:
+1. **Embedding 预过滤**: 查询 embedding 与 4 类别质心计算余弦相似度，排除低于阈值的类别
+2. **分类缓存**: 相似历史查询命中则直接复用缓存结果
+3. **LLM 意图分类**: `_classify_intent()` 在排除后的类别中做精确分类
+4. **复杂度分析**: LLM 判断查询是否需要多查询扩展（rephrase/hyde/decompose）
+
+**Trade-off**: 比纯 LLM 分类多一次 embedding 计算（~50ms 本地 CPU），但排除了不相关类别减少了 LLM prompt 中的分类候选，提升了准确率。
 
 ### 3.4 为什么使用两个 Expert 并行而非单一 Agent
 
@@ -236,6 +246,32 @@ flowchart LR
 | 候选文档少 (≤5) | 收益递减，RF 已足够 | CPU ~50ms |
 
 **结论**: 通过 `ENABLE_RERANKING=false` 可按需关闭，候选少时自动跳过。
+
+### 3.7 为什么节点分为必备和按需
+
+| 分类 | 节点 | 触发条件 |
+|------|------|----------|
+| **必备** | history_extractor, context_builder, planner, query_processing, knowledge_retrieval, merge, answer_planner, answer | 每次查询都执行 |
+| **按需** | alias_resolve | `_should_skip_alias()` 预检：查询无别名特征时跳过 |
+| **按需** | metadata_reasoner, similar_expert | Planner 根据查询意图决定启用 |
+| **按需** | web_fallback | 低置信度 / 检索无结果时触发 |
+| **按需** | simple_fact_answer | `plan.query_type == "simple_fact"` 时走快速通道 |
+
+**实现方式**:
+- `alias_resolve`: 通过 `START` 节点的条件边 `_route_from_start()` 实现按需路由
+- `web_fallback`: 通过 `ToolRegistry.is_enabled("search_web")` + `config.ENABLE_WEB_SEARCH` 双重开关控制
+- 减少不必要的 LLM 调用（alias_resolve 在纯闲聊时可跳过），降低延迟和成本
+
+### 3.8 为什么使用 ToolRegistry 统一工具注册
+
+| 方案 | 优点 | 缺点 |
+|------|------|------|
+| 分散 import | 简单 | 工具散落各处、依赖关系不清晰、难做开关控制 |
+| ToolRegistry ✅ | 集中管理、懒加载、统一开关控制 | 需要额外注册代码 |
+
+**ToolRegistry 覆盖**: 2 个 LLM 工具 + 9 个 pipeline 工具 + 1 个 debug 工具，支持 `import_path` 懒加载，通过 `is_enabled()` 控制工具启用/禁用。
+
+**Trade-off**: 多一层抽象但实现了工具的全生命周期管理（注册 → 懒加载 → 调用 → 开关控制），web_fallback 和 planner 不再直接 import 工具函数。
 
 ---
 
@@ -318,16 +354,17 @@ python data/build_kb.py --whoosh-only    # 仅 Whoosh
 
 ```mermaid
 graph TD
-    START((START)) --> alias["alias_resolve<br/>别名+实体解析<br/>可缓存 · 0-2 LLM调用"]
-    alias --> hist["history_extractor<br/>提取最近N轮对话<br/>零LLM"]
-    hist --> ctx["context_builder<br/>构建上下文+指代解析<br/>零LLM"]
-    ctx --> planner["planner<br/>LLM分类→执行计划<br/>1 LLM调用"]
+    START((START)) -->|需解析别名| alias["alias_resolve<br/>别名+实体解析<br/>⚡按需 · 0-2 LLM调用"]
+    START -->|无需解析| hist["history_extractor<br/>提取最近N轮对话<br/>🟢零LLM"]
+    alias --> hist
+    hist --> ctx["context_builder<br/>构建上下文+指代解析<br/>🟢零LLM · history预拼接"]
+    ctx --> planner["planner<br/>Embedding粗筛→LLM分类<br/>⚡1 LLM调用 · 4层路由"]
     planner -->|chat| answer
-    planner -->|其他| qp["query_processing<br/>查询改写<br/>0-1 LLM调用"]
+    planner -->|其他| qp["query_processing<br/>查询改写<br/>⚡0-1 LLM调用"]
 
-    qp --> kr["knowledge_retrieval<br/>知识检索分流<br/>零LLM · 并行检索"]
+    qp --> kr["knowledge_retrieval<br/>知识检索分流<br/>🟢零LLM · 并行检索<br/>retriever缓存"]
 
-    kr -->|simple_fact| sf["simple_fact_answer<br/>单次LLM直接回答<br/>1 LLM调用"]
+    kr -->|simple_fact| sf["simple_fact_answer<br/>单次LLM直接回答<br/>⚡1 LLM调用"]
 
     kr -->|metadata| mi[Metadata Index<br/>结构化过滤]
     kr -->|semantic| pc[Pinecone + Whoosh<br/>混合检索 + RRF + Rerank]
@@ -337,23 +374,23 @@ graph TD
     pc --> route
     both --> route
 
-    route -->|0 expert| ap["answer_planner<br/>随机结构<br/>零LLM"]
+    route -->|0 expert| ap["answer_planner<br/>随机结构<br/>🟢零LLM"]
     route -->|1 expert| expert_direct[直接调用]
     route -->|2 experts| parallel["Send API 并行"]
 
-    parallel --> mr["metadata_reasoner<br/>元数据推理<br/>1 LLM调用"]
-    parallel --> se["similar_expert<br/>相似推荐<br/>1 LLM调用"]
+    parallel --> mr["metadata_reasoner<br/>元数据推理<br/>⚡1 LLM调用 · 含重试"]
+    parallel --> se["similar_expert<br/>相似推荐<br/>⚡1 LLM调用 · 含重试"]
     expert_direct --> mr
     expert_direct --> se
 
-    mr --> merge["merge<br/>Jaccard去重+过滤+排序<br/>零LLM"]
+    mr --> merge["merge<br/>Jaccard去重+过滤+排序<br/>🟢零LLM"]
     se --> merge
 
-    merge -->|触发 Web| wf["web_fallback<br/>Tavily搜索<br/>0-1 LLM调用"]
+    merge -->|触发 Web| wf["web_fallback<br/>Tavily搜索<br/>⚡按需 · 0-1 LLM调用"]
     merge -->|不触发| ap
 
     wf --> ap
-    ap --> answer["answer<br/>口语化回答<br/>1 LLM调用"]
+    ap --> answer["answer<br/>口语化回答<br/>⚡1 LLM调用 · 含重试"]
     answer --> END((END))
 
     sf --> END
@@ -370,25 +407,25 @@ graph TD
     style answer fill:#ffccbc
 ```
 
-> 图例: 🟢 = 零 LLM 成本 | ⚡ = 含 LLM 调用
+> 图例: 🟢 = 零 LLM 成本 | ⚡ = 含 LLM 调用 | 按需 = 条件触发
 
 ### 5.2 节点详细定义
 
-| 节点 | 文件 | 输入 | 输出 | LLM调用 | 模型 | 可缓存 | 时间复杂度 |
-|------|------|------|------|:---:|------|:---:|------|
-| alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 | deepseek-v4-flash | ✅ LRU(128) | O(1) 字典 / O(1) LLM |
-| history_extractor | history_extractor.py | messages | context.history | 0 | - | ❌ | O(n) messages |
-| context_builder | context_builder.py | context.history, recent_entities, entity_* | context, resolved_query | 0 | - | ❌ | O(1) 规则 |
-| planner | planner.py | original_query, entity_*, context | plan | **1 (轻量)** | deepseek-v4-flash | ❌ | O(1) LLM |
-| query_processing | graph.py | plan, resolved_query | shared_context(查询) | 0-1 | deepseek-v4-pro | ✅ MD5(500) | O(1) |
-| knowledge_retrieval | graph.py | plan, shared_context | metadata, shared_context(文档) | 0 | - | ❌ | O(n) Pinecone + O(n) Whoosh |
-| simple_fact_answer | simple_fact_answer.py | metadata, original_query, entity_* | messages, recent_entities | **1 (轻量)** | simple_LLM | ❌ | O(1) LLM |
-| metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 | deepseek-v4-pro / simple_LLM | ❌ | O(1) LLM |
-| similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 | deepseek-v4-pro / simple_LLM | ❌ | O(1) LLM |
-| merge | merge.py | expert_results | merged_results | 0 | - | ❌ | O(n²) Jaccard |
-| web_fallback | web_fallback.py | original_query, merged_results | merged_results(追加) | 0-1 | deepseek-v4-flash | ❌ | O(1) API |
-| answer_planner | graph.py | plan | answer_plan | 0 | - | ❌ | O(1) |
-| answer | answer.py | original_query, plan, merged_results, context | messages, recent_entities, previous_intent | 1 | deepseek-v4-pro/deepseek-v4-flash | ❌ | O(1) LLM |
+| 节点 | 文件 | 输入 | 输出 | LLM调用 | 模型 | 可缓存 | 分类 |
+|------|------|------|------|:---:|------|:---:|:---:|
+| alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 (按需) | deepseek-v4-flash | ✅ LRU(128) | 按需 |
+| history_extractor | history_extractor.py | messages | context.history | 0 | - | ❌ | 必备 |
+| context_builder | context_builder.py | context.history, recent_entities, entity_* | context, resolved_query, history_text, history_text_recent | 0 | - | ❌ | 必备 |
+| planner | planner.py | original_query, entity_*, context, history_text | plan | **1 (含重试)** | deepseek-v4-flash | ❌ | 必备 |
+| query_processing | graph.py | plan, resolved_query | shared_context(查询) | 0-1 | deepseek-v4-pro | ✅ MD5(500) | 必备 |
+| knowledge_retrieval | graph.py | plan, shared_context | metadata, shared_context(文档) | 0 | - | ✅ lru_cache (retriever) | 必备 |
+| simple_fact_answer | simple_fact_answer.py | metadata, original_query, entity_*, history_text_recent | messages, recent_entities | **1 (含重试)** | simple_LLM | ❌ | 按需 |
+| metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 (含重试) | deepseek-v4-pro / simple_LLM | ❌ | 按需 |
+| similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 (含重试) | deepseek-v4-pro / simple_LLM | ❌ | 按需 |
+| merge | merge.py | expert_results | merged_results | 0 | - | ❌ | 必备 |
+| web_fallback | web_fallback.py | original_query, merged_results | merged_results(追加) | 0-1 (按需) | deepseek-v4-flash | ❌ | 按需 |
+| answer_planner | graph.py | plan | answer_plan | 0 | - | ❌ | 必备 |
+| answer | answer.py | original_query, plan, merged_results, context, history_text_recent | messages, recent_entities, previous_intent | 1 (含重试) | deepseek-v4-pro/deepseek-v4-flash | ❌ | 必备 |
 
 ### 5.3 State Schema
 
@@ -437,7 +474,7 @@ class AgentState(TypedDict):
     previous_intent: str               # 持久化: 上一轮意图
 ```
 
-#### ConversationContext (TypedDict — v1.1 新增)
+#### ConversationContext (TypedDict — v1.1 新增, v2.2 扩展)
 
 ```python
 class ConversationContext(TypedDict):
@@ -447,7 +484,11 @@ class ConversationContext(TypedDict):
     is_followup: bool               # 是否为追问
     resolved_query: str             # 指代解析后的查询
     previous_intent: str            # 上一轮意图
+    history_text: str               # v2.2: 完整对话历史文本（给 planner）
+    history_text_recent: str        # v2.2: 最近3轮截断文本（给 answer/simple_fact_answer）
 ```
+
+**history_text 分版策略**: 完整版供 planner 做意图分类，截断版（最近3轮=6行）防止 answer 节点上下文过长、token 膨胀。
 
 #### ExecutionPlan (Pydantic — Graph 路由的核心驱动力)
 
@@ -476,11 +517,12 @@ class ExpertResult(BaseModel):
 
 | 路由点 | 函数 | 逻辑 |
 |--------|------|------|
+| START 后 | `_route_from_start` | 含别名特征 → alias_resolve，否则跳过直达 history_extractor |
 | Planner 后 | `_route_after_planner` | chat → answer，其余 → query_processing |
 | 检索后 | `_route_after_retrieval` | simple_fact → simple_fact_answer；0 Expert → answer_planner；1 Expert → 直接边；2 Experts → Send 并行 |
 | Merge 后 | `_route_after_merge` | need_web 或 无结果 或 低置信度 → web_fallback，否则 answer_planner |
 
-**关键结论**: Graph 通过 ExecutionPlan 驱动全部路由，simple_fact 走快速通道跳过 Expert+Merge+Answer 三步。
+**关键结论**: Graph 通过 ExecutionPlan 驱动全部路由，simple_fact 走快速通道跳过 Expert+Merge+Answer 三步，alias_resolve 和 web_fallback 按需触发。
 
 ---
 
@@ -913,30 +955,37 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 > **本章目标**: 展示项目的发展路线图，便于评审和资源规划。
 
-### 12.1 已完成 (v1.0)
+### 12.1 已完成
 
-| 优化项 | 收益 |
-|--------|------|
-| 消除双重查询优化 | -1~2 LLM, 8→2 Pinecone |
-| Planner 规则优先 | metadata/chat/semantic 零 Planner LLM |
-| Answer Router | simple_fact → deepseek-v4-flash |
-| 检索并行化 | Pinecone+Whoosh 并发 |
-| Answer Planner | 随机结构避免套路 |
-| 实体解析 | 角色/梗→番剧 L0+L1 |
-| Answer 温度 0.9→0.7 | 回答更快更稳定 |
-| **短期记忆 (v1.1)** | **history_extractor + context_builder，支持指代解析和多轮追问** |
-| **simple_fact 快速通道 (v1.1)** | **简单查询跳过 Expert+Merge+Answer，单次 LLM 直接回答，延迟 -57%** |
-| **LLM 超时 + 节点耗时日志** | **request_timeout=60s，各节点输出耗时** |
-| **轻量模型升级** | **deepseek-v4-flash → deepseek-v4-flash** |
-| **Web Trace 面板** | **FastAPI + SSE 实时执行追踪面板（聊天气泡 + 流程图）** |
-| **Planner LLM 分类** | **全面移除正则，改用 simple_LLM 一次分类** |
+| 版本 | 优化项 | 收益 |
+|------|--------|------|
+| v1.0 | 消除双重查询优化 | -1~2 LLM, 8→2 Pinecone |
+| v1.0 | Planner 规则优先 | metadata/chat/semantic 零 Planner LLM |
+| v1.0 | Answer Router | simple_fact → deepseek-v4-flash |
+| v1.0 | 检索并行化 | Pinecone+Whoosh 并发 |
+| v1.0 | Answer Planner | 随机结构避免套路 |
+| v1.0 | 实体解析 | 角色/梗→番剧 L0+L1 |
+| v1.0 | Answer 温度 0.9→0.7 | 回答更快更稳定 |
+| v1.1 | 短期记忆 | history_extractor + context_builder，支持指代解析和多轮追问 |
+| v1.1 | simple_fact 快速通道 | 简单查询跳过 Expert+Merge+Answer，单次 LLM 直接回答，延迟 -57% |
+| v1.1 | LLM 超时 + 节点耗时日志 | request_timeout=60s，各节点输出耗时 |
+| v1.1 | Planner LLM 分类 | 全面移除正则，改用 simple_LLM 一次分类 |
+| v1.1 | Web Trace 面板 | FastAPI + SSE 实时执行追踪面板（聊天气泡 + 流程图） |
+| v2.2 | Embedding 粗筛 | 4 类别质心匹配，过滤不相关类别，提升分类准确率 |
+| v2.2 | 复杂度分析 | LLM 判断查询是否需要多查询扩展（rephrase/hyde/decompose） |
+| v2.2 | 节点分类（必备/按需） | alias_resolve 和 web_fallback 按需加入，减少不必要 LLM 调用 |
+| v2.2 | ToolRegistry | 统一工具注册表，12 个工具集中管理、懒加载、开关控制 |
+| v2.2 | Structured Output 降级 | `invoke_structured()` 自动 JSON fallback，兼容不支持的模型 |
+| v2.2 | LLM 重试 | tenacity 指数退避重试（max 2 retries），应对 API 瞬时故障 |
+| v2.2 | Retriever 缓存 | `@lru_cache` 缓存 Pinecone retriever 实例 |
+| v2.2 | 正则预编译 | context_builder 中 4 个正则 + 20 个序数词映射预编译为模块级常量 |
+| v2.2 | history 预拼接 + 分版 | context_builder 一次性构建完整版和截断版，planner 用完整版，answer 用截断版 |
+| v2.2 | history 截断修复 | answer/simple_fact_answer 仅使用最近3轮，防止 token 膨胀 |
 
-### 12.2 短期 (v1.1)
+### 12.2 短期 (v2.3)
 
 | 优先级 | 优化项 | 预期收益 | 工作量 | 状态 |
 |:---:|------|------|:---:|:---:|
-| P0 | 多轮对话上下文 | 用户体验 | 中 | ✅ 已完成 |
-| P0 | simple_fact 快速通道 | 延迟 -57% | 低 | ✅ 已完成 |
 | P0 | 异步 LLM (.ainvoke) | Expert 真正并行, -4s | 高 | 待实施 |
 | P1 | 系统化缓存层 | 热点查询零 LLM | 高 | 待实施 |
 | P1 | 增量索引更新 | 减少全量重建 | 中 | 待实施 |
@@ -979,6 +1028,9 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | **sync .invoke() 阻塞 asyncio** | 所有 LLM 调用用同步 `.invoke()`，即使 LangGraph Send 分发也无法真正并行 | 生产环境应整体迁移 `.ainvoke()` |
 | **shared_context 字段语义复用** | graph.py 中 shared_context 先存查询文本，后被覆盖为检索文档 | 字段重命名或拆分为两个字段更清晰 |
 | **意图分类用 LLM 替代正则** | 正则规则越写越多（~150 行），"碧蓝之海怎么样？"被误判为纯 semantic | 意图分类用 LLM 比正则更可靠，simple_LLM 成本极低可承受 |
+| **Embedding 粗筛减少 LLM 候选** | LLM 分类面对 4 类 prompt 信息量大，偶尔误判 | Embedding 预过滤排除不相关类别，既减少了 LLM 的候选空间又提升了准确率 |
+| **history 全量拼接导致 token 膨胀** | answer 节点用完整历史做 prompt，多轮对话后 token 超长 | 分版策略: planner 用完整版做意图判断，answer 用截断版保持简洁 |
+| **Structured Output 模型兼容性** | deepseek-v4-flash 不支持 `with_structured_output()`，直接报错 | 必须实现自动降级（JSON prompt + Pydantic parse）作为 fallback |
 
 ### 13.3 Prompt 工程教训
 
@@ -1004,6 +1056,10 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | `ENABLE_RERANKING` | ❌ | true | CrossEncoder 开关 |
 | `ENABLE_QUERY_OPTIMIZATION` | ❌ | true | 查询优化开关 |
 | `ENABLE_COMPRESSION` | ❌ | true | 压缩开关 |
+| `ENABLE_WEB_SEARCH` | ❌ | true | Tavily 联网搜索开关 |
+| `ENABLE_ALIAS_RESOLVE` | ❌ | true | 别名解析按需开关 |
+| `ENABLE_COMPLEXITY_CHECK` | ❌ | true | LLM 复杂度分析开关 |
+| `EMBEDDING_EXCLUDE_MARGIN` | ❌ | 0.15 | Embedding 粗筛排除阈值 |
 | `FUSION_STRATEGY` | ❌ | rrf | rrf / weighted / max |
 | `RETRIEVER_K` | ❌ | 5 | 最终返回文档数 |
 | `ANSWER_TEMPERATURE` | ❌ | 0.7 | 回答温度 |

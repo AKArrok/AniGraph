@@ -56,7 +56,7 @@ _REASONER_USER = """## 用户问题
 async def metadata_reasoner_node(state: dict) -> dict:
     """LangGraph 节点: Metadata Reasoner"""
     t0 = time.time()
-    from llms import answer_LLM, simple_LLM
+    from llms import answer_LLM, simple_LLM, llm_ainvoke_with_retry
 
     query = state.get("resolved_query") or state.get("original_query", "")
     metadata = state.get("metadata", [])
@@ -86,7 +86,7 @@ async def metadata_reasoner_node(state: dict) -> dict:
     if plan.get("query_type") == "simple_fact":
         llm = simple_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
 
-    resp = llm.invoke([
+    resp = await llm_ainvoke_with_retry(llm, [
         SystemMessage(content=_REASONER_SYSTEM),
         HumanMessage(content=_REASONER_USER.format(
             query=query,
@@ -115,5 +115,4 @@ async def metadata_reasoner_node(state: dict) -> dict:
     logger.info(f"  metadata_reasoner 耗时 {time.time()-t0:.1f}s")
     return {
         "expert_results": [result],
-        "messages": [resp],
     }

@@ -47,6 +47,21 @@ import config
 logger = logging.getLogger(__name__)
 
 
+# ── 模块级常量（避免重复创建）──────────────────────────────────────
+
+# 番剧标签列表（_knowledge_retrieval_node 和 _extract_metadata_filters 共用）
+_ANIME_TAGS: tuple[str, ...] = (
+    "热血", "动作", "搞笑", "异世界", "奇幻", "科幻", "恋爱", "日常",
+    "治愈", "悬疑", "推理", "战斗", "冒险", "校园", "机战", "运动",
+    "魔法", "后宫", "百合", "耽美", "美食", "音乐", "竞技",
+    "战争", "历史", "恐怖", "职场", "偶像", "转生", "游戏",
+)
+
+# 预编译正则（_extract_metadata_filters 用，避免每次调用重新编译）
+_SCORE_RANGE_RE = re.compile(r"(\d[\d.]*)\s*分?\s*(以上|以下|超过|高于|低于)")
+_YEAR_RE = re.compile(r"(20\d{2})")
+
+
 # ── 节点函数 ──────────────────────────────────────────────────────
 
 async def _alias_resolve_node(state: AgentState) -> dict:
@@ -153,6 +168,7 @@ def _should_skip_alias(query: str) -> bool:
       - 纯闲聊/问候（零信息量）
       - 明确元数据查询不含番剧名（如"2024年有哪些热血番"——查的是标签不是具体番名）
       - 全局开关关闭
+      - Embedding 预检为 chat 类别且高置信度
     """
     if not config.ENABLE_ALIAS_RESOLVE:
         return True
@@ -168,6 +184,31 @@ def _should_skip_alias(query: str) -> bool:
     # 纯英文短查询（不太可能涉及中文番剧别名）
     if len(q) <= 10 and q.isascii() and not any(w in q for w in ["re0", "eva", "sao"]):
         return True
+
+    # Embedding 预检: chat 类别高置信度 → 纯闲聊，跳过
+    if config.ENABLE_EMBEDDING_PREFILTER:
+        try:
+            from agents.planner import _prefilter
+            route, confidence, _ = _prefilter(query)
+            if route == "chat" and confidence >= config.EMBEDDING_PREFILTER_THRESHOLD:
+                logger.info(f"  [alias_skip] embedding预检 chat={confidence:.2f}")
+                return True
+        except Exception:
+            pass
+
+    # 纯元数据查询特征（年份+标签/评分，无具体番剧名）
+    # 如 "2024年有哪些热血番"、"评分9分以上的番"
+    has_year = _YEAR_RE.search(query) is not None
+    has_score = _SCORE_RANGE_RE.search(query) is not None
+    has_tag = any(t in query for t in _ANIME_TAGS)
+    # 有明确的元数据过滤词但没有短名称特征
+    if (has_year or has_score or has_tag) and len(query) > 15:
+        # 检查是否包含可能的番剧短名（2-6个中文字符的连续词）
+        # 简单启发: 如果查询以"有哪些/推荐/是什么"结尾，大概率是泛查询
+        broad_patterns = ["有哪些", "推荐", "是什么", "介绍", "列表"]
+        if any(p in query for p in broad_patterns):
+            logger.info(f"  [alias_skip] 泛查询特征: {query[:30]}...")
+            return True
 
     return False
 
@@ -199,6 +240,83 @@ async def _query_processing_node(state: AgentState) -> dict:
     }
 
 
+def _retrieve_by_keywords(keywords: list[str]) -> list[dict]:
+    """别名关键词优先查 Metadata Index（番剧名 + 标签模糊匹配）"""
+    results: list[dict] = []
+    if not keywords:
+        return results
+    try:
+        from agents.metadata_index import index
+        for kw in keywords[:3]:
+            md = index.search_by_name(kw)
+            if md:
+                results.extend(md)
+        for kw in keywords[:3]:
+            tag_kw = kw.strip("【】！! ")
+            if len(tag_kw) >= 2:
+                # search 支持 name 参数（名称模糊匹配），与 search_by_name 互补
+                tag_hits = index.search(name=tag_kw, limit=5)
+                known_ids = {str(r.get("id", "")) for r in results if r.get("id")}
+                for r in tag_hits:
+                    if str(r.get("id", "")) not in known_ids:
+                        results.append(r)
+                        known_ids.add(str(r.get("id", "")))
+    except Exception as e:
+        logger.warning(f"关键词 Metadata 查询失败: {e}")
+    return results
+
+
+def _retrieve_metadata(query: str, plan: dict, search_queries: list[str],
+                        existing: list[dict]) -> list[dict]:
+    """Metadata Index 查询: 结构化过滤 or 名称/标签搜索"""
+    results = list(existing)
+    try:
+        from agents.metadata_index import index
+        filters = _extract_metadata_filters(query, plan)
+        if filters:
+            results = index.search(**filters)
+        else:
+            for q in search_queries[:2]:
+                md = index.search_by_name(q)
+                if not results:
+                    results = md
+            if plan.get("query_type") in ("recommendation", "comparison"):
+                matched_tags = [t for t in _ANIME_TAGS if t in query]
+                if matched_tags:
+                    tag_results = index.search(tag=matched_tags[0], limit=20)
+                    seen_ids = {str(r.get("id", "")) for r in results}
+                    for r in tag_results:
+                        if str(r.get("id", "")) not in seen_ids:
+                            results.append(r)
+    except Exception as e:
+        logger.warning(f"Metadata Index 查询失败: {e}")
+    return results
+
+
+def _retrieve_semantic(search_queries: list[str], state: dict) -> list[str]:
+    """Pinecone + Whoosh 混合检索（向量 + 稀疏 -> Fusion + Rerank）"""
+    docs: list[str] = []
+    try:
+        from tools.registry import tool_registry
+        from tools.rag import _get_retriever
+        retrieve_opt = tool_registry.get_callable("retrieve_optimized")
+        retriever = _get_retriever()
+        # 上游 _query_processing_node 已基于 plan.rewrite_strategy 做过决策
+        # 只要 query_strategy 字段存在，就跳过 retrieve_optimized 内部的 classify 调用
+        # 避免与 planner 决策冲突（如 planner 判 direct 但 classify 重判为 rewrite）
+        already_optimized = bool(state.get("query_strategy")) and bool(state.get("optimized_queries"))
+        for q in search_queries[:2]:
+            if retrieve_opt:
+                d, _ = retrieve_opt(
+                    q, retriever, k_final=config.RETRIEVER_K,
+                    skip_optimization=already_optimized,
+                )
+                docs.extend(d)
+    except Exception as e:
+        logger.warning(f"Pinecone/Whoosh 检索失败: {e}")
+    return docs
+
+
 async def _knowledge_retrieval_node(state: AgentState) -> dict:
     """知识检索节点: 根据 query_category 分流检索路径
 
@@ -218,83 +336,17 @@ async def _knowledge_retrieval_node(state: AgentState) -> dict:
     if not search_queries:
         search_queries = [query]
 
-    metadata_results = []
-    shared_context = []
+    # ① 别名关键词优先查 Metadata Index
+    metadata_results = _retrieve_by_keywords(state.get("search_keywords", []))
 
-    # ── 别名提取的关键词优先查 Metadata Index ──
-    keywords = state.get("search_keywords", [])
-    if keywords:
-        try:
-            from agents.metadata_index import index
-            for kw in keywords[:3]:
-                md = index.search_by_name(kw)
-                if md:
-                    metadata_results.extend(md)
-            # tags 也从关键词推导
-            for kw in keywords[:3]:
-                tag_kw = kw.strip("【】！! ")
-                if len(tag_kw) >= 2:
-                    tag_hits = index.search(name=tag_kw, limit=5)
-                    known_ids = {str(r.get("id", "")) for r in metadata_results if r.get("id")}
-                    for r in tag_hits:
-                        if str(r.get("id", "")) not in known_ids:
-                            metadata_results.append(r)
-                            known_ids.add(str(r.get("id", "")))
-        except Exception as e:
-            logger.warning(f"关键词 Metadata 查询失败: {e}")
-
-    # ── Metadata Index 查询（metadata / mixed 两类都走）──
+    # ② Metadata Index 查询（metadata / mixed 两类都走）
     if query_category in ("metadata", "mixed"):
-        try:
-            from agents.metadata_index import index
+        metadata_results = _retrieve_metadata(query, plan, search_queries, metadata_results)
 
-            # 提取结构化过滤条件
-            filters = _extract_metadata_filters(query, plan)
-
-            if filters:
-                # 精确多维过滤
-                filter_results = index.search(**filters)
-                metadata_results = filter_results
-            else:
-                # 按名称搜索（优先中文名）
-                for q in search_queries[:2]:
-                    md = index.search_by_name(q)
-                    if not metadata_results:
-                        metadata_results = md
-
-                # 按标签搜索
-                if plan.get("query_type") in ("recommendation", "comparison"):
-                    tag_keywords = ["热血", "动作", "搞笑", "异世界", "奇幻", "科幻", "恋爱", "日常",
-                                    "治愈", "悬疑", "推理", "战斗", "冒险", "校园", "机战", "运动"]
-                    matched_tags = [t for t in tag_keywords if t in query]
-                    if matched_tags:
-                        tag_results = index.search(tag=matched_tags[0], limit=20)
-                        seen_ids = {str(r.get("id", "")) for r in metadata_results}
-                        for r in tag_results:
-                            if str(r.get("id", "")) not in seen_ids:
-                                metadata_results.append(r)
-        except Exception as e:
-            logger.warning(f"Metadata Index 查询失败: {e}")
-
-    # ── Pinecone + Whoosh 检索（semantic / mixed 两类才走）──
+    # ③ Pinecone + Whoosh 检索（semantic / mixed 两类才走）
+    shared_context: list[str] = []
     if query_category in ("semantic", "mixed"):
-        try:
-            from tools.registry import tool_registry
-            from tools.rag import _get_retriever
-
-            retrieve_opt = tool_registry.get_callable("retrieve_optimized")
-            retriever = _get_retriever()
-            already_optimized = state.get("query_strategy") in ("rewrite", "hyde", "decompose") \
-                                and bool(state.get("optimized_queries"))
-            for q in search_queries[:2]:
-                if retrieve_opt:
-                    docs, _ = retrieve_opt(
-                        q, retriever, k_final=config.RETRIEVER_K,
-                        skip_optimization=already_optimized,
-                    )
-                    shared_context.extend(docs)
-        except Exception as e:
-            logger.warning(f"Pinecone/Whoosh 检索失败: {e}")
+        shared_context = _retrieve_semantic(search_queries, state)
 
     logger.info(f"知识检索完成: 返回 metadata {len(metadata_results[:30])} 条, shared_context {len(shared_context[:10])} 条 (耗时 {time.time()-t0:.1f}s)")
     return {
@@ -309,16 +361,12 @@ def _extract_metadata_filters(query: str, plan: dict) -> dict | None:
     q = query
 
     # 提取标签
-    tag_list = ["热血", "动作", "搞笑", "异世界", "奇幻", "科幻", "恋爱", "日常",
-              "治愈", "悬疑", "推理", "战斗", "冒险", "校园", "机战", "运动",
-              "魔法", "后宫", "百合", "耽美", "美食", "音乐", "运动", "竞技",
-              "战争", "历史", "恐怖", "职场", "偶像", "转生", "游戏"]
-    matched_tags = [t for t in tag_list if t in q]
+    matched_tags = [t for t in _ANIME_TAGS if t in q]
     if matched_tags and plan.get("query_type") in ("recommendation", "simple_fact"):
         filters["tag"] = matched_tags[0]
 
-    # 提取评分范围
-    score_match = re.search(r"(\d[\d.]*)\s*分?\s*(以上|以下|以上|超过|高于|低于)", q)
+    # 提取评分范围（预编译正则）
+    score_match = _SCORE_RANGE_RE.search(q)
     if score_match:
         val = float(score_match.group(1))
         direction = score_match.group(2)
@@ -327,8 +375,8 @@ def _extract_metadata_filters(query: str, plan: dict) -> dict | None:
         else:
             filters["score_max"] = val
 
-    # 提取年份
-    year_match = re.search(r"(20\d{2})", q)
+    # 提取年份（预编译正则）
+    year_match = _YEAR_RE.search(q)
     if year_match:
         year = year_match.group(1)
         if "之前" in q or "以前" in q:

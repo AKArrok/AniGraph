@@ -17,38 +17,56 @@ AniGraph 是一个基于 LangGraph 的多 Agent 协作 ACG 番剧推荐系统。
 
 ---
 
-## LLM 健壮性（v2.2 新增）
+## LLM 健壮性
 
 ### Structured Output 降级
 
-**文件**：`llms.py` → `invoke_structured()`
+**文件**：`llms.py` -> `invoke_structured()`
 
 部分模型（如 deepseek-v4-flash）不支持 `with_structured_output()`，返回 `"response_format type is unavailable"`。
 
 **降级策略**：
 1. 首选 `llm.with_structured_output(model)` 直接获取 Pydantic 对象
-2. 失败时自动降级为 `_json_fallback_invoke()` — 在 prompt 中追加 JSON 格式要求，手动解析 response 内容
+2. 失败时自动降级为 `_json_fallback_invoke()` - 在 prompt 中追加 JSON 格式要求，手动解析 response 内容
 3. 解析失败再抛异常
 
 ```python
-def invoke_structured(llm, prompt, model: Type[BaseModel], **kwargs) -> BaseModel:
+def invoke_structured(llm, output_class, messages, max_retries=3):
     try:
-        return llm.with_structured_output(model).invoke(prompt, **kwargs)
-    except Exception:
-        return _json_fallback_invoke(llm, prompt, model, **kwargs)
+        structured_llm = llm.with_structured_output(output_class)
+        # 用 llm_invoke_with_retry 统一包装，保证可重试异常自动重试
+        return llm_invoke_with_retry(structured_llm, messages, max_retries=max_retries)
+    except Exception as e:
+        if "response_format" in str(e).lower() or "unavailable" in str(e).lower():
+            return _json_fallback_invoke(llm, output_class, messages, max_retries)
+        raise
 ```
 
-### LLM 重试
+### LLM 重试（v2.3 全覆盖）
 
-**文件**：`llms.py` → `llm_invoke_with_retry()`
+**文件**：`llms.py` -> `llm_invoke_with_retry()` / `llm_ainvoke_with_retry()`
 
-使用 tenacity 库实现指数退避重试（max 2 retries），应对 API 瞬时故障：
+使用 tenacity 库实现指数退避重试（max 3 retries），应对 API 瞬时故障：
 
 ```python
-@_make_retry(max_retries=2)
-def llm_invoke_with_retry(llm, messages, **kwargs):
-    return llm.invoke(messages, **kwargs)
+def llm_invoke_with_retry(llm, messages, max_retries=3):
+    return _make_retry(max_retries)(llm.invoke)(messages)
+
+async def llm_ainvoke_with_retry(llm, messages, max_retries=3):
+    @_make_retry(max_retries)
+    async def _call():
+        return await llm.ainvoke(messages)
+    return await _call()
 ```
+
+**v2.3 关键改进**：所有 13 处 `llm.invoke()` 调用点都替换为 `llm_invoke_with_retry` 或 `await llm_ainvoke_with_retry`，覆盖：
+- `agents/answer.py` (2处) / `simple_fact_answer.py` (1处)
+- `agents/metadata_reasoner.py` (1处) / `similar_expert.py` (1处)
+- `agents/web_fallback.py` (1处) / `alias.py` (1处) / `entity_resolver.py` (1处)
+- `tools/query_processing.py` (2处) / `rag_optimizer.py` (1处)
+- `llms.py` 内部 `invoke_structured` + JSON fallback (3处)
+
+**异步改造**（v2.3）：5 个 async 节点改用 `await llm_ainvoke_with_retry`，Expert 通过 Send API 真正并行执行（原同步 `llm.invoke` 会阻塞事件循环导致串行，延迟 -3s）。
 
 重试条件：`APIError`、`APITimeoutError`、`RateLimitError`；非可重试异常（如 `BadRequestError`）直接抛出。
 
@@ -674,6 +692,73 @@ result = tool_registry.get_callable("search_web")(query)
 if tool_registry.is_enabled("search_web"):
     # 触发 web_fallback
 ```
+
+---
+
+## v2.3 工程化改进
+
+### 函数拆分（可维护性）
+
+**`_knowledge_retrieval_node`** 拆为 3 个辅助函数：
+- `_retrieve_by_keywords(keywords)` - 别名关键词优先查 Metadata Index
+- `_retrieve_metadata(query, plan, ...)` - 结构化过滤 / 名称 / 标签搜索
+- `_retrieve_semantic(search_queries, state)` - Pinecone + Whoosh 混合检索
+
+主函数从 100 行缩减到 35 行，每个辅助函数职责单一、异常处理独立。
+
+**`plan()`** 拆为 2 个路由函数 + 主编排：
+- `_route_embedding(query)` - 层1：Embedding 粗筛
+- `_route_complexity(query, intent, history_text)` - 层4：复杂度分析路径
+- `plan()` 只做编排，~35 行
+
+### 缓存改进
+
+**Planner 缓存真 LRU**：`OrderedDict` + `move_to_end` + `popitem(last=False)`，淘汰死代码 `_strategy_cache`。
+
+**缓存键含 history**：`md5(query|history_text)`，避免追问场景下误命中（同一查询不同历史可能需要不同分类策略）。
+
+**Embedding 预检缓存**：`_prefilter_cache` 让 `_should_skip_alias` 和 `planner._prefilter` 共享同一 query 的 embedding 结果，避免重复计算（~50ms × 2 -> 1 次）。
+
+### 共享 Prompt 组件
+
+**文件**：`agents/prompts.py`
+
+```python
+BANNED_PHRASES = '"推荐理由""综合分析""值得注意的是"...'  # 禁止套话清单
+INTERNAL_TERMS = '"元数据""数据库""资料库"...'           # 禁止内部术语
+def build_context_section(history_text, is_followup=True) -> str: ...
+```
+
+`answer.py` 和 `simple_fact_answer.py` 引用共享组件，消除禁止清单和上下文构建的重复。
+
+### 正确性修复
+
+**`_extract_recent_from_merged` 严格过滤**：原 `\*\*(.+?)\*\*` 会误抓 `**评分**`、`**声优**` 等字段标注。新规则：
+- 长度 2-15 字符
+- 含中文标点（`：:，。、`）跳过
+- 排除 25+ 已知字段名
+- 全英文/纯数字跳过
+- 8 个测试用例验证
+
+**`_retrieve_semantic` already_optimized 修复**：原判断 `query_strategy in ("rewrite", "hyde", "decompose")` 排除了 direct，导致 planner 判 direct 时下游重新调 `classify` 与 planner 决策冲突。改为 `bool(state.get("query_strategy"))`，direct 也跳过。
+
+**web_fallback 异常不污染**：异常时只记 `logger.warning`，不把错误信息追加到 `merged_results`（原行为会让 answer 把错误当正文输出给用户）。
+
+**`recent_entities` 裁剪**：answer/simple_fact_answer 插入新实体后加 `[:5]`，防止长对话累积导致 context_builder prompt 膨胀。
+
+### 配置清理
+
+删除 4 个全项目无引用的配置项：
+- `MAX_ITERATIONS`（LangGraph recursion_limit 没用它）
+- `ENABLE_VERIFICATION`
+- `PLANNER_MODEL`（planner 用 simple_LLM）
+- `PLANNER_TEMPERATURE`
+
+### 模块级常量统一
+
+- `_ANIME_TAGS`：两处重复的 tag 列表（16 + 30 个）合并为模块级常量（30 个）
+- `_SCORE_RANGE_RE` / `_YEAR_RE`：`_extract_metadata_filters` 的正则预编译
+- `_EXTRACT_PROMPT`：web_fallback 的 prompt 从函数内移到模块级
 
 ---
 

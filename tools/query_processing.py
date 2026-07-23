@@ -9,7 +9,9 @@ import hashlib
 import functools
 from typing import Literal
 
+from langchain_core.messages import HumanMessage
 import config
+
 
 # ── 缓存 ────────────────────────────────────────────────────────────
 _cache: dict[str, list[str]] = {}
@@ -68,12 +70,11 @@ def classify(query: str) -> StrategyType:
     用轻量模型做策略判断，避免正则的误判和漏判。
     """
     try:
-        from llms import simple_LLM
-        structured = simple_LLM.with_structured_output(StrategyClassifyOutput)
-        result = structured.invoke(
-            f"{_CLASSIFY_PROMPT}\n\n用户查询: {query}"
-        )
-        return result.strategy
+        from llms import simple_LLM, invoke_structured
+        return invoke_structured(
+            simple_LLM, StrategyClassifyOutput,
+            [HumanMessage(content=f"{_CLASSIFY_PROMPT}\n\n用户查询: {query}")],
+        ).strategy
     except Exception:
         # 降级: 短查询 direct，其他默认 rewrite
         q = query.strip()
@@ -111,9 +112,12 @@ _DECOMPOSE_PROMPT = """将以下复杂的 ACG 番剧查询拆分为独立子问�
 @functools.lru_cache(maxsize=256)
 def _call_llm(prompt: str, temperature: float = 0.7) -> str:
     """轻量 LLM 调用"""
-    from llms import answer_LLM
+    from llms import answer_LLM, llm_invoke_with_retry
     from langchain_core.messages import HumanMessage
-    resp = answer_LLM.bind(temperature=temperature).invoke([HumanMessage(content=prompt)])
+    resp = llm_invoke_with_retry(
+        answer_LLM.bind(temperature=temperature),
+        [HumanMessage(content=prompt)],
+    )
     return resp.content.strip()
 
 

@@ -1,4 +1,4 @@
-"""Web Fallback — 按需触发的联网搜索回退节点
+"""Web Fallback - 按需触发的联网搜索回退节点
 
 触发条件（任一满足即触发）:
   1. Planner 明确要求 need_web=true
@@ -7,7 +7,21 @@
 
 注意: 这不是常驻 Agent，是条件触发的回退节点。
 """
+import logging
 from langchain_core.messages import HumanMessage, SystemMessage
+
+logger = logging.getLogger(__name__)
+
+
+# 模块级 prompt（避免每次调用重建字符串）
+_EXTRACT_PROMPT = """从以下搜索结果中提取与 ACG 番剧相关的关键信息，简洁列出:
+
+查询: {query}
+
+搜索结果:
+{results}
+
+关键信息（番剧名、评分、推荐理由等）:"""
 
 
 def should_trigger_web(state: dict) -> bool:
@@ -33,7 +47,7 @@ def should_trigger_web(state: dict) -> bool:
 
 
 async def web_fallback_node(state: dict) -> dict:
-    """LangGraph 节点: Web Fallback — 联网搜索补充信息（按需启用）"""
+    """LangGraph 节点: Web Fallback - 联网搜索补充信息（按需启用）"""
     from tools.registry import tool_registry
 
     if not tool_registry.is_enabled("search_web"):
@@ -44,26 +58,18 @@ async def web_fallback_node(state: dict) -> dict:
     if not search_web:
         return {"merged_results": state.get("merged_results", "")}
 
-    from llms import simple_LLM
+    from llms import simple_LLM, llm_ainvoke_with_retry
 
     try:
         search_text = search_web.invoke(f"{query} 动漫 番剧 推荐 评分 评价")
         if not search_text or len(search_text) < 30:
-            return {
-                "merged_results": state.get("merged_results", "") + "\n\n(联网搜索未获取到有效结果)",
-            }
+            # 无有效结果时不追加任何文本，保持 merged_results 原值
+            # answer 节点会基于现有 merged_results 生成回答
+            logger.info(f"  web_fallback: 联网搜索无有效结果")
+            return {"merged_results": state.get("merged_results", "")}
 
-        # 2. 用轻量 LLM 提取关键信息
-        _EXTRACT_PROMPT = """从以下搜索结果中提取与 ACG 番剧相关的关键信息，简洁列出:
-
-查询: {query}
-
-搜索结果:
-{results}
-
-关键信息（番剧名、评分、推荐理由等）:"""
-
-        resp = simple_LLM.invoke([
+        # 用轻量 LLM 提取关键信息
+        resp = await llm_ainvoke_with_retry(simple_LLM, [
             HumanMessage(content=_EXTRACT_PROMPT.format(
                 query=query,
                 results=search_text[:2000],
@@ -76,6 +82,7 @@ async def web_fallback_node(state: dict) -> dict:
         return {"merged_results": merged}
 
     except Exception as e:
-        return {
-            "merged_results": state.get("merged_results", "") + f"\n\n(联网搜索失败: {e})",
-        }
+        # 异常时不污染 merged_results（避免错误信息被 answer 当正文输出给用户）
+        # 只记日志，answer 节点基于原 merged_results 生成回答
+        logger.warning(f"  web_fallback 失败: {e}")
+        return {"merged_results": state.get("merged_results", "")}

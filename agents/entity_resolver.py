@@ -20,7 +20,7 @@ import re
 import functools
 
 from langchain_core.messages import HumanMessage
-from llms import simple_LLM
+from llms import simple_LLM, llm_invoke_with_retry
 
 # ── L0: 高频实体字典 ──
 
@@ -222,7 +222,7 @@ def _llm_resolve(query: str, etype: str) -> dict | None:
     prompt = _LLM_PROMPT.format(type_label=type_label, query=query[:100])
 
     try:
-        resp = simple_LLM.invoke([HumanMessage(content=prompt)])
+        resp = llm_invoke_with_retry(simple_LLM, [HumanMessage(content=prompt)])
         text = resp.content.strip()
         match = re.search(r'\{[^}]+\}', text)
         if match:

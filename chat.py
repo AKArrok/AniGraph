@@ -51,7 +51,7 @@ async def chat_loop(app, thread_id: str):
             print("  /trace         提示 Web Trace 面板 (先 python server.py)")
             continue
         if query == "/trace":
-            print("  Web Trace 面板: 先在新终端运行 python server.py，然后打开 http://localhost:8000")
+            print("  Web Trace 面板: 先在新终端运行 python server.py，然后打开 http://localhost:9527")
             continue
         if query == "/session":
             print(f"  当前会话 ID: {thread_id}")

@@ -132,6 +132,20 @@ class MetadataIndex:
         results = self._data[:]
         limit = filters.pop("limit", 50)
 
+        # 名称模糊匹配（正向: 搜索词是番剧名子串；反向: 番剧名是搜索词子串）
+        name = filters.pop("name", None)
+        if name:
+            n = name.strip().lower()
+            results = [
+                item for item in results
+                if n in (item.get("name_cn", "") or "").lower()
+                or n in (item.get("name", "") or "").lower()
+                or any(n in (a or "").lower() for a in item.get("alias", []))
+                or (len(n) >= 2 and (
+                    (item.get("name_cn", "") or "").lower() in n
+                    or (item.get("name", "") or "").lower() in n))
+            ]
+
         # 标签过滤
         tag = filters.pop("tag", None)
         tags = filters.pop("tags", None)

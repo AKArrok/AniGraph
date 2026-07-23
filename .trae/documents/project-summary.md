@@ -1,7 +1,7 @@
-# ACG 番剧推荐 — LangGraph 多智能体系统项目总结
+# ACG 番剧推荐 - LangGraph 多智能体系统项目总结
 
-> **文档版本**: v2.2 (智能路由 + 成本优化)  
-> **更新日期**: 2026-07-15  
+> **文档版本**: v2.3 (异步并行 + 健壮性 + 正确性修复)  
+> **更新日期**: 2026-07-16  
 > **适用范围**: 项目交接、团队协作、后续迭代参考  
 > **项目定位**: 面向动漫推荐场景的 Hybrid RAG + Multi-Agent 智能推荐系统
 
@@ -981,14 +981,34 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | v2.2 | 正则预编译 | context_builder 中 4 个正则 + 20 个序数词映射预编译为模块级常量 |
 | v2.2 | history 预拼接 + 分版 | context_builder 一次性构建完整版和截断版，planner 用完整版，answer 用截断版 |
 | v2.2 | history 截断修复 | answer/simple_fact_answer 仅使用最近3轮，防止 token 膨胀 |
+| v2.3 | LLM 重试全覆盖 | 13 处 `llm.invoke` -> `llm_invoke_with_retry`，tenacity 覆盖所有节点 |
+| v2.3 | invoke_structured 重试规范化 | 统一走 `llm_invoke_with_retry`，移除不规范的 bound method 赋值 |
+| v2.3 | answer_LLM 温度修正 | 0.9 -> 0.7（与 config.ANSWER_TEMPERATURE 一致） |
+| v2.3 | Planner 缓存真 LRU | OrderedDict + move_to_end，淘汰死代码 `_strategy_cache` |
+| v2.3 | tag 列表统一 | 两处重复的 tag_keywords/tag_list 合并为模块级 `_ANIME_TAGS` 常量 |
+| v2.3 | 正则预编译扩展 | `_extract_metadata_filters` 的 2 个正则预编译为 `_SCORE_RANGE_RE`/`_YEAR_RE` |
+| v2.3 | 清理未使用配置 | 删除 MAX_ITERATIONS / ENABLE_VERIFICATION / PLANNER_MODEL / PLANNER_TEMPERATURE |
+| v2.3 | 拆分 _knowledge_retrieval_node | 100 行函数拆为 3 个辅助函数 + 主编排（35 行） |
+| v2.3 | 拆分 plan() | 70 行 4 层嵌套拆为 `_route_embedding` + `_route_complexity` + 主编排 |
+| v2.3 | web_fallback prompt 模块级 | `_EXTRACT_PROMPT` 从函数内移到模块级 |
+| v2.3 | 共享 prompt 组件 | 新建 `agents/prompts.py`，BANNED_PHRASES/INTERNAL_TERMS/build_context_section 复用 |
+| v2.3 | 异步 LLM 调用 | 新增 `llm_ainvoke_with_retry`，5 个 async 节点改用 `await ainvoke`，Expert 真并行（-3s） |
+| v2.3 | _should_skip_alias 增强 | 接入 embedding 预检 + 泛查询特征检测，减少不必要 alias 调用 |
+| v2.3 | Embedding 预检缓存 | `_prefilter_cache` 让 alias_skip 和 planner 共享同一 query 的 embedding 结果 |
+| v2.3 | Planner 缓存键加 history | `md5(query|history_text)`，避免追问场景下误命中 |
+| v2.3 | recent_entities 裁剪 | answer/simple_fact_answer 限制最近 5 个，防止长对话累积 |
+| v2.3 | _extract_recent_from_merged 过滤 | 严格过滤字段标注（**评分**/**声优**等），8 个测试用例验证 |
+| v2.3 | 消除 query_processing 重复判断 | `_retrieve_semantic` 的 already_optimized 改为布尔判断，direct 也跳过 classify |
+| v2.3 | web_fallback 异常不污染 | 异常时只记日志，不把错误信息追加到 merged_results |
 
-### 12.2 短期 (v2.3)
+### 12.2 短期 (v2.4)
 
 | 优先级 | 优化项 | 预期收益 | 工作量 | 状态 |
 |:---:|------|------|:---:|:---:|
-| P0 | 异步 LLM (.ainvoke) | Expert 真正并行, -4s | 高 | 待实施 |
+| P0 | 请求级整体超时控制 | 避免单请求卡 2-3 分钟 | 中 | 待实施 |
 | P1 | 系统化缓存层 | 热点查询零 LLM | 高 | 待实施 |
 | P1 | 增量索引更新 | 减少全量重建 | 中 | 待实施 |
+| P2 | 合并 _might_be_alias 和 _should_skip_alias | 规则统一，减少维护成本 | 低 | 待实施 |
 
 ### 12.3 中期 (v1.2)
 
@@ -1031,6 +1051,11 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | **Embedding 粗筛减少 LLM 候选** | LLM 分类面对 4 类 prompt 信息量大，偶尔误判 | Embedding 预过滤排除不相关类别，既减少了 LLM 的候选空间又提升了准确率 |
 | **history 全量拼接导致 token 膨胀** | answer 节点用完整历史做 prompt，多轮对话后 token 超长 | 分版策略: planner 用完整版做意图判断，answer 用截断版保持简洁 |
 | **Structured Output 模型兼容性** | deepseek-v4-flash 不支持 `with_structured_output()`，直接报错 | 必须实现自动降级（JSON prompt + Pydantic parse）作为 fallback |
+| **重试机制不能只挂在实例上** | LLM 实例的 `max_retries=2` 只对部分错误生效，Pydantic 校验失败不重试 | 必须用 `llm_invoke_with_retry` 显式包装所有 `.invoke` 调用点 |
+| **同步 LLM 阻塞事件循环** | async 节点用 `llm.invoke()` 会阻塞事件循环，Send API 分发后实际串行 | async 节点必须用 `await llm.ainvoke()`，Expert 并行才能真正生效 |
+| **缓存键必须含上下文** | planner 缓存只用 query 做 key，追问场景下误命中 | 缓存键要加入 history_text，同查询不同上下文分别缓存 |
+| **粗体提取番剧名易误抓** | `\*\*(.+?)\*\*` 会抓到 `**评分**`、`**声优**` 等字段标注 | 必须加严格过滤：长度 2-15、无标点、排除已知字段名、必须有中文 |
+| **错误信息不能进 merged_results** | web_fallback 异常时把错误追加到 merged_results，answer 当正文输出 | 异常只记日志，不污染下游输入 |
 
 ### 13.3 Prompt 工程教训
 

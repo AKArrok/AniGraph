@@ -111,11 +111,11 @@ def _llm_resolve_alias(query: str) -> str | None:
 正式名称或"无":"""
 
     try:
-        from llms import simple_LLM
+        from llms import simple_LLM, llm_invoke_with_retry
         from langchain_core.messages import HumanMessage
 
         prompt = _ALIAS_PROMPT.format(query=query)
-        resp = simple_LLM.invoke([HumanMessage(content=prompt)])
+        resp = llm_invoke_with_retry(simple_LLM, [HumanMessage(content=prompt)])
         name = resp.content.strip()
         if name and name != "无" and name != query and len(name) >= 2:
             return name

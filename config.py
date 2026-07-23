@@ -83,7 +83,6 @@ LANGFUSE_SECRET_KEY = os.getenv("LANGFUSE_SECRET_KEY")
 LANGFUSE_HOST       = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 
 # Agent Tuning
-MAX_ITERATIONS    = int(os.getenv("MAX_ITERATIONS", "3"))
 RETRIEVER_K       = int(os.getenv("RETRIEVER_K", "5"))
 RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K", "20"))
 
@@ -95,7 +94,6 @@ FUSION_STRATEGY = os.getenv("FUSION_STRATEGY", "rrf")  # rrf | weighted | max
 ENABLE_QUERY_OPTIMIZATION = os.getenv("ENABLE_QUERY_OPTIMIZATION", "true").lower() == "true"
 ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
 ENABLE_COMPRESSION = os.getenv("ENABLE_COMPRESSION", "true").lower() == "true"
-ENABLE_VERIFICATION = os.getenv("ENABLE_VERIFICATION", "false").lower() == "true"
 HYBRID_DENSE_K = int(os.getenv("HYBRID_DENSE_K", "10"))
 HYBRID_SPARSE_K = int(os.getenv("HYBRID_SPARSE_K", "10"))
 WHOOSH_INDEX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "whoosh_index")
@@ -105,8 +103,6 @@ METADATA_INDEX_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "
 METADATA_CACHE_SIZE = int(os.getenv("METADATA_CACHE_SIZE", "2000"))
 
 # ── Multi-Agent ──
-PLANNER_MODEL = os.getenv("PLANNER_MODEL", "deepseek-v4-pro")
-PLANNER_TEMPERATURE = float(os.getenv("PLANNER_TEMPERATURE", "0.3"))
 EXPERT_TEMPERATURE = float(os.getenv("EXPERT_TEMPERATURE", "0.7"))
 ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.7"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))  # Web fallback 触发阈值

@@ -17,7 +17,8 @@ T = TypeVar("T", bound=BaseModel)
 _base = dict(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY,
              model=config.LLM_MODEL, request_timeout=45, max_retries=2)
 
-answer_LLM = ChatOpenAI(**_base, temperature=0.9)
+# temperature 用 config.ANSWER_TEMPERATURE（默认 0.7），避免 0.9 过高导致回答不稳定
+answer_LLM = ChatOpenAI(**_base, temperature=config.ANSWER_TEMPERATURE)
 # router_LLM / tool_LLM 未使用，已移除
 
 # ── 轻量 LLM（简单事实查询：评分/声优/公司等）──
@@ -27,65 +28,11 @@ simple_LLM = ChatOpenAI(**_base_simple, temperature=0.5)
 
 
 # ══════════════════════════════════════════════════════════════════════
-# 结构化输出 — 自动降级（with_structured_output → JSON fallback）
-# ══════════════════════════════════════════════════════════════════════
-
-def invoke_structured(llm: ChatOpenAI, output_class: Type[T],
-                      messages: list[BaseMessage],
-                      max_retries: int = 3) -> T:
-    """带降级+重试的结构化输出。
-
-    1. 优先 with_structured_output（OpenAI/GPT 原生支持）
-    2. 失败降级为 JSON prompt + 手动解析（deepseek 等不支持 response_format）
-    3. 网络/限流错误自动指数退避重试
-    """
-    invoke = _make_retry(max_retries)(llm.invoke)
-
-    try:
-        structured_llm = llm.with_structured_output(output_class)
-        # 包装 invoke 以加重试
-        structured_llm.invoke = _make_retry(max_retries)(structured_llm.invoke)
-        return structured_llm.invoke(messages)
-    except Exception as e:
-        err_str = str(e).lower()
-        if "response_format" in err_str or "unavailable" in err_str:
-            logging.info(f"  [降级] with_structured_output 不可用，改用 JSON 模式")
-            return _json_fallback_invoke(llm, output_class, messages, max_retries)
-        raise
-
-
-def _json_fallback_invoke(llm: ChatOpenAI, output_class: Type[T],
-                           messages: list[BaseMessage],
-                           max_retries: int = 3) -> T:
-    """JSON 模式降级: 在 prompt 中要求输出 JSON，手动解析。"""
-    invoke = _make_retry(max_retries)(llm.invoke)
-    schema = output_class.model_json_schema()
-    schema_json = json.dumps(schema, ensure_ascii=False)
-
-    prompt_text = (
-        f"请严格按照以下 JSON Schema 输出，不要包含额外文字，不要用 markdown 代码块包裹:\n"
-        f"{schema_json}"
-    )
-    try:
-        json_llm = llm.bind(response_format={"type": "json_object"})
-        resp = invoke([*messages, HumanMessage(content=prompt_text)])
-    except Exception:
-        resp = invoke([*messages, SystemMessage(
-            content="你只输出 JSON，不要包含任何解释、markdown 标记或额外文字。"
-        )])
-
-    text = resp.content.strip()
-    if text.startswith("```"):
-        lines = text.split("\n")
-        text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
-    return output_class.model_validate_json(text)
-
-
-# ══════════════════════════════════════════════════════════════════════
-# LLM 调用重试 — 指数退避（网络抖动/限流自动恢复）
+# LLM 调用重试 - 指数退避（网络抖动/限流自动恢复）
 # ══════════════════════════════════════════════════════════════════════
 
 _RETRYABLE = (APIError, APITimeoutError, RateLimitError)
+
 
 def _make_retry(max_attempts: int = 3):
     return retry(
@@ -98,8 +45,84 @@ def _make_retry(max_attempts: int = 3):
 
 def llm_invoke_with_retry(llm: ChatOpenAI, messages: list[BaseMessage],
                            max_retries: int = 3) -> BaseMessage:
-    """对 LLM 调用加指数退避重试（仅对可恢复错误重试）。"""
+    """对 LLM 调用加指数退避重试（仅对可恢复错误重试: 网络/超时/限流）。
+
+    所有节点的 llm.invoke(...) 都应走这里，保证瞬时故障自动恢复。
+    """
     return _make_retry(max_retries)(llm.invoke)(messages)
+
+
+async def llm_ainvoke_with_retry(llm: ChatOpenAI, messages: list[BaseMessage],
+                                  max_retries: int = 3) -> BaseMessage:
+    """异步版 LLM 调用 + 指数退避重试。
+
+    async 节点应优先用此函数，避免同步阻塞事件循环。
+    特别是 Expert 节点（metadata_reasoner / similar_expert）通过 Send API 并行时，
+    必须用 ainvoke 才能真正并行执行（invoke 会阻塞事件循环导致串行）。
+    """
+    @_make_retry(max_retries)
+    async def _call():
+        return await llm.ainvoke(messages)
+    return await _call()
+
+
+# ══════════════════════════════════════════════════════════════════════
+# 结构化输出 - 自动降级（with_structured_output -> JSON fallback）
+# ══════════════════════════════════════════════════════════════════════
+
+def invoke_structured(llm: ChatOpenAI, output_class: Type[T],
+                      messages: list[BaseMessage],
+                      max_retries: int = 3) -> T:
+    """带降级+重试的结构化输出。
+
+    1. 优先 with_structured_output（OpenAI/GPT 原生支持）
+    2. 失败降级为 JSON prompt + 手动解析（deepseek 等不支持 response_format）
+    3. 网络/限流错误自动指数退避重试（通过 llm_invoke_with_retry 统一包装）
+    """
+    try:
+        structured_llm = llm.with_structured_output(output_class)
+        # 用 llm_invoke_with_retry 统一包装，保证可重试异常（APIError/超时/限流）自动重试
+        return llm_invoke_with_retry(structured_llm, messages, max_retries=max_retries)
+    except Exception as e:
+        err_str = str(e).lower()
+        if "response_format" in err_str or "unavailable" in err_str:
+            logging.info(f"  [降级] with_structured_output 不可用，改用 JSON 模式")
+            return _json_fallback_invoke(llm, output_class, messages, max_retries)
+        raise
+
+
+def _json_fallback_invoke(llm: ChatOpenAI, output_class: Type[T],
+                           messages: list[BaseMessage],
+                           max_retries: int = 3) -> T:
+    """JSON 模式降级: 在 prompt 中要求输出 JSON，手动解析。"""
+    schema = output_class.model_json_schema()
+    schema_json = json.dumps(schema, ensure_ascii=False)
+
+    prompt_text = (
+        f"请严格按照以下 JSON Schema 输出，不要包含额外文字，不要用 markdown 代码块包裹:\n"
+        f"{schema_json}"
+    )
+    try:
+        json_llm = llm.bind(response_format={"type": "json_object"})
+        resp = llm_invoke_with_retry(
+            json_llm, [*messages, HumanMessage(content=prompt_text)],
+            max_retries=max_retries,
+        )
+    except Exception:
+        # response_format 也不支持时，退到纯 prompt 模式
+        resp = llm_invoke_with_retry(
+            llm,
+            [*messages, SystemMessage(
+                content="你只输出 JSON，不要包含任何解释、markdown 标记或额外文字。"
+            )],
+            max_retries=max_retries,
+        )
+
+    text = resp.content.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        text = "\n".join(lines[1:-1] if lines[-1].strip() == "```" else lines[1:])
+    return output_class.model_validate_json(text)
 
 
 # ── 本地 HuggingFace Embeddings（零 API 调用，零配额）──

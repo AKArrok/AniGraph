@@ -1,6 +1,6 @@
 # ACG 番剧推荐 RAG 知识库搭建计划（WebBaseLoader 版）
 
-> **状态**: ✅ 已实施 — 知识库已搭建完成（~5000 部番剧），三套索引（Pinecone + Whoosh + MetadataIndex）可用。
+> **状态**: 🗃️ 历史方案 — WebBaseLoader 方案未按本文落地。知识库已经使用 BangumiCrawler SQLite 数据源实现，实际构建方式见文末“当前实施差异（2026-07-24）”。
 
 ## 摘要
 
@@ -226,3 +226,50 @@ langgraph-multi-agent/
 | Bangumi 页面含大量导航/页脚噪音 | RecursiveCharacterTextSplitter 切分后，噪音分散到不同 chunk，检索时 MMR 自然会优先匹配正文 chunk |
 | text-embedding-v4 调用量 | 500 页 × ~3 chunks/页 = 1500 次，免费额度内 |
 | 网络不稳定 | 分批加载 + 打印进度，断点可继续 |
+
+---
+
+## 当前实施差异（2026-07-24）
+
+本文保留的是早期 WebBaseLoader 设计，用于记录方案演进；它不是当前构建脚本的使用说明。最终实现没有读取 `data/urls.txt`，也没有在构建阶段抓取 Bangumi/Bilibili 网页。
+
+### 实际数据流
+
+```text
+BangumiCrawler
+  -> data/anime_data.db (SQLite)
+  -> data/build_kb.py
+       -> data/chunking.py (CHUNK_SCHEMA_VERSION = 4)
+       -> Pinecone 向量索引
+       -> Whoosh 稀疏索引
+       -> MetadataIndex (metadata_index.json)
+
+同一 SQLite + 同一分块规则
+  -> data/build_faiss_kb.py
+  -> data/faiss_index/ (Pinecone 不可用时的本地降级索引)
+```
+
+### 实际构建细节
+
+| 维度 | 历史计划 | 当前实现 |
+|------|----------|----------|
+| 输入源 | URL 列表 + WebBaseLoader 在线抓取 | `data/anime_data.db`，由 BangumiCrawler 预先采集 |
+| 数据读取 | 网页正文 | SQLite 的 Anime、Category、Production、Director、Writer、Seiyuu、Comments 等结构化表 |
+| 分块 | 通用 `RecursiveCharacterTextSplitter` | `data/chunking.py` 字段感知分块：`profile`、`staff`、`cast`、`reviews` |
+| Chunk 身份 | URL/文档派生 | 稳定 ID：`anime_{id}` 或 `anime_{id}_{type}_{index}` |
+| Schema 演进 | 无版本标识 | `CHUNK_SCHEMA_VERSION = 4`，FAISS 缓存校验 schema 与 embedding identity |
+| 索引 | Pinecone | Pinecone + Whoosh + MetadataIndex；另有可选 FAISS 降级索引 |
+| 恢复能力 | 计划中的分批重跑 | `checkpoint_kb.json` + `--resume` 断点续跑 |
+| 评论 | 未建模 | Comments 表按番剧读取，每部最多 10 条，写入 `reviews` chunks |
+
+### 当前命令
+
+```bash
+python data/build_kb.py                 # 构建 Pinecone、Whoosh 和 MetadataIndex
+python data/build_kb.py --resume        # 从 checkpoint 继续构建
+python data/build_kb.py --metadata-only # 仅生成 MetadataIndex
+python data/build_kb.py --whoosh-only   # 仅构建 Whoosh
+python data/build_faiss_kb.py           # 构建本地 FAISS 降级索引
+```
+
+需要明确的是：`--resume` 是断点续跑，不是严格的单条增量同步；数据库内容或分块 schema 大幅变化时，应评估全量重建。Pinecone、Whoosh、MetadataIndex 必须共享 `make_anime_chunks()` 的输出，否则不同检索通道会看到不一致的知识版本。

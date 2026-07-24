@@ -10,6 +10,7 @@ const state = {
   flowCards: [],          // [{name, display, start, end, llmCalls, error, stateDiff, el}]
   currentBubble: null,    // 当前正在流式填充的 AI 气泡 DOM
   currentBubbleContent: "", // 累积的 AI 回答文本
+  selectedImage: null,    // 当前选中的图片 File 对象
 };
 
 const $ = (id) => document.getElementById(id);
@@ -30,6 +31,11 @@ const detailBody = $("detail-body");
 const threadIdSpan = $("thread-id");
 const clearBtn = $("clear-btn");
 const modelInfo = $("model-info");
+const uploadBtn = $("upload-btn");
+const imageInput = $("image-input");
+const imagePreview = $("image-preview");
+const previewImg = $("preview-img");
+const previewDismiss = $("preview-dismiss");
 
 // ════════════════════════════════════════════════════════
 // Chat
@@ -228,7 +234,7 @@ function showNodeDetail(index) {
 
 function sendQuery() {
   const q = queryInput.value.trim();
-  if (!q || state.running) return;
+  if ((!q && !state.selectedImage) || state.running) return;
 
   state.running = true;
   sendBtn.disabled = true;
@@ -238,9 +244,16 @@ function sendQuery() {
   Chat.reset();
 
   // 添加用户消息
-  Chat.addUserMsg(q);
+  const hasImage = !!state.selectedImage;
+  Chat.addUserMsg(hasImage ? (q || "[图片]") : q);
   queryInput.value = "";
   Chat.createAssistantBubble();
+
+  // 图片走 POST /chat/image (fetch + ReadableStream)，纯文本保持 EventSource GET 不变
+  if (hasImage) {
+    sendImageQuery(q);
+    return;
+  }
 
   const url = `/chat/stream?query=${encodeURIComponent(q)}&thread_id=${encodeURIComponent(state.threadId)}`;
   const es = new EventSource(url);
@@ -281,6 +294,125 @@ function sendQuery() {
 }
 
 // ════════════════════════════════════════════════════════
+// Image Upload (POST /chat/image + ReadableStream SSE)
+// ════════════════════════════════════════════════════════
+
+function setSelectedImage(file) {
+  if (!file || !file.type.startsWith("image/")) return;
+  state.selectedImage = file;
+  previewImg.src = URL.createObjectURL(file);
+  imagePreview.style.display = "flex";
+}
+
+function clearSelectedImage() {
+  if (!state.selectedImage) return;
+  state.selectedImage = null;
+  imageInput.value = "";
+  if (previewImg.src) URL.revokeObjectURL(previewImg.src);
+  previewImg.src = "";
+  imagePreview.style.display = "none";
+}
+
+function finishStream() {
+  state.running = false;
+  sendBtn.disabled = false;
+}
+
+function showStreamError(err) {
+  if (state.currentBubble) {
+    state.currentBubble.textContent = "错误: " + (err?.message || "未知错误");
+    state.currentBubble.classList.remove("streaming");
+    state.currentBubble.style.color = "var(--red)";
+  }
+  finishStream();
+}
+
+// 复用与 EventSource 一致的事件处理；done/error 返回 true 表示应停止读取
+function dispatchSseEvent(event, data) {
+  try {
+    if (event === "node_start") {
+      FlowChart.addNode(JSON.parse(data));
+    } else if (event === "node_end") {
+      FlowChart.updateNode(JSON.parse(data));
+    } else if (event === "answer_chunk") {
+      const evt = JSON.parse(data);
+      if (evt.answer_text) Chat.appendText(evt.answer_text);
+    } else if (event === "done") {
+      finishStream();
+      return true;
+    } else if (event === "error") {
+      showStreamError(data ? JSON.parse(data) : {});
+      return true;
+    }
+  } catch {
+    showStreamError({ message: "响应解析失败" });
+    return true;
+  }
+  return false;
+}
+
+function parseSseBlock(block) {
+  const lines = block.split("\n");
+  let event = "message";
+  let data = "";
+  for (const line of lines) {
+    if (line.startsWith("event:")) {
+      event = line.slice(6).trim();
+    } else if (line.startsWith("data:")) {
+      data += line.slice(5).trim();
+    }
+  }
+  return dispatchSseEvent(event, data);
+}
+
+async function sendImageQuery(q) {
+  const fd = new FormData();
+  fd.append("file", state.selectedImage);
+  fd.append("query", q);
+  fd.append("thread_id", state.threadId);
+
+  // 已写入 FormData，发送后立即清除预览
+  clearSelectedImage();
+
+  let resp;
+  try {
+    resp = await fetch("/chat/image", { method: "POST", body: fd });
+  } catch (err) {
+    showStreamError({ message: "网络错误: " + err.message });
+    return;
+  }
+
+  if (!resp.ok || !resp.body) {
+    let msg = "HTTP " + resp.status;
+    try { const e = await resp.json(); msg = e.message || msg; } catch {}
+    showStreamError({ message: msg });
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    let sep;
+    while ((sep = buffer.indexOf("\n\n")) !== -1) {
+      const block = buffer.slice(0, sep);
+      buffer = buffer.slice(sep + 2);
+      if (parseSseBlock(block)) {
+        await reader.cancel();
+        return;
+      }
+    }
+  }
+  // 处理结尾残留
+  if (buffer.trim()) parseSseBlock(buffer);
+}
+
+// ════════════════════════════════════════════════════════
 // Init
 // ════════════════════════════════════════════════════════
 
@@ -294,6 +426,26 @@ async function init() {
   sendBtn.addEventListener("click", sendQuery);
   queryInput.addEventListener("keydown", e => {
     if (e.key === "Enter" && !state.running) sendQuery();
+  });
+  uploadBtn.addEventListener("click", () => imageInput.click());
+  imageInput.addEventListener("change", e => {
+    const file = e.target.files && e.target.files[0];
+    if (file) setSelectedImage(file);
+  });
+  previewDismiss.addEventListener("click", clearSelectedImage);
+  queryInput.addEventListener("paste", e => {
+    const items = e.clipboardData && e.clipboardData.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type && item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (file) {
+          setSelectedImage(file);
+          e.preventDefault();
+          break;
+        }
+      }
+    }
   });
   clearBtn.addEventListener("click", () => {
     state.threadId = "clear_" + Date.now();

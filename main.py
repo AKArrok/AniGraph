@@ -37,42 +37,49 @@ def _get_app(thread_id: str):
     return g.compile(checkpointer=_memories[thread_id])
 
 
-async def run(query: str, thread_id: str = "1") -> str:
+async def run(query: str = "", thread_id: str = "1", image_data: str = None) -> str:
     """向 AniGraph 发送一条查询，返回回答文本。
 
     同一 thread_id 的多次调用共享对话历史。
 
     Args:
-        query:     用户输入文本。
-        thread_id: 会话标识符，用于隔离多轮对话。
+        query:       用户输入文本。
+        thread_id:   会话标识符，用于隔离多轮对话。
+        image_data:  base64 图片数据（可选，触发识图节点）。
 
     Returns:
         模型生成的回答字符串。
     """
     app = _get_app(thread_id)
+    initial_state = {"messages": [HumanMessage(content=query)]}
+    if image_data:
+        initial_state["image_data"] = image_data
     resp = await app.ainvoke(
-        {"messages": [HumanMessage(content=query)]},
+        initial_state,
         config={"configurable": {"thread_id": thread_id}},
     )
     msgs = resp.get("messages", [])
     return msgs[-1].content if msgs else "(无回答)"
 
 
-async def run_stream(query: str, thread_id: str = "1") -> AsyncIterator[dict]:
+async def run_stream(query: str = "", thread_id: str = "1", image_data: str = None) -> AsyncIterator[dict]:
     """向 AniGraph 发送一条查询，流式返回 Trace 事件。
 
     用于 Web Trace 面板（SSE）实时展示 Agent 执行过程。
 
     Args:
-        query:     用户输入文本。
-        thread_id: 会话标识符，用于隔离多轮对话。
+        query:       用户输入文本。
+        thread_id:   会话标识符，用于隔离多轮对话。
+        image_data:  base64 图片数据（可选，触发识图节点）。
 
     Yields:
-        TraceEvent dict，按时间顺序: node_start → node_end → ... → answer_chunk → done.
+        TraceEvent dict，按时间顺序: node_start -> node_end -> ... -> answer_chunk -> done.
     """
     collector = TraceCollector()
     app = _get_app(thread_id)
     input_state = {"messages": [HumanMessage(content=query)]}
+    if image_data:
+        input_state["image_data"] = image_data
     config_dict = {"configurable": {"thread_id": thread_id}}
     async for event in collector.collect(app, input_state, config_dict):
         yield event

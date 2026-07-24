@@ -1,5 +1,5 @@
 """多 Agent 架构 State 定义 — AgentState + ExecutionPlan + ExpertResult"""
-from typing import TypedDict, Annotated, List
+from typing import TypedDict, Annotated, List, Literal
 from operator import add
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
@@ -53,6 +53,32 @@ class ExpertResult(BaseModel):
     evidence: list[str] = Field(description="支撑依据列表")
 
 
+class EvaluationResult(BaseModel):
+    """Evaluator 对当前 attempt 的证据质量判定。"""
+    verdict: Literal["pass", "replan", "fallback"]
+    score: float = Field(ge=0.0, le=1.0)
+    issues: list[Literal[
+        "no_evidence",
+        "low_confidence",
+        "missing_dimension",
+        "expert_conflict",
+        "query_mismatch",
+    ]]
+    missing_dimensions: list[str]
+    feedback: str
+
+
+class ReplanPatch(BaseModel):
+    """只允许修正执行策略，不允许重写用户意图。"""
+    rewrite_strategy: Literal["direct", "rewrite", "hyde", "decompose"]
+    query_category: Literal["metadata", "semantic", "mixed"]
+    experts: list[Literal["metadata_reasoner", "similar_expert"]]
+    parallel: bool
+    need_web: bool
+    additional_queries: list[str]
+    reasoning: str
+
+
 class AgentState(TypedDict):
     """多 Agent 协作全局状态"""
     messages: Annotated[List[BaseMessage], add_messages]
@@ -61,6 +87,17 @@ class AgentState(TypedDict):
     shared_context: list[str]              # Dense + Sparse 语义文本
     expert_results: Annotated[list[dict], add]  # 并行 Expert 合并写入
     merged_results: str                    # Merge 后的综合结果
+    optimized_queries: list[str]           # 当前 attempt 的检索查询
+    query_strategy: str                    # 当前 attempt 的查询优化策略
+    execution_id: str                      # 隔离 checkpoint 中不同用户请求
+    attempt: int                           # 当前执行轮次，首次为 0
+    max_replans: int                       # 最大重规划次数
+    current_expert_index: int              # 串行 Expert 当前下标
+    evaluation: dict                       # EvaluationResult (dict 形式)
+    replan_feedback: dict                  # Replan 补丁、查询和前后差异
+    execution_mode: str                    # parallel | serial | single
+    termination_reason: str                # quality_pass / replan_exhausted / web_fallback
+    quality_trace: Annotated[list[dict], add]  # 可观测的质量闭环事件
     original_query: str                    # 用户原始查询
     resolved_query: str                    # 别名解析后的查询
     search_keywords: list[str]             # Alias从长查询中提取的番剧名
@@ -76,3 +113,6 @@ class AgentState(TypedDict):
     context: ConversationContext            # 当前轮上下文（由 context_builder 生成）
     recent_entities: list[dict]             # 持久化: 最近讨论的实体 [{name, type}]
     previous_intent: str                    # 持久化: 上一轮意图
+    # ── 识图 (v1.2) ──
+    image_data: str                        # base64 图片（仅识图节点消费，识别后清空）
+    image_recognition_result: dict          # 识别结果详情（番剧名/集数/时间戳/预览）

@@ -1,8 +1,10 @@
-#  API Reference — AniGraph
+# AniGraph 内部 Python API 参考
+
+> 本文面向维护者，记录模块、状态和内部函数。HTTP / Python 对外接入方式见 [接口文档](api.md)。
 
 ## 入口函数
 
-### `run(query, thread_id)`
+### `run(query, thread_id, image_data)`
 
 ```python
 # main.py
@@ -20,14 +22,15 @@ asyncio.run(main())
 |------|------|--------|------|
 | `query` | `str` | 必填 | 用户查询文本 |
 | `thread_id` | `str` | `"1"` | 对话线程 ID，不同 ID 隔离内存记忆 |
+| `image_data` | `str \| None` | `None` | 可选的 base64 图片数据 |
 
 | 返回值 | 类型 | 说明 |
 |--------|------|------|
 | 回答 | `str` | LLM 生成的最终自然语言回答 |
 
-**注意**: 每次 `run()` 新建 `MemorySaver()`，代表一次新对话。同一会话内的多轮调用需在外部持有 `MemorySaver` 实例（参见 `tests/test_agent.py`）。
+**注意**: `main.py` 按 `thread_id` 缓存模块级 `MemorySaver`。同一进程内，相同 ID 自动共享多轮记忆；进程重启后记忆丢失，且多进程部署不会自动共享状态。
 
-### `run_stream(query, thread_id)` — 流式执行（带 Trace）
+### `run_stream(query, thread_id, image_data)` — 流式执行（带 Trace）
 
 ```python
 # main.py
@@ -59,7 +62,9 @@ app = g.compile(checkpointer=MemorySaver())
 **节点列表**（按执行顺序）:
 | 节点 | 文件 | LLM |
 |------|------|:---:|
+| `image_recognition` | `agents/image_recognition.py` | 0-1 |
 | `alias_resolve` | `agents/graph.py` | 0-2 |
+| `alias_skip` | `agents/graph.py` | 0 |
 | `history_extractor` | `agents/history_extractor.py` | 0 |
 | `context_builder` | `agents/context_builder.py` | 0 |
 | `planner` | `agents/planner.py` | 0-1 |
@@ -68,7 +73,10 @@ app = g.compile(checkpointer=MemorySaver())
 | `simple_fact_answer` | `agents/simple_fact_answer.py` | 1 |
 | `metadata_reasoner` | `agents/metadata_reasoner.py` | 1 |
 | `similar_expert` | `agents/similar_expert.py` | 1 |
+| `serial_expert` | `agents/graph.py` | 每轮 1 |
 | `merge` | `agents/merge.py` | 0 |
+| `evaluator` | `agents/evaluator.py` | 0-1 |
+| `replanner` | `agents/replanner.py` | 0 |
 | `web_fallback` | `agents/web_fallback.py` | 0-1 |
 | `answer_planner` | `agents/graph.py` | 0 |
 | `answer` | `agents/answer.py` | 1 |
@@ -79,17 +87,15 @@ app = g.compile(checkpointer=MemorySaver())
 
 ```python
 # llms.py
-from llms import answer_LLM, router_LLM, tool_LLM, simple_LLM
+from llms import answer_LLM, simple_LLM
 ```
 
 | 实例 | 模型（.env） | 温度 | 用途 |
 |------|------------|:---:|------|
-| `answer_LLM` | `LLM_MODEL` | 0.9 | 主 LLM：Planner、Expert、复杂回答 |
+| `answer_LLM` | `LLM_MODEL` | `ANSWER_TEMPERATURE`（默认 0.7） | 主 LLM：Expert、复杂回答 |
 | `simple_LLM` | `SIMPLE_LLM_MODEL` | 0.5 | 轻量 LLM：simple_fact、chat 回答 |
-| `router_LLM` | `LLM_MODEL` | 0 | 路由 LLM（当前未使用） |
-| `tool_LLM` | `LLM_MODEL` | 0.3 | 工具 LLM（当前未使用） |
 
-所有 LLM 实例均设置 `request_timeout=120` 秒。
+`answer_LLM` 的请求超时为 45 秒，`simple_LLM` 为 30 秒；两者的底层客户端 `max_retries=2`，项目调用包装器另提供 tenacity 重试。
 
 ---
 
@@ -104,7 +110,8 @@ from llms import embeddings
 
 | 后端 | 配置值 | 模型 | 说明 |
 |------|--------|------|------|
-| 本地 | `local` | `LOCAL_EMBEDDING_MODEL`（默认 Qwen3-Embedding-0.6B） | 零 API 成本，CPU 运行 |
+| Ark Coding Plan | `ark` | `doubao-embedding-vision`（1024 维） | 默认后端，OpenAI 兼容协议 |
+| 本地 | `local` | `LOCAL_EMBEDDING_MODEL`（默认 `Qwen/Qwen3-Embedding-0.6B`） | 零 API 成本，CPU 运行 |
 | DashScope | `dashscope` | `EMBEDDING_MODELS[0]` | API 模式，配额耗尽自动降级 |
 
 ---
@@ -124,10 +131,14 @@ from llms import embeddings
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `EMBEDDING_BACKEND` | `local` | `local` / `dashscope` |
-| `LOCAL_EMBEDDING_MODEL` | `models/Qwen3-Embedding-0.6B` | 本地模型路径 |
-| `LOCAL_EMBEDDING_DEVICE` | `cpu` | 推理设备 |
-| `EMBEDDING_MODELS` | `["text-embedding-v4", ...]` | DashScope 模型列表（自动降级） |
+| `EMBEDDING_BACKEND` | `ark` | `ark` / `local` / `dashscope` |
+| `LOCAL_EMBEDDING_MODEL` | `Qwen/Qwen3-Embedding-0.6B` | 本地模型路径 |
+| `LOCAL_EMBEDDING_DEVICE` | `auto` | 推理设备 |
+| `EMBEDDING_MODELS` | `["text-embedding-v4", ...]` | DashScope 模型列表（自动降级，仅 dashscope 后端） |
+| `ARK_EMBEDDING_API_KEY` | - | Ark Coding Plan API Key（`EMBEDDING_BACKEND=ark` 时必填） |
+| `ARK_EMBEDDING_BASE_URL` | `https://ark.cn-beijing.volces.com/api/coding/v3` | Ark 端点 |
+| `ARK_EMBEDDING_MODEL` | `doubao-embedding-vision` | Ark 模型（固定此值） |
+| `ARK_EMBEDDING_DIMENSIONS` | `1024` | 输出维度（固定此值） |
 
 ### 向量数据库
 
@@ -146,13 +157,15 @@ from llms import embeddings
 
 | 变量 | 默认值 | 说明 |
 |------|--------|------|
-| `MAX_ITERATIONS` | `3` | 最大迭代次数 |
 | `RETRIEVER_K` | `5` | 最终返回文档数 |
-| `RETRIEVER_FETCH_K` | `20` | 粗召回文档数 |
-| `PLANNER_TEMPERATURE` | `0.3` | Planner LLM 温度 |
+| `RETRIEVER_FETCH_K` | `50` | 粗召回文档数 |
+| `HYBRID_DENSE_K` | `20` | Pinecone 密集检索数 |
+| `HYBRID_SPARSE_K` | `20` | Whoosh 稀疏检索数 |
+| `RERANK_TOP_K` | `10` | CrossEncoder 精排候选数 |
 | `EXPERT_TEMPERATURE` | `0.7` | Expert LLM 温度 |
 | `ANSWER_TEMPERATURE` | `0.7` | Answer LLM 温度 |
 | `CONFIDENCE_THRESHOLD` | `0.5` | Web fallback 触发阈值 |
+| `MAX_REPLANS` | `1` | 最大重规划次数；配置值被强制限制在 0-1 |
 | `ENABLE_RERANKING` | `true` | 是否启用 CrossEncoder 精排 |
 
 ### 短期记忆
@@ -180,8 +193,21 @@ class AgentState(TypedDict):
     shared_context: list[str]
 
     # ── Expert 流水线 ──
-    expert_results: Annotated[list[dict], add]
+    expert_results: Annotated[list[dict], add]  # 保留历史，消费端按 execution_id + attempt 过滤
     merged_results: str
+    execution_id: str              # 隔离同一 checkpoint 中的不同请求
+    attempt: int                   # 当前质量尝试，首次为 0
+    max_replans: int               # 最大重规划次数，默认 1
+    current_expert_index: int       # 串行 Expert 下标
+    evaluation: dict               # EvaluationResult
+    replan_feedback: dict          # 补丁、附加查询和 plan diff
+    execution_mode: str            # single | parallel | serial
+    termination_reason: str        # quality_pass | replan_exhausted | web_fallback
+    quality_trace: Annotated[list[dict], add]
+
+    # ── 识图 (v1.2) ──
+    image_data: str                        # base64 图片（仅识图节点消费，识别后清空）
+    image_recognition_result: dict          # 识别结果详情（番剧名/集数/时间戳/预览）
 
     # ── 查询相关 ──
     original_query: str
@@ -203,6 +229,8 @@ class AgentState(TypedDict):
     recent_entities: list[dict]
     previous_intent: str
 ```
+
+`attempt` 在每个新请求中从 0 开始，不能独立承担隔离职责。Merge、Evaluator 和 Web fallback 都必须使用 `execution_id + attempt` 选择当前结果。`quality_trace` 保存评估与 plan diff 事件，`termination_reason` 给出 `quality_pass`、`replan_exhausted` 或 `web_fallback`。
 
 ## ConversationContext
 
@@ -229,7 +257,7 @@ def plan(query: str, history_text: str = "") -> dict
 ```
 
 **输入**: `original_query`, `context.history`, `entity_*`  
-**输出**: `ExecutionPlan` — `query_type`, `experts`, `rewrite_strategy`, `parallel`, `need_web` 等
+**输出**: `ExecutionPlan` — `query_type`, `experts`, `rewrite_strategy`, `parallel`, `need_web` 等。`parallel` 是严格执行协议：多 Expert 时 `true` 使用多个 `Send`，`false` 按 `experts` 顺序串行；单 Expert 不受影响。
 
 ### Context Builder
 
@@ -289,6 +317,26 @@ async def similar_expert_node(state: dict) -> dict
 
 **特点**: `simple_fact` 查询自动切换 `simple_LLM`
 
+Expert 输出除 `answer`、`confidence`、`evidence` 外，还携带 `expert`、`execution_id` 和 `attempt`。Merge 只消费当前 `execution_id + attempt` 的结果，历史结果仅用于 trace。
+
+### Evaluator
+
+```python
+# agents/evaluator.py
+async def evaluator_node(state: dict) -> dict
+```
+
+确定性检查无证据、全低置信度、计划 Expert 缺失及 comparison/recommendation 证据覆盖不足。只有廉价规则发现潜在结论冲突时才调用 `simple_LLM`。输出 `EvaluationResult {verdict, score, issues, missing_dimensions, feedback}`。
+
+### Replanner
+
+```python
+# agents/replanner.py
+async def replanner_node(state: dict) -> dict
+```
+
+只修正 `rewrite_strategy`、`query_category`、`experts`、`parallel`、`need_web` 和附加查询，不修改原始查询、实体解析结果或 `query_type`。它递增 `attempt`，清理当前轮检索/合并状态，并返回 `query_processing`；补丁不写入 Planner LRU 缓存。
+
 ---
 
 ## 检索工具
@@ -346,16 +394,22 @@ python server.py [port]
 # python server.py 8080  # 自定义端口
 ```
 
-### SSE 端点: `GET /chat/stream`
+### SSE 端点: `POST /chat/stream`
 
 实时流式推送节点事件 + LLM Token + 回答文本。
 
 | 参数 | 类型 | 必填 | 说明 |
 |------|------|:---:|------|
-| `query` | `str` | ✅ | 用户查询（URL 编码） |
-| `thread_id` | `str` | ❌ | 对话线程 ID，默认自动生成 |
+| `query` | `str` | 是 | JSON body 中的用户查询 |
+| `thread_id` | `str` | 否 | JSON body 中的会话 ID，默认 `"default"` |
 
 **响应**: `text/event-stream`（SSE 格式）
+
+`GET /chat/stream?query=...&thread_id=...` 是行为相同的调试变体。
+
+### 图片端点: `POST /chat/image`
+
+使用 `multipart/form-data` 上传 `file`，可附带 `query` 和 `thread_id`。接受 JPEG、PNG、WebP，返回同样的 SSE 事件流。
 
 **事件类型**:
 | event | 说明 |
@@ -371,8 +425,8 @@ python server.py [port]
 |------|------|
 | `GET /` | Web Trace 面板 HTML |
 | `GET /static/{file}` | 静态资源（CSS / JS） |
-| `GET /api/models` | 返回可用模型列表 `["deepseek-v4-pro", "deepseek-v4-flash"]` |
-| `GET /api/health` | 健康检查 `{"status": "ok"}` |
+| `GET /api/models` | 返回含 LLM、Embedding 后端、模型、维度及 identity 的对象 |
+| `GET /api/health` | 进程存活检查 `{"status": "ok"}`，不探测外部依赖 |
 
 ---
 

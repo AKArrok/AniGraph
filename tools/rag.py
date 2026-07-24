@@ -9,6 +9,7 @@ import config
 @lru_cache(maxsize=1)
 def _get_retriever():
     """创建 Pinecone retriever（缓存，避免每次调用重建连接）"""
+    config.validate_retrieval_settings()
     return PineconeVectorStore(
         index_name=config.PINECONE_INDEX,
         embedding=embeddings,

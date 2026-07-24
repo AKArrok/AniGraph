@@ -240,6 +240,18 @@ def register_default_tools():
         )
     )
 
+    # ── 识图工具 ──
+    tool_registry.register(
+        ToolSpec(
+            name="search_anime_by_image",
+            description="动漫截图识别: 上传截图返回番剧名/集数/时间戳(中文化标题)",
+            category="pipeline",
+            import_path="tools.image_search.search_anime_by_image",
+            enabled=config.ENABLE_IMAGE_RECOGNITION,
+            tags=["image", "recognition"],
+        )
+    )
+
     tool_registry._initialized = True
     logger.info(
         f"  ToolRegistry 初始化完成: {len(tool_registry)} 个工具 "

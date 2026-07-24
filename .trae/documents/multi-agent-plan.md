@@ -1,6 +1,6 @@
 # 多 Agent 协作架构方案（终版）
 
-> **状态**: ✅ 已实施 — Planner-based 多 Agent 协作架构已实现（metadata_reasoner + similar_expert + Send 并行 + merge）。已扩展 context_resolver 和 simple_fact_answer 节点。
+> **状态**: ✅ 已实施 — Planner-based 多 Agent 协作架构已实现：metadata_reasoner + similar_expert + Send 严格并行/串行路由 + Evaluator-Replan 质量闭环。已扩展 context_resolver、simple_fact_answer、serial_expert、evaluator、replanner 节点。
 
 > 基于《多Agent架构优化建议》+《多Agent架构进一步优化建议》整合
 
@@ -34,6 +34,8 @@
 ---
 
 ## 架构图
+
+> **演进说明（2026-07-24）**：下图记录最初落地的 Planner + 双 Expert 架构。当前实现已把 `parallel` 升级为严格执行协议，并在 Merge 后加入 Evaluator-Replan 闭环。不能再把“选择两个 Expert”理解为自动并行。
 
 ```
                                 User Query
@@ -101,6 +103,24 @@
                                      ▼
                                     END
 ```
+
+当前 Expert 之后的执行子图：
+
+```text
+knowledge_retrieval
+  -> Expert Dispatcher
+       1 expert                   -> 直接执行
+       parallel=true, N experts  -> Send(expert_1, ... expert_N)
+       parallel=false, N experts -> serial_expert 按 plan.experts 顺序循环
+  -> merge（只消费 execution_id + attempt 匹配的结果）
+  -> evaluator
+       pass                       -> Web 判断 / answer_planner
+       replan, attempt < 1        -> replanner -> query_processing
+       replan, attempt >= 1       -> Web fallback / 不确定性回答
+       fallback                   -> web_fallback
+```
+
+`chat` 与 `simple_fact` 保留快速通道，不进入该质量闭环。
 
 ---
 
@@ -222,14 +242,53 @@ class ExecutionPlan(BaseModel):
     alias_resolved: bool  # 是否已解析别名
     rewrite_strategy: str  # "direct" | "rewrite" | "hyde" | "decompose"
     experts: list[str]   # ["metadata_reasoner", "similar_expert"]
-    parallel: bool       # 是否并行执行 Experts
+    parallel: bool       # 严格执行协议；多个 Expert 时决定并行或串行
     need_web: bool       # 是否需要联网
     reasoning: str
 ```
 
-图根据 `ExecutionPlan` 自动编排，不硬编码边。
+图根据 `ExecutionPlan` 自动编排。单 Expert 直接执行；多个 Expert 且 `parallel=true` 时生成多个 `Send`；多个 Expert 且 `parallel=false` 时进入 `serial_expert`，严格按 `plan.experts` 顺序执行。
 
-### 5. Web 按需触发
+串行不是降低并发度的同义词。后一个 Expert 会读取当前 attempt 中前一个 Expert 的结论，用于冲突核验或补充分析；否则串行只会增加延迟，没有质量收益。
+
+### 5. Evaluator-Replan 质量闭环
+
+Evaluator 位于 Merge 后、Answer 前，只评估当前 attempt 的 Expert 证据，不评估最终文案。它优先用确定性规则识别无证据、低置信度、缺少计划内 Expert 结果和维度覆盖不足，仅在疑似结论冲突时调用小模型。
+
+```python
+class EvaluationResult(BaseModel):
+    verdict: Literal["pass", "replan", "fallback"]
+    score: float
+    issues: list[Literal[
+        "no_evidence", "low_confidence", "missing_dimension",
+        "expert_conflict", "query_mismatch",
+    ]]
+    missing_dimensions: list[str]
+    feedback: str
+```
+
+Replanner 只修改执行策略，不允许修改 `query_type`、原始查询和实体解析结果。默认 `MAX_REPLANS=1`；重规划后 `attempt += 1`，并重新进入 Query Processing。
+
+```python
+class ReplanPatch(BaseModel):
+    rewrite_strategy: Literal["direct", "rewrite", "hyde", "decompose"]
+    query_category: Literal["metadata", "semantic", "mixed"]
+    experts: list[Literal["metadata_reasoner", "similar_expert"]]
+    parallel: bool
+    need_web: bool
+    additional_queries: list[str]
+    reasoning: str
+```
+
+### 6. Attempt 隔离与可观测性
+
+`expert_results` 使用 reducer 追加，因此不能依靠覆盖列表清理旧结果。每个 Expert 输出必须携带 `expert`、`execution_id` 和 `attempt`；Merge 与 Evaluator 只消费两个标识都匹配的结果。
+
+仅用 `attempt` 不够。MemorySaver 中的新请求会重新从 attempt 0 开始，若没有 `execution_id`，上一次请求的 attempt 0 结果可能污染本次 Merge。
+
+状态同时记录 `execution_mode`、`evaluation`、`replan_feedback`、`quality_trace` 和 `termination_reason`。关键日志事件为 `quality_pass`、`replan_started`、`replan_exhausted`、`web_fallback`。
+
+### 7. Web 按需触发
 
 ```python
 def should_trigger_web(state) -> bool:
@@ -246,7 +305,7 @@ def should_trigger_web(state) -> bool:
     return False
 ```
 
-### 6. 两级 Metadata Cache
+### 8. 两级 Metadata Cache
 
 ```python
 class MetadataCache:
@@ -265,7 +324,7 @@ class MetadataCache:
 
 常用番剧的别名和元数据始终在内存中，命中率 > 90%。
 
-### 7. Retrieval Center 两层拆分（重构 tools/rag_optimizer.py）
+### 9. Retrieval Center 两层拆分（重构 tools/rag_optimizer.py）
 
 ```
 当前 rag_optimizer.py（单文件 400+ 行）→ 拆为:
@@ -291,6 +350,15 @@ class AgentState(TypedDict):
     resolved_query:   str              # 别名解析后的查询
     metadata_cache:   dict             # {name: metadata_dict}
     alias_cache:      dict             # {alias: full_name}
+    execution_id:     str              # 隔离 checkpoint 中不同用户请求
+    attempt:          int              # 当前执行轮次，首次为 0
+    max_replans:      int              # 最大重规划次数，当前强制上限为 1
+    current_expert_index: int          # 串行执行游标
+    evaluation:       dict             # EvaluationResult
+    replan_feedback:  dict             # 计划补丁、附加查询和 plan diff
+    execution_mode:   str              # single | parallel | serial
+    quality_trace:    list[dict]       # 质量闭环追踪事件
+    termination_reason: str            # quality_pass / replan_exhausted / web_fallback
 ```
 
 ---
@@ -311,6 +379,8 @@ class AgentState(TypedDict):
 | **新建** | `agents/web_fallback.py` | Web 按需触发（非 Agent，回退节点） |
 | **新建** | `agents/graph.py` | 多 Agent 图（根据 ExecutionPlan 动态编排） |
 | **新建** | `agents/merge.py` | Program Merge（去重 + 排序，零 LLM） |
+| **新建** | `agents/evaluator.py` | 当前 attempt 证据质量评估（规则优先） |
+| **新建** | `agents/replanner.py` | 受限执行策略修正，最多一次重规划 |
 | **新建** | `tools/query_processing.py` | Query Processing 拆分（从 rag_optimizer 抽离） |
 | **新建** | `tools/knowledge_retrieval.py` | Knowledge Retrieval 拆分（从 rag_optimizer 抽离） |
 | **修改** | `tools/rag_optimizer.py` | 门面，组合 query_processing + knowledge_retrieval |
@@ -331,7 +401,9 @@ class AgentState(TypedDict):
 | 元数据查询 | LLM | LLM | **Metadata Index（SQLite，零 LLM）** |
 | 相似推荐 | LLM | LLM 看 shared_context | **Embedding 独立召回 + LLM 排序** |
 | RAG 结构 | 单文件 | 共享 Center | **Query Processing + Knowledge Retrieval 两层** |
-| 调度 | 固定路由 | Agent 列表 | **ExecutionPlan（图自动编排）** |
+| 调度 | 固定路由 | Agent 列表 | **ExecutionPlan（严格并行/串行协议）** |
+| 质量控制 | 无 | 置信度触发 Web | **Merge 后 Evaluator + 最多一次 Replan** |
+| 结果隔离 | 无 | reducer 追加 | **execution_id + attempt 过滤** |
 | 联网 | 常驻 Agent | Agent | **按需触发（回退节点）** |
 | Web Expert | 独立 Agent | 独立 Agent | **按需回退（非 Agent）** |
 | 缓存 | 无 | 4 层 | **两级 Metadata Cache（Alias → Metadata）** |
@@ -347,3 +419,4 @@ class AgentState(TypedDict):
 3. `python tests/test_agent.py` — 交互测试，输出显示 ExecutionPlan + Expert 置信度
 4. 对比测试：旧架构 vs 新架构，相同问题对比延迟和回答质量
 5. 边界测试：纯闲聊 / 简单事实 / 多维度推荐 / 昵称查询 / RAG 空结果 / Web fallback
+6. `python -m unittest tests.test_quality_loop` — 严格并行/串行、attempt 隔离、Evaluator-Replan 上限

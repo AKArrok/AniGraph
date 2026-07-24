@@ -40,6 +40,11 @@ logs/
 
 # Data
 data/
+!data/
+data/*
+!data/build_kb.py
+!data/build_faiss_kb.py
+!data/chunking.py
 uploads/
 
 models/

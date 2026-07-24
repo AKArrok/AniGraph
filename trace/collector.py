@@ -20,7 +20,8 @@ from trace.adapter import EventAdapter
 _GRAPH_NODES = frozenset({
     "alias_resolve", "history_extractor", "context_builder",
     "planner", "query_processing", "knowledge_retrieval",
-    "metadata_reasoner", "similar_expert", "merge",
+    "metadata_reasoner", "similar_expert", "serial_expert",
+    "merge", "evaluator", "replanner",
     "simple_fact_answer", "web_fallback", "answer_planner", "answer",
 })
 

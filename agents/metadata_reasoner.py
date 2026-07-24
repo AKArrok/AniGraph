@@ -50,7 +50,22 @@ _REASONER_USER = """## 用户问题
 ## 语义上下文
 {context_text}
 
+## 前序 Expert 结论（串行核验时提供）
+{peer_findings}
+
 请基于以上数据给出分析结论。"""
+
+
+def _format_peer_findings(state: dict) -> str:
+    execution_id = state.get("execution_id", "")
+    attempt = state.get("attempt", 0)
+    findings = [
+        r for r in state.get("expert_results", [])
+        if r.get("execution_id") == execution_id
+        and r.get("attempt", 0) == attempt
+        and r.get("expert") != "metadata_reasoner"
+    ]
+    return "\n".join(r.get("answer", "") for r in findings if r.get("answer")) or "(无)"
 
 
 async def metadata_reasoner_node(state: dict) -> dict:
@@ -92,6 +107,7 @@ async def metadata_reasoner_node(state: dict) -> dict:
             query=query,
             metadata_json=metadata_json,
             context_text=context_text,
+            peer_findings=_format_peer_findings(state),
         )),
     ])
 
@@ -111,6 +127,12 @@ async def metadata_reasoner_node(state: dict) -> dict:
             "confidence": 0.5,
             "evidence": ["LLM 输出非 JSON 格式"],
         }
+
+    result.update({
+        "expert": "metadata_reasoner",
+        "attempt": state.get("attempt", 0),
+        "execution_id": state.get("execution_id", ""),
+    })
 
     logger.info(f"  metadata_reasoner 耗时 {time.time()-t0:.1f}s")
     return {

@@ -1,19 +1,24 @@
 # 🏗️ AniGraph 架构文档
 
+> 外部 HTTP / Python 接入见 [接口文档](api.md)，内部模块与状态字段见 [Python API 参考](api_reference.md)。
+
 ## 概述
 
-AniGraph 是一个基于 LangGraph 的多 Agent 协作 ACG 番剧推荐系统。核心采用 **ExecutionPlan 驱动编排** 的设计：Planner 输出一份执行计划，图引擎根据计划自动选择检索路径、Expert 组合和回答策略。
+AniGraph 是一个基于 LangGraph 的多 Agent ACG 番剧检索、问答与推荐系统。核心采用 **ExecutionPlan 驱动编排** 的设计：Planner 输出一份执行计划，图引擎根据计划自动选择检索路径、Expert 组合和回答策略；截图请求先经过独立的识图节点。
 
 关键特性：
 
 - **双层意图分类**：Embedding 粗筛（4 类别质心匹配）排除不相关类别 → LLM 精分类（simple_LLM），含复杂度分析
-- **按需节点路由**：alias_resolve 通过条件 START 边按需加入；web_fallback 通过 ToolRegistry 开关控制
+- **按需节点路由**：START 根据输入进入 `image_recognition`、`alias_resolve` 或 `alias_skip`；web_fallback 通过 ToolRegistry 开关控制
 - **三层检索路径**：Metadata Index（结构化过滤）、Pinecone + Whoosh（向量 + 稀疏检索）、联网回退
 - **Simple Fact 快速通道**：简单事实查询跳过 Expert → Merge → Answer 三步流水线，一次 LLM 调用直接作答
+- **严格 Expert 调度**：`ExecutionPlan.parallel` 是执行协议，多 Expert 可通过 Send 并行或按 `experts` 顺序串行
+- **证据质量闭环**：Merge 后由 Evaluator 评估证据；失败时 Replanner 最多修正一次执行策略
 - **对话上下文感知**：追问检测、指代消解、多轮话题推断，history 分版（完整版/截断版）
 - **ToolRegistry**：统一工具注册表，12 个工具懒加载、集中开关控制
 - **LLM 健壮性**：Structured Output 自动降级 + tenacity 指数退避重试
 - **Web Trace 面板**：FastAPI + SSE 实时推送执行过程——聊天气泡 + 流程图 + Token 用量
+- **动漫截图识别**：trace.moe 优先识别，低置信度时可选调用 VLM 补充
 
 ---
 
@@ -66,7 +71,7 @@ async def llm_ainvoke_with_retry(llm, messages, max_retries=3):
 - `tools/query_processing.py` (2处) / `rag_optimizer.py` (1处)
 - `llms.py` 内部 `invoke_structured` + JSON fallback (3处)
 
-**异步改造**（v2.3）：5 个 async 节点改用 `await llm_ainvoke_with_retry`，Expert 通过 Send API 真正并行执行（原同步 `llm.invoke` 会阻塞事件循环导致串行，延迟 -3s）。
+**异步改造**（v2.3）：5 个 async 节点改用 `await llm_ainvoke_with_retry`，Expert 通过 Send API 真正并行执行（原同步 `llm.invoke` 会阻塞事件循环导致串行）。
 
 重试条件：`APIError`、`APITimeoutError`、`RateLimitError`；非可重试异常（如 `BadRequestError`）直接抛出。
 
@@ -77,9 +82,10 @@ async def llm_ainvoke_with_retry(llm, messages, max_retries=3):
 ```
 START
   │
-  │  route_from_start()  ← v2.2: 条件路由
-  ├── 需解析别名 ──→ alias_resolve → history_extractor
-  └── 无需解析 ──────────────────→ history_extractor
+  │  route_from_start()
+  ├── 有图片 ──────→ image_recognition ─┐
+  ├── 需解析别名 ──→ alias_resolve ─────┼→ history_extractor
+  └── 可跳过别名 ──→ alias_skip ────────┘
   │
   ▼
 history_extractor      ← 从 messages 提取最近 N 轮对话历史
@@ -102,19 +108,25 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
                   │  route_after_retrieval()
                   ├── simple_fact ──→ simple_fact_answer ──→ END（快速通道）
                   ├── 无 Expert  ──→ answer_planner
-                  └── 有 Expert  ──→ [metadata_reasoner || similar_expert]（并行 if 2 个）
-                                          │
-                                          ├──→ merge（去重 + 排序 + 合并）
-                                          │        │
-                                          │        │  route_after_merge()
-                                          │        ├── web_fallback（按需触发联网搜索）
-                                          │        │        │
-                                          │        └── answer_planner ←┘（回答结构规划）
-                                          │                 │
-                                          └──→ answer ←────┘（最终回答生成）
+                  └── 有 Expert  ──→ Expert Dispatcher
+                                          ├── parallel=true  → Send(experts) 并行
+                                          ├── parallel=false → serial_expert 按顺序循环
+                                          └── 单 Expert      → 直接执行
                                                    │
-                                                  END
+                                                   ▼
+                                              merge（仅当前 attempt）
+                                                   │
+                                                   ▼
+                                               evaluator
+                                      ┌────────────┼──────────────┐
+                                      │ pass       │ replan       │ fallback/exhausted
+                                      ▼            ▼              ▼
+                              web判断/answer  replanner ─────→ web判断/降级回答
+                                                   │
+                                                   └→ query_processing（最多一次）
 ```
+
+`chat` 与 `simple_fact` 是显式快速通道，不进入质量闭环。普通查询的 Expert 结果按 `execution_id + attempt` 隔离，避免 MemorySaver 中上一请求或上一轮重规划的结果污染 Merge。
 
 - **图定义文件**：`agents/graph.py` → `build_graph()`
 
@@ -124,7 +136,9 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 
 基于 FastAPI + SSE（Server-Sent Events）的实时执行追踪面板：
 - `GET /` — Web 面板（聊天气泡 + 流程图）
-- `GET /chat/stream?query=...` — SSE 流式推送节点事件 + LLM Token + 回答文本
+- `POST /chat/stream` — SSE 流式推送节点事件 + LLM Token + 回答文本
+- `GET /chat/stream?query=...` — 行为相同的 GET 调试变体
+- `POST /chat/image` — JPEG / PNG / WebP 截图上传 + SSE 输出
 - `GET /api/models` / `GET /api/health`
 
 **trace/ 模块**：
@@ -232,7 +246,7 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 
 **文件**：`agents/planner.py`
 
-**调用 LLM**：1 次 `simple_LLM`（deepseek-v4-flash），含自动重试；另有 1 次 embedding 计算（本地 CPU，~50ms）
+**调用 LLM**：1 次 `simple_LLM`（deepseek-v4-flash），含自动重试；另有 1 次 embedding 计算
 
 **输入**：
 | 字段 | 说明 |
@@ -391,7 +405,7 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 
 **输入**：`metadata`（结构化数据）+ `shared_context`（语义文本）+ `query`
 
-**输出**：`ExpertResult {answer, confidence, evidence}`
+**输出**：`{expert, execution_id, attempt, answer, confidence, evidence}`
 
 #### `similar_expert`（文件：`agents/similar_expert.py`）
 
@@ -401,14 +415,16 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 
 **工作流**：提取目标番剧 → 同标签/同公司结构相似 → Embedding 语义相似 TopK → 合并去重 → LLM 排序解释
 
-**输出**：`ExpertResult {answer, confidence, evidence}`
+**输出**：`{expert, execution_id, attempt, answer, confidence, evidence}`
 
-#### 并行执行机制
+#### 调度执行机制
 
-使用 LangGraph `Send` API 实现并行：
-- 2 个 Expert 时，`_route_after_retrieval` 返回 `[Send("metadata_reasoner", {...}), Send("similar_expert", {...})]`
-- 1 个 Expert 时，直接返回节点名，走正常边
-- Expert 需要从 `expert_input` 字典中显式拿到 state 字段（Send 不自动继承父 state）
+- 多 Expert 且 `plan.parallel == true`：`_route_after_retrieval` 为每个计划 Expert 返回一个 `Send`
+- 多 Expert 且 `plan.parallel == false`：进入 `serial_expert` 循环，严格按 `plan.experts` 顺序执行
+- 串行后一个 Expert 可读取当前 attempt 中前一个 Expert 的结论，用于核验或补充
+- 单 Expert 直接进入对应节点，不受 `parallel` 值影响
+- 不再存在“两个 Expert 自动并行”的隐式规则；Planner 输出必须与实际拓扑一致
+- Send 不继承完整父 state，Expert 输入由 `_expert_input` 显式构造
 
 ---
 
@@ -419,16 +435,35 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 **调用 LLM**：否（纯程序合并，零成本）
 
 **处理流程**：
-1. **去重**：基于 answer 5-gram Jaccard 相似度（阈值 0.5）
-2. **过滤**：舍弃 confidence < 0.3 的结果
-3. **排序**：按置信度降序
-4. **格式化**：生成 `[Expert N | 置信度: X%]\n...` 文本
+1. **隔离**：只选择当前 `execution_id + attempt` 的 Expert 结果
+2. **去重**：基于 answer 5-gram Jaccard 相似度（阈值 0.5）
+3. **过滤**：舍弃 confidence < 0.3 的结果
+4. **排序**：按置信度降序
+5. **格式化**：生成 `[Expert N | 置信度: X%]\n...` 文本
 
 **输出**：`{"merged_results": "合并后的文本"}`
 
 ---
 
-### 10. `web_fallback` — 联网回退（按需）
+### 10. `evaluator` — Expert 证据质量评估
+
+**文件**：`agents/evaluator.py`
+
+**调用 LLM**：通常为 0；仅廉价规则发现潜在结论冲突时调用一次 `simple_LLM`
+
+**确定性规则**：无有效证据、全部结果低于置信度阈值、计划内 Expert 缺失，以及 comparison/recommendation 证据覆盖不足均返回 `replan`。输出为 `EvaluationResult {verdict, score, issues, missing_dimensions, feedback}`。
+
+路由规则：`pass` 进入联网判断或回答；`replan` 且预算未耗尽进入 Replanner；预算耗尽后按需联网，否则附带不确定性回答；`fallback` 直接联网。
+
+### 11. `replanner` — 受限重规划
+
+**文件**：`agents/replanner.py`
+
+Replanner 只能修改检索策略、查询类别、Expert 组合、并行模式、联网需求和附加查询。它不允许修改 `query_type`、原始查询或实体解析结果，也不把重规划结果写入 Planner LRU cache。
+
+每次重规划递增 `attempt`，清空当前轮 `metadata`、`shared_context`、`merged_results` 和评估状态。默认且最高只允许一次重规划，防止无界循环。
+
+### 12. `web_fallback` — 联网回退（按需）
 
 **文件**：`agents/web_fallback.py`
 
@@ -445,7 +480,7 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 
 ---
 
-### 11. `answer_planner` — 回答结构规划
+### 13. `answer_planner` — 回答结构规划
 
 **文件**：`agents/graph.py` → `_answer_planner_node()`
 
@@ -462,7 +497,7 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 
 ---
 
-### 12. `answer` — 最终回答生成
+### 14. `answer` — 最终回答生成
 
 **文件**：`agents/answer.py`
 
@@ -489,9 +524,11 @@ planner                ← v2.2: 4 层路由（Embedding预过滤 → 缓存 →
 ### `_route_from_start(state) → str` (v2.2 新增)
 
 ```python
+if state.get("image_data"):
+    return "image_recognition"
 if _should_skip_alias(state):
-    return "history_extractor"   # 跳过别名解析
-return "alias_resolve"           # 按需加入
+    return "alias_skip"
+return "alias_resolve"
 ```
 
 ### `_route_after_planner(state) → str`
@@ -510,21 +547,26 @@ if plan.query_type == "simple_fact":
 if not experts:
     return "answer_planner"       # 无 Expert 直接规划
 # 1 个 Expert → 直接返回节点名
-# 2 个 Expert → Send API 并行分发
+# 多 Expert + parallel=true → 多个 Send
+# 多 Expert + parallel=false → serial_expert
 ```
 
 ### `_route_after_merge(state) → str`
 
 ```python
-if should_trigger_web(state):
-    return "web_fallback"
-return "answer_planner"
+return "evaluator"
 ```
 
-### `_route_after_expert(state) → str`
+### `_route_after_evaluator(state) → str`
 
 ```python
-return "merge"  # Expert 统一进入 merge
+if verdict == "pass":
+    return "web_fallback" if should_trigger_web(state) else "answer_planner"
+if verdict == "fallback":
+    return "web_fallback"
+if attempt < max_replans:
+    return "replanner"
+return "web_fallback" if should_trigger_web(state) else "answer_planner"
 ```
 
 ---
@@ -546,8 +588,17 @@ class AgentState(TypedDict):
     shared_context:    list[str]           # Dense + Sparse 语义文本
 
     # ── Expert 流水线 ──
-    expert_results:    Annotated[list[dict], add]  # 并行 Expert 累加写入
+    expert_results:    Annotated[list[dict], add]  # 累加保留历史；Merge 按 request/attempt 过滤
     merged_results:    str                # Merge 后综合结果
+    execution_id:      str                # 隔离 checkpoint 中不同请求
+    attempt:           int                # 当前质量尝试，首次为 0
+    max_replans:       int                # 最大重规划次数，默认/上限为 1
+    current_expert_index: int             # 串行 Expert 当前下标
+    evaluation:        dict               # EvaluationResult
+    replan_feedback:   dict               # 附加查询与 plan diff
+    execution_mode:    str                # single | parallel | serial
+    termination_reason: str               # quality_pass | replan_exhausted | web_fallback
+    quality_trace:     Annotated[list[dict], add]
 
     # ── 查询相关 ──
     original_query:    str                # 用户原始查询
@@ -568,7 +619,13 @@ class AgentState(TypedDict):
     context:           ConversationContext # 当前轮上下文
     recent_entities:   list[dict]         # 持久化: 最近讨论的实体 [{name, type}]
     previous_intent:   str                # 持久化: 上一轮意图
+
+    # ── 截图识别 ──
+    image_data:        str                # base64 图片，识别后清空
+    image_recognition_result: dict         # 番剧名/集数/时间戳/预览等
 ```
+
+`attempt` 不能单独隔离结果：MemorySaver 下每个新请求都会从 attempt 0 开始，因此必须同时匹配请求级 `execution_id`。`quality_trace` 记录 attempt、实际执行模式、评估分数、问题列表和重规划前后差异；`termination_reason` 区分 `quality_pass`、`replan_exhausted` 与 `web_fallback`。
 
 ---
 
@@ -616,12 +673,12 @@ previous_intent   (上轮持久化) ────────┘
 
 **流程差异**：
 ```
-普通查询:  ... → retrieval → [experts] → merge → answer_planner → answer → END
+普通查询:  ... → retrieval → [experts] → merge → evaluator → answer/replan
 快速通道:  ... → retrieval → simple_fact_answer ──────────────────→ END
 ```
 
 **优点**：
-- 减少 2–3 次 LLM 调用，延迟降低 60%+
+- 减少 2–3 次 LLM 调用，降低延迟
 - 追问时自动注入对话上下文，不丢失多轮能力
 - 自动更新 `recent_entities`，不影响指代消解
 
@@ -717,7 +774,7 @@ if tool_registry.is_enabled("search_web"):
 
 **缓存键含 history**：`md5(query|history_text)`，避免追问场景下误命中（同一查询不同历史可能需要不同分类策略）。
 
-**Embedding 预检缓存**：`_prefilter_cache` 让 `_should_skip_alias` 和 `planner._prefilter` 共享同一 query 的 embedding 结果，避免重复计算（~50ms × 2 -> 1 次）。
+**Embedding 预检缓存**：`_prefilter_cache` 让 `_should_skip_alias` 和 `planner._prefilter` 共享同一 query 的 embedding 结果，避免重复计算。
 
 ### 共享 Prompt 组件
 
@@ -746,14 +803,6 @@ def build_context_section(history_text, is_followup=True) -> str: ...
 
 **`recent_entities` 裁剪**：answer/simple_fact_answer 插入新实体后加 `[:5]`，防止长对话累积导致 context_builder prompt 膨胀。
 
-### 配置清理
-
-删除 4 个全项目无引用的配置项：
-- `MAX_ITERATIONS`（LangGraph recursion_limit 没用它）
-- `ENABLE_VERIFICATION`
-- `PLANNER_MODEL`（planner 用 simple_LLM）
-- `PLANNER_TEMPERATURE`
-
 ### 模块级常量统一
 
 - `_ANIME_TAGS`：两处重复的 tag 列表（16 + 30 个）合并为模块级常量（30 个）
@@ -771,7 +820,9 @@ def build_context_section(history_text, is_followup=True) -> str: ...
 ```python
 from langgraph.checkpoint.memory import MemorySaver
 
-g.compile(checkpointer=MemorySaver()).ainvoke(
+_memories: dict[str, MemorySaver] = {}
+memory = _memories.setdefault(thread_id, MemorySaver())
+g.compile(checkpointer=memory).ainvoke(
     {"messages": [HumanMessage(content=query)]},
     config={"configurable": {"thread_id": thread_id}}
 )
@@ -781,6 +832,7 @@ g.compile(checkpointer=MemorySaver()).ainvoke(
 - **存储内容**：每个 `thread_id` 的完整 `AgentState` + `messages`
 - **容量控制**：`MEMORY_MAX_ROUNDS = 5`（`history_extractor` 只取最近 5 轮注入上下文；但 `messages` 全量保留在 checkpointer 中）
 - **线程隔离**：不同 `thread_id` 的对话互不影响
+- **部署限制**：模块级字典只在当前进程有效，多 worker 之间不会共享记忆
 
 ### 对话上下文层（v1.1）
 
@@ -822,15 +874,20 @@ g.compile(checkpointer=MemorySaver()).ainvoke(
 
 7. similar_expert
    分析向量检索结果 → LLM 推荐 "Re:0" "夏日重现" "异度侵入"
-   → ExpertResult {answer, confidence: 0.85, evidence}
+   → ExpertResult {expert: "similar_expert", execution_id, attempt: 0,
+                   answer, confidence: 0.85, evidence}
 
 8. merge
-   仅 1 个 Expert，直接 format
+   按 execution_id + attempt 过滤结果；仅 1 个 Expert，直接 format
 
-9. answer_planner
+9. evaluator
+   确定性规则检查证据完整性与置信度 → verdict="pass"
+   → termination_reason="quality_pass"
+
+10. answer_planner
    recommendation → 随机选 top_pick 结构
 
-10. answer
+11. answer
     输入: merged_results + structure="top_pick"
     → "命运石之门确实是时间旅行题材的标杆……我最想推的是 Re:0……"
 ```

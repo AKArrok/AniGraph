@@ -1,6 +1,8 @@
 """LLM and embedding instances — imported across all nodes."""
 import json
 import logging
+import random
+import time
 from typing import List, Type, TypeVar
 from openai import OpenAI
 from langchain_openai import ChatOpenAI
@@ -150,6 +152,14 @@ class LocalEmbeddings(Embeddings):
     def active_model(self) -> str:
         return self.model
 
+    @property
+    def dimension(self) -> int:
+        return self._dim
+
+    @property
+    def model_identity(self) -> str:
+        return f"local:{self.model}:{self.dimension}"
+
     def embed_documents(self, texts: List[str], target_dim: int = 1024) -> List[List[float]]:
         # Qwen3-Embedding 使用 query/passage 前缀提升质量
         embeddings = self._model.encode(
@@ -160,12 +170,11 @@ class LocalEmbeddings(Embeddings):
         )
         vectors = [e.tolist() for e in embeddings]
 
-        # 维度适配（正常情况不需要，Qwen3-Embedding 就是 1024 维）
         if vectors and len(vectors[0]) != target_dim:
-            logging.info(f"  [维度适配] {self.model}: {len(vectors[0])}维 -> {target_dim}维")
-            vectors = [v[:target_dim] if len(v) >= target_dim
-                       else v + [0.0] * (target_dim - len(v))
-                       for v in vectors]
+            raise ValueError(
+                f"LocalEmbedding dimension mismatch: {len(vectors[0])} != {target_dim}. "
+                "Refusing to truncate or pad vectors because that corrupts geometry."
+            )
         return vectors
 
     def embed_query(self, text: str, target_dim: int = 1024) -> List[float]:
@@ -178,7 +187,10 @@ class LocalEmbeddings(Embeddings):
         )
         vec = embedding.tolist()
         if len(vec) != target_dim:
-            vec = vec[:target_dim] if len(vec) >= target_dim else vec + [0.0] * (target_dim - len(vec))
+            raise ValueError(
+                f"LocalEmbedding dimension mismatch: {len(vec)} != {target_dim}. "
+                "Refusing to truncate or pad vectors because that corrupts geometry."
+            )
         return vec
 
 
@@ -198,6 +210,7 @@ class DashScopeEmbeddings(Embeddings):
         self._exhausted: set = set()
         self._switch_count = 0
         self._dim_warned: set = set()  # 维度适配仅警告一次
+        self.dimension = 1024
 
     @property
     def model(self) -> str:
@@ -208,6 +221,10 @@ class DashScopeEmbeddings(Embeddings):
     def active_model(self) -> str:
         """别名，当前活跃模型"""
         return self.model
+
+    @property
+    def model_identity(self) -> str:
+        return f"dashscope:{self.model}:{self.dimension}"
 
     def _switch(self) -> bool:
         """切换到下一个可用模型，返回是否成功"""
@@ -247,12 +264,10 @@ class DashScopeEmbeddings(Embeddings):
                     vectors = [d.embedding for d in resp.data]
 
                     if dim != target_dim:
-                        if self.model not in self._dim_warned:
-                            self._dim_warned.add(self.model)
-                            logging.info(f"\n  [维度适配] {self.model}: {dim}维 -> {target_dim}维 (截断)")
-                        vectors = [v[:target_dim] if len(v) >= target_dim
-                                   else v + [0.0] * (target_dim - len(v))
-                                   for v in vectors]
+                        raise ValueError(
+                            f"DashScope embedding dimension mismatch: {dim} != {target_dim}. "
+                            "Refusing to truncate or pad vectors because that corrupts geometry."
+                        )
 
                     all_vecs.extend(vectors)
                     break
@@ -281,17 +296,139 @@ class DashScopeEmbeddings(Embeddings):
         return self.embed_documents([text], target_dim=target_dim)[0]
 
 
+# ── Ark Coding Plan Embeddings（OpenAI 兼容协议）──
+
+class ArkCodingEmbeddings(Embeddings):
+    """火山方舟 Coding Plan 的 doubao-embedding-vision 客户端。"""
+
+    def __init__(self, api_key: str, base_url: str, model: str, dimension: int):
+        if not api_key:
+            raise EnvironmentError(
+                "ARK_EMBEDDING_API_KEY is required when EMBEDDING_BACKEND=ark"
+            )
+        if model != "doubao-embedding-vision":
+            raise ValueError(
+                "Ark Coding Plan embeddings are fixed to doubao-embedding-vision"
+            )
+        if dimension != config.ARK_CODING_EMBEDDING_DIMENSION:
+            raise ValueError(
+                "doubao-embedding-vision on Coding Plan supports the configured "
+                "1024-dimensional index contract only"
+            )
+        self.client = OpenAI(api_key=api_key, base_url=base_url)
+        self.model = model
+        self.dimension = dimension
+        self.request_interval = config.ARK_EMBEDDING_REQUEST_INTERVAL
+        self.max_retries = config.ARK_EMBEDDING_MAX_RETRIES
+        self.max_backoff = config.ARK_EMBEDDING_MAX_BACKOFF
+        self._last_request_at = 0.0
+
+    @property
+    def active_model(self) -> str:
+        return self.model
+
+    @property
+    def model_identity(self) -> str:
+        return f"ark-coding:{self.model}:{self.dimension}"
+
+    @staticmethod
+    def _is_rate_limit_error(exc: Exception) -> bool:
+        status_code = getattr(exc, "status_code", None)
+        message = str(exc).lower()
+        return status_code == 429 or any(marker in message for marker in (
+            "account_ratelimitexceeded",
+            "accountratelimitexceeded",
+            "rate limit",
+            "ratelimit",
+            "too many requests",
+            "toomanyrequests",
+        ))
+
+    def _wait_for_request_slot(self) -> None:
+        elapsed = time.monotonic() - self._last_request_at
+        remaining = self.request_interval - elapsed
+        if remaining > 0:
+            time.sleep(remaining)
+
+    def _create_embeddings(self, batch: List[str]):
+        for attempt in range(self.max_retries + 1):
+            self._wait_for_request_slot()
+            try:
+                return self.client.embeddings.create(
+                    model=self.model,
+                    input=batch,
+                    dimensions=self.dimension,
+                    encoding_format="float",
+                )
+            except Exception as exc:
+                if not self._is_rate_limit_error(exc) or attempt >= self.max_retries:
+                    raise
+                delay = min(
+                    max(self.request_interval, 2 ** attempt),
+                    self.max_backoff,
+                ) + random.uniform(0, 0.5)
+                logging.warning(
+                    "Ark embedding 触发限流，%.1f 秒后重试 (%d/%d)",
+                    delay,
+                    attempt + 1,
+                    self.max_retries,
+                )
+                time.sleep(delay)
+            finally:
+                self._last_request_at = time.monotonic()
+
+    def embed_documents(
+        self, texts: List[str], target_dim: int | None = None
+    ) -> List[List[float]]:
+        expected_dim = target_dim or self.dimension
+        if expected_dim != self.dimension:
+            raise ValueError(
+                f"Ark embedding dimension {self.dimension} does not match target "
+                f"index dimension {expected_dim}. Recreate the index or update "
+                "ARK_EMBEDDING_DIMENSIONS."
+            )
+
+        all_vectors: List[List[float]] = []
+        for start in range(0, len(texts), 10):
+            batch = texts[start:start + 10]
+            response = self._create_embeddings(batch)
+            vectors = [item.embedding for item in response.data]
+            if vectors and any(len(vector) != self.dimension for vector in vectors):
+                actual = sorted({len(vector) for vector in vectors})
+                raise ValueError(
+                    f"Ark embedding response dimension {actual} does not match "
+                    f"configured dimension {self.dimension}."
+                )
+            all_vectors.extend(vectors)
+        return all_vectors
+
+    def embed_query(self, text: str, target_dim: int | None = None) -> List[float]:
+        return self.embed_documents([text], target_dim=target_dim)[0]
+
+
 # ── Embedding 实例（根据 EMBEDDING_BACKEND 自动选择）──
 
-if config.EMBEDDING_BACKEND == "local":
+if config.EMBEDDING_BACKEND == "ark":
+    embeddings = ArkCodingEmbeddings(
+        api_key=config.ARK_EMBEDDING_API_KEY,
+        base_url=config.ARK_EMBEDDING_BASE_URL,
+        model=config.ARK_EMBEDDING_MODEL,
+        dimension=config.ARK_EMBEDDING_DIMENSIONS,
+    )
+elif config.EMBEDDING_BACKEND == "local":
     embeddings = LocalEmbeddings(
         model_name=config.LOCAL_EMBEDDING_MODEL,
         device=config.LOCAL_EMBEDDING_DEVICE,
     )
-else:
+elif config.EMBEDDING_BACKEND == "dashscope":
     embeddings = DashScopeEmbeddings(
         api_key=config.DASHSCOPE_API_KEY,
         base_url=config.DASHSCOPE_BASE_URL,
         models=config.EMBEDDING_MODELS,
+    )
+else:
+    raise ValueError(
+        f"Unsupported EMBEDDING_BACKEND={config.EMBEDDING_BACKEND!r}; "
+        "expected 'ark', 'local', or 'dashscope'."
     )
 logging.info(f"  Embedding 后端: {config.EMBEDDING_BACKEND} | 模型: {embeddings.model}")

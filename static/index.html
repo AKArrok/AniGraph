@@ -5,6 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AniGraph — Trace Panel</title>
   <link rel="stylesheet" href="/static/style.css">
+  <style>
+    /* 图片上传相关 */
+    #upload-btn {
+      padding: 14px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color 0.2s, color 0.2s;
+      flex-shrink: 0;
+    }
+    #upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+    #image-preview {
+      display: flex; align-items: center; gap: 10px;
+      margin-top: 10px; padding: 8px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      width: fit-content;
+    }
+    #preview-img { height: 56px; width: 56px; object-fit: cover; border-radius: var(--radius-sm); }
+    #preview-dismiss {
+      background: transparent; border: none; color: var(--text-muted);
+      cursor: pointer; font-size: 0.9em; padding: 2px 6px; line-height: 1;
+    }
+    #preview-dismiss:hover { color: var(--red); }
+  </style>
 </head>
 <body>
   <div id="app">
@@ -24,10 +53,20 @@
         </div>
         <div id="chat-input-bar">
           <div id="chat-input-row">
-            <input type="text" id="query-input" placeholder="输入查询... 例如: 进击的巨人评分多少" autofocus>
-            <button id="send-btn">发 送</button>
-          </div>
-          <div id="thread-row">
+          <input type="text" id="query-input" placeholder="输入查询... 例如: 进击的巨人评分多少" autofocus>
+          <button id="upload-btn" type="button" title="上传图片" aria-label="上传图片">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </button>
+          <button id="send-btn">发 送</button>
+        </div>
+        <input type="file" id="image-input" accept="image/jpeg,image/png,image/webp" hidden>
+        <div id="image-preview" style="display:none">
+          <img id="preview-img" alt="预览">
+          <button id="preview-dismiss" type="button" title="移除图片">✕</button>
+        </div>
+        <div id="thread-row">
             会话 <span id="thread-id">default</span>
             <button id="clear-btn">清空记忆</button>
           </div>

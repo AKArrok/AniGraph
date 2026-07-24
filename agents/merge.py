@@ -8,11 +8,12 @@
   5. 生成统一的 merged_results 文本
 """
 import config
+from agents.evaluator import current_expert_results
 
 
 def merge_expert_results(state: dict) -> dict:
     """合并 Expert 结果，去重排序，生成最终文本"""
-    expert_results = state.get("expert_results", [])
+    expert_results = current_expert_results(state)
     if not expert_results:
         return {"merged_results": ""}
 
@@ -22,8 +23,8 @@ def merge_expert_results(state: dict) -> dict:
             return results
 
         def _sim(a: str, b: str) -> float:
-            a_grams = set(a[i:i+5] for i in range(len(a)-5))
-            b_grams = set(b[i:i+5] for i in range(len(b)-5))
+            a_grams = set(a[i:i+5] for i in range(max(0, len(a)-4)))
+            b_grams = set(b[i:i+5] for i in range(max(0, len(b)-4)))
             if not a_grams or not b_grams:
                 return 0
             return len(a_grams & b_grams) / len(a_grams | b_grams)

@@ -18,6 +18,7 @@
 """
 import hashlib
 import time
+import uuid
 import logging
 from collections import OrderedDict
 from typing import Literal
@@ -606,4 +607,19 @@ async def planner_node(state: dict) -> dict:
         f"web={execution_plan.get('need_web')})"
     )
 
-    return {"plan": execution_plan, "original_query": query}
+    execution_id = uuid.uuid4().hex
+    return {
+        "plan": execution_plan,
+        "original_query": query,
+        "execution_id": execution_id,
+        "attempt": 0,
+        "max_replans": config.MAX_REPLANS,
+        "current_expert_index": 0,
+        "evaluation": {},
+        "replan_feedback": {},
+        "execution_mode": "",
+        "termination_reason": "",
+        "metadata": [],
+        "shared_context": [],
+        "merged_results": "",
+    }

@@ -27,6 +27,9 @@ NODE_DISPLAY: dict[str, str] = {
     "merge":               "结果合并",
     "simple_fact_answer":  "简单事实回答",
     "web_fallback":        "联网兜底",
+    "serial_expert":       "串行专家调度",
+    "evaluator":           "证据质量评估",
+    "replanner":           "执行策略重规划",
     "answer_planner":      "回答结构规划",
     "answer":              "回答生成",
 }

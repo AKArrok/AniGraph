@@ -214,8 +214,11 @@ def retrieve_with_optimization(
 
     # Step 5: 精排
     if config.ENABLE_RERANKING and len(fused_docs) > k_final:
-        fused_docs = rerank(search_query, fused_docs, top_k=k_final * 2)
-        _last_debug["reranking"] = f"{config.RERANKER_MODEL} (CrossEncoder)"
+        rerank_top_k = max(k_final, config.RERANK_TOP_K)
+        fused_docs = rerank(search_query, fused_docs, top_k=rerank_top_k)
+        _last_debug["reranking"] = (
+            f"{config.RERANKER_MODEL} (CrossEncoder, top_k={rerank_top_k})"
+        )
     else:
         _last_debug["reranking"] = "跳过" if not config.ENABLE_RERANKING else f"跳过 (仅 {len(fused_docs)} 条，无需精排)"
     _last_debug["post_rerank_count"] = len(fused_docs)

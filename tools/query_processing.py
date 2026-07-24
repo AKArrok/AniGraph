@@ -1,9 +1,9 @@
-"""Query Processing Layer — 查询分类 + 优化（分离自 rag_optimizer）
+"""Query Processing Layer - 查询分类 + 优化（分离自 rag_optimizer）
 
 模块:
-  QueryClassifier   — 规则分类器
-  QueryOptimizer    — Multi-Query Rewrite / HyDE / Decompose
-  NicknameResolver  — 昵称/别名解析
+  classify          - LLM 结构化策略分类（direct/rewrite/hyde/decompose）
+  QueryOptimizer    - Multi-Query Rewrite / HyDE / Decompose
+  NicknameResolver  - 昵称/别名解析
 """
 import hashlib
 import functools

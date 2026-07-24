@@ -12,6 +12,30 @@ from typing import Literal
 
 import config
 
+_SPARSE_STOP_WORDS = {
+    "动漫", "动画", "番剧", "推荐", "评价", "观众", "作品", "哪些", "什么",
+    "好看", "类似", "有关", "一个", "一些", "比较", "很高", "很低",
+}
+
+
+def _sparse_terms(query: str) -> list[str]:
+    """Extract useful 2-4 character terms for the n-gram sparse index."""
+    import re
+
+    terms: list[str] = []
+    for segment in re.findall(r"[\u4e00-\u9fff]+|[a-zA-Z0-9][a-zA-Z0-9._+-]*", query):
+        if re.fullmatch(r"[\u4e00-\u9fff]+", segment):
+            for stop_word in sorted(_SPARSE_STOP_WORDS, key=len, reverse=True):
+                segment = segment.replace(stop_word, " ")
+            for word in segment.split():
+                if 2 <= len(word) <= 4:
+                    terms.append(word)
+                elif len(word) > 4:
+                    terms.extend(word[i:i + 2] for i in range(len(word) - 1))
+        else:
+            terms.append(segment.lower())
+    return list(dict.fromkeys(terms))
+
 # ══════════════════════════════════════════════════════════════════════
 # 1. WhooshRetriever — 稀疏检索
 # ══════════════════════════════════════════════════════════════════════
@@ -34,7 +58,7 @@ def search_whoosh(query: str, k: int = 10) -> list[tuple[str, float]]:
     """Whoosh 稀疏检索，返回 [(content, score), ...]
 
     优化策略:
-    - 中文分词用RegexAnalyzer ([\u4e00-\u9fff]+|[a-zA-Z0-9]+)
+    - 中文索引使用 2-4 字符 n-gram，查询由同一 analyzer 切分
     - 关键词提取: 去掉标点/停用词, 只保留2字以上中文词
     - OrGroup: 任一关键词命中即可 → 避免长句全词&导致的0结果
     - 空关键词兜底: 用原query做更宽容的搜索
@@ -43,36 +67,21 @@ def search_whoosh(query: str, k: int = 10) -> list[tuple[str, float]]:
     if idx is None:
         return []
 
-    from whoosh.qparser import MultifieldParser, OrGroup, QueryParser
+    from whoosh.query import Or, Term
     from whoosh import scoring
-    import re
 
-    # 1. 提取中文关键词（2字以上）和英文token
-    keywords = re.findall(r'[\u4e00-\u9fff]{2,}|[a-zA-Z0-9]{2,}', query)
-
-    # 2. 构建搜索词: 有足够关键词用OrGroup，否则用原query兜底
-    if len(keywords) >= 2:
-        search_query = " OR ".join(keywords)
-    elif keywords:
-        search_query = keywords[0]  # 单关键词直接搜
-    else:
-        search_query = query  # 空关键词兜底
+    terms = _sparse_terms(query)
+    if not terms:
+        return []
 
     with idx.searcher(weighting=scoring.BM25F()) as searcher:
-        parser = MultifieldParser(["content"], idx.schema, group=OrGroup)
         try:
-            q = parser.parse(search_query)
+            clauses = [Term("content", term) for term in terms]
+            q = clauses[0] if len(clauses) == 1 else Or(clauses)
             results = searcher.search(q, limit=k)
             return [(r["content"], r.score) for r in results]
         except Exception:
-            # 解析失败兜底: 用更简单的 query parser
-            try:
-                qp = QueryParser("content", idx.schema)
-                q = qp.parse(search_query)
-                results = searcher.search(q, limit=k)
-                return [(r["content"], r.score) for r in results]
-            except Exception:
-                return []
+            return []
 
 
 # ══════════════════════════════════════════════════════════════════════

@@ -6,8 +6,11 @@
 
 import json
 import sys
+import base64
+import io
+import logging
 from pathlib import Path
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -15,6 +18,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from main import run_stream
 import config
+from llms import embeddings
 
 # ============================================================
 # FastAPI App
@@ -81,8 +85,68 @@ async def chat_stream(body: ChatRequest):
 
 @app.get("/chat/stream")
 async def chat_stream_get(query: str, thread_id: str = "default"):
-    """SSE 端点（GET 参数版）— 方便浏览器测试。"""
+    """SSE 端点（GET 参数版）- 方便浏览器测试。"""
     return await chat_stream(ChatRequest(query=query, thread_id=thread_id))
+
+
+async def _read_and_validate_image(file: UploadFile) -> str:
+    """读取上传图片，校验类型/大小，过大时缩放，返回 base64 字符串。"""
+    allowed_types = {"image/jpeg", "image/png", "image/webp"}
+    if file.content_type not in allowed_types:
+        raise ValueError(f"不支持的图片类型: {file.content_type}，仅支持 jpeg/png/webp")
+
+    image_bytes = await file.read()
+    max_bytes = config.IMAGE_MAX_SIZE_MB * 1024 * 1024
+    if len(image_bytes) > max_bytes:
+        # 超大图片用 Pillow 缩放
+        from PIL import Image
+        img = Image.open(io.BytesIO(image_bytes))
+        # 按最长边缩放到 1920
+        max_dim = 1920
+        if max(img.size) > max_dim:
+            ratio = max_dim / max(img.size)
+            img = img.resize((int(img.width * ratio), int(img.height * ratio)))
+        buf = io.BytesIO()
+        img = img.convert("RGB")
+        img.save(buf, format="JPEG", quality=85)
+        image_bytes = buf.getvalue()
+        logging.info(f"  [识图] 图片缩放: {len(image_bytes)} bytes (JPEG q=85)")
+
+    return base64.b64encode(image_bytes).decode()
+
+
+@app.post("/chat/image")
+async def chat_image(
+    file: UploadFile = File(...),
+    query: str = Form(""),
+    thread_id: str = Form("default"),
+):
+    """图片上传 + SSE 流式输出（识图 -> 检索 -> 回答）。"""
+    image_b64 = await _read_and_validate_image(file)
+
+    async def event_generator():
+        try:
+            async for event in run_stream(query=query, thread_id=thread_id, image_data=image_b64):
+                yield {
+                    "event": event["type"],
+                    "data": json.dumps(event, ensure_ascii=False),
+                }
+        except Exception as e:
+            yield {
+                "event": "error",
+                "data": json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False),
+            }
+        finally:
+            yield {"event": "done", "data": ""}
+
+    return EventSourceResponse(
+        event_generator(),
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+            "Content-Type": "text/event-stream; charset=utf-8",
+        },
+    )
 
 
 @app.get("/api/models")
@@ -92,8 +156,9 @@ async def get_models():
         "llm_model": config.LLM_MODEL,
         "simple_llm_model": config.SIMPLE_LLM_MODEL,
         "embedding_backend": config.EMBEDDING_BACKEND,
-        "embedding_device": config.LOCAL_EMBEDDING_DEVICE,
-        "embedding_model": config.LOCAL_EMBEDDING_MODEL,
+        "embedding_model": embeddings.model,
+        "embedding_dimension": embeddings.dimension,
+        "embedding_identity": embeddings.model_identity,
     })
 
 

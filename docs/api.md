@@ -1,7 +1,9 @@
 # AniGraph 接口文档
 
-> **版本**: v2.3  
-> **更新日期**: 2026-07-16  
+> **版本**: v2.4
+>
+> **更新日期**: 2026-07-24
+>
 > **适用范围**: 前后端对接、二次开发、集成接入
 
 AniGraph 提供三层接口：
@@ -10,7 +12,7 @@ AniGraph 提供三层接口：
 |------|------|------|
 | HTTP API | 前端/第三方系统集成 | `server.py` (FastAPI) |
 | Python API | 程序化调用、二次开发 | `main.py` (`run` / `run_stream`) |
-| 交互式终端 | 人工调试、演示 | `chat.py` |
+| 交互式终端 | 人工调试、演示 | `main.py` / `chat.py` |
 
 ---
 
@@ -96,9 +98,10 @@ GET /chat/stream?query=进击的巨人评分&thread_id=default
 {
   "llm_model": "deepseek-v4-pro",
   "simple_llm_model": "deepseek-v4-flash",
-  "embedding_backend": "local",
-  "embedding_device": "cuda",
-  "embedding_model": "BAAI/bge-m3"
+  "embedding_backend": "ark",
+  "embedding_model": "doubao-embedding-vision",
+  "embedding_dimension": 1024,
+  "embedding_identity": "ark:doubao-embedding-vision:1024"
 }
 ```
 
@@ -108,7 +111,28 @@ GET /chat/stream?query=进击的巨人评分&thread_id=default
 {"status": "ok"}
 ```
 
-### 1.5 GET `/` - Trace 面板首页
+该端点只表示 Web 进程存活，不探测 LLM、Pinecone、Tavily 或 trace.moe 的连通性。
+
+### 1.5 POST `/chat/image` - 动漫截图识别（SSE）
+
+上传截图后执行“识图 -> 检索 -> 回答”。请求使用 `multipart/form-data`，响应事件格式与 `/chat/stream` 相同。
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+|------|------|:---:|------|------|
+| `file` | file | 是 | - | JPEG、PNG 或 WebP 图片 |
+| `query` | string | 否 | `""` | 对识图结果的补充问题 |
+| `thread_id` | string | 否 | `"default"` | 会话 ID |
+
+```bash
+curl -N -X POST http://localhost:9527/chat/image \
+  -F "file=@screenshot.webp" \
+  -F "query=这是哪一集？" \
+  -F "thread_id=user-123"
+```
+
+图片超过 `IMAGE_MAX_SIZE_MB` 时服务端会尝试缩放；不支持的 MIME 类型会返回请求错误。识别优先使用 trace.moe，低置信度且已配置 `VLM_API_KEY` 时调用 VLM 补充。
+
+### 1.6 GET `/` - Trace 面板首页
 
 返回 `static/index.html`，即 Web Trace 可视化面板。
 
@@ -129,13 +153,14 @@ print(answer)
 **签名**
 
 ```python
-async def run(query: str, thread_id: str = "1") -> str
+async def run(query: str = "", thread_id: str = "1", image_data: str = None) -> str
 ```
 
 | 参数 | 类型 | 默认 | 说明 |
 |------|------|------|------|
 | `query` | str | - | 用户查询 |
 | `thread_id` | str | `"1"` | 会话 ID，同 ID 共享 MemorySaver 记忆 |
+| `image_data` | str \| None | `None` | 可选的 base64 图片数据 |
 
 **返回**：`str` - 模型生成的回答文本
 
@@ -163,7 +188,7 @@ async for event in run_stream("进击的巨人评分多少"):
 **签名**
 
 ```python
-async def run_stream(query: str, thread_id: str = "1") -> AsyncIterator[dict]
+async def run_stream(query: str = "", thread_id: str = "1", image_data: str = None) -> AsyncIterator[dict]
 ```
 
 **Yields**：`dict` - TraceEvent，按时间顺序：
@@ -214,7 +239,9 @@ full_answer = "".join(answer_parts)
 
 | name | display |
 |------|---------|
+| `image_recognition` | 动漫截图识别 |
 | `alias_resolve` | 别名/实体解析 |
+| `alias_skip` | 跳过别名解析 |
 | `history_extractor` | 历史提取 |
 | `context_builder` | 上下文构建 |
 | `planner` | 规划器 |
@@ -222,7 +249,10 @@ full_answer = "".join(answer_parts)
 | `knowledge_retrieval` | 知识检索 |
 | `metadata_reasoner` | 元数据推理专家 |
 | `similar_expert` | 相似推荐专家 |
+| `serial_expert` | 串行专家调度 |
 | `merge` | 结果合并 |
+| `evaluator` | 证据质量评估 |
+| `replanner` | 执行策略重规划 |
 | `simple_fact_answer` | 简单事实回答 |
 | `web_fallback` | 联网兜底 |
 | `answer_planner` | 回答结构规划 |
@@ -377,9 +407,10 @@ Bangumi 评分 8.6，制作公司 WIT STUDIO...
 
 | 变量 | 说明 |
 |------|------|
-| `LLM_API_KEY` | LLM + Embeddings API Key |
+| `LLM_API_KEY` | LLM API Key |
 | `PINECONE_API_KEY` | Pinecone 向量数据库 API Key |
 | `TAVILY_API_KEY` | Tavily 联网搜索 API Key |
+| `ARK_EMBEDDING_API_KEY` / `ARK_API_KEY` | Ark Coding Plan Key（默认 `ark` 后端必填） |
 
 ### 5.2 模型配置
 
@@ -388,9 +419,11 @@ Bangumi 评分 8.6，制作公司 WIT STUDIO...
 | `LLM_BASE_URL` | - | LLM API 地址 |
 | `LLM_MODEL` | `deepseek-v4-pro` | 主 LLM（answer/Expert） |
 | `SIMPLE_LLM_MODEL` | `deepseek-v4-flash` | 轻量 LLM（planner/simple_fact） |
-| `EMBEDDING_BACKEND` | `local` | `local` / `dashscope` |
-| `LOCAL_EMBEDDING_MODEL` | `BAAI/bge-m3` | 本地 embedding 模型 |
-| `LOCAL_EMBEDDING_DEVICE` | `cuda` | `cuda` / `cpu` |
+| `EMBEDDING_BACKEND` | `ark` | `ark` / `local` / `dashscope` |
+| `ARK_EMBEDDING_MODEL` | `doubao-embedding-vision` | Ark Coding Plan 固定模型 |
+| `ARK_EMBEDDING_DIMENSIONS` | `1024` | Ark 固定输出维度 |
+| `LOCAL_EMBEDDING_MODEL` | `Qwen/Qwen3-Embedding-0.6B` | 本地 embedding 模型 |
+| `LOCAL_EMBEDDING_DEVICE` | `auto` | `auto` / `cuda` / `cpu` |
 
 ### 5.3 功能开关
 
@@ -403,19 +436,22 @@ Bangumi 评分 8.6，制作公司 WIT STUDIO...
 | `ENABLE_QUERY_OPTIMIZATION` | `true` | 查询优化开关 |
 | `ENABLE_RERANKING` | `true` | CrossEncoder 重排序开关 |
 | `ENABLE_COMPRESSION` | `true` | 文档压缩开关 |
+| `ENABLE_IMAGE_RECOGNITION` | `true` | 截图识别开关 |
 
 ### 5.4 检索参数
 
 | 变量 | 默认 | 说明 |
 |------|:---:|------|
 | `RETRIEVER_K` | `5` | 最终返回文档数 |
-| `RETRIEVER_FETCH_K` | `20` | 初始抓取数 |
-| `HYBRID_DENSE_K` | `10` | Pinecone 检索数 |
-| `HYBRID_SPARSE_K` | `10` | Whoosh 检索数 |
+| `RETRIEVER_FETCH_K` | `50` | 初始抓取数 |
+| `HYBRID_DENSE_K` | `20` | Pinecone 检索数 |
+| `HYBRID_SPARSE_K` | `20` | Whoosh 检索数 |
+| `RERANK_TOP_K` | `10` | 精排候选数 |
 | `FUSION_STRATEGY` | `rrf` | 融合策略: `rrf` / `weighted` / `max` |
 | `EMBEDDING_EXCLUDE_MARGIN` | `0.15` | Embedding 粗筛排除阈值 |
 | `EMBEDDING_PREFILTER_THRESHOLD` | - | Embedding 预检高置信度阈值 |
 | `CONFIDENCE_THRESHOLD` | `0.5` | Web fallback 触发阈值 |
+| `MAX_REPLANS` | `1` | 证据不达标时最大重规划次数（实现上限为 1） |
 
 ### 5.5 LLM 参数
 
@@ -423,6 +459,8 @@ Bangumi 评分 8.6，制作公司 WIT STUDIO...
 |------|:---:|------|
 | `EXPERT_TEMPERATURE` | `0.7` | Expert 节点温度 |
 | `ANSWER_TEMPERATURE` | `0.7` | Answer 节点温度 |
+
+检索参数必须满足：`RETRIEVER_FETCH_K >= HYBRID_DENSE_K`，密集/稀疏检索数均不小于 `RETRIEVER_K`，且 `RERANK_TOP_K >= RETRIEVER_K`。服务启动时会拒绝无效组合。
 
 ---
 
@@ -527,22 +565,8 @@ async for event_type, data in chat("推荐催泪番"):
 
 ---
 
-## 八、性能参考
+## 八、运行效率设计
 
-基于 `deepseek-v4-pro` + `deepseek-v4-flash` + `BAAI/bge-m3`（CUDA）的典型延迟：
-
-| 查询类型 | 典型路径 | LLM 调用 | 延迟 |
-|----------|----------|:---:|:---:|
-| 闲聊（"你好"） | alias_skip -> planner(embedding拦截) -> answer | 1 | 0.5-1s |
-| 简单事实（"巨人评分"） | planner -> retrieval -> simple_fact_answer | 1-2 | 1-2s |
-| 元数据查询（"MAPPA作品"） | planner -> retrieval -> metadata_reasoner -> merge -> answer | 3 | 2-4s |
-| 语义推荐（"类似巨人的番"） | planner -> retrieval -> similar_expert -> merge -> answer | 3 | 2-4s |
-| 复杂对比（"巨人和鬼灭对比"） | planner -> retrieval -> 2 Experts(并行) -> merge -> answer | 4 | 3-5s |
-| 复杂分析（"为什么EVA是神作"） | planner -> retrieval(hyde) -> similar_expert -> merge -> answer | 4 | 3-6s |
-
-**成本优化**：
-- Embedding 预检拦截闲聊，零 LLM 调用
 - Simple Fact 快速通道跳过 Expert 流水线
-- Planner 缓存（LRU 500）命中时跳过 LLM 分类
 - Expert 并行执行（Send API + async ainvoke）
 - ToolRegistry 按需加载，未用工具零开销

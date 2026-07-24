@@ -1,7 +1,7 @@
 # ACG 番剧推荐 - LangGraph 多智能体系统项目总结
 
-> **文档版本**: v2.3 (异步并行 + 健壮性 + 正确性修复)  
-> **更新日期**: 2026-07-16  
+> **文档版本**: v2.4 (严格 Parallel 路由 + Evaluator-Replan 质量闭环)
+> **更新日期**: 2026-07-24
 > **适用范围**: 项目交接、团队协作、后续迭代参考  
 > **项目定位**: 面向动漫推荐场景的 Hybrid RAG + Multi-Agent 智能推荐系统
 
@@ -41,7 +41,7 @@
 | 智能推荐 | "推荐类似JOJO的番" | semantic → Pinecone+Whoosh → similar_expert |
 | 事实查询 | "京都动画有哪些作品" | metadata → MetadataIndex → simple_fact_answer (快速通道) |
 | 简单事实 | "夏亚是谁"、"素晴评分" | metadata → MetadataIndex → simple_fact_answer |
-| 对比分析 | "巨人vs鬼灭哪个好看" | mixed → 双路检索 → 双Expert并行 |
+| 对比分析 | "巨人vs鬼灭哪个好看" | mixed → 双路检索 → 按 `plan.parallel` 并行或串行 Expert → Evaluator |
 | 实体解析 | "夏亚是谁" | entity_resolver → L0/L1/L2 映射 |
 | 梗解释 | "典明粥是什么梗" | L0字典命中 → 直接映射 |
 | 多轮追问 | "推荐JOJO" → "它的评分" | context_builder 指代解析 → 消费历史 |
@@ -104,6 +104,8 @@ graph TB
 
     subgraph 生成层
         MG[merge<br/>融合去重]
+        EV[evaluator<br/>证据质量评估]
+        RP[replanner<br/>执行策略修正]
         SF[simple_fact_answer<br/>简单事实快速通道]
         AP[answer_planner<br/>结构规划]
         AN[answer<br/>回答生成]
@@ -114,9 +116,11 @@ graph TB
     HE --> CB --> PL --> QP
     QP --> MI & PC & WH
     MI & PC & WH --> MR & SE & SF
-    MR & SE --> MG --> AN
+    MR & SE --> MG --> EV
+    EV -->|pass| AP --> AN
+    EV -->|replan, 最多一次| RP --> QP
+    EV -.->|fallback/exhausted| TV --> AP
     SF --> U
-    MG -.->|低置信度| TV --> MG
     AP --> AN
     AN --> U
 ```
@@ -169,9 +173,13 @@ flowchart LR
         QP --> KR[知识检索]
         KR --> MI & P & W
         KR -->|simple_fact| SF[快速回答]
-        KR --> EX[Experts]
-        EX --> MG[Merge]
-        MG --> AN[Answer]
+        KR --> EX[Expert Dispatcher]
+        EX -->|parallel=true| PX[Send 并行]
+        EX -->|parallel=false| SX[serial_expert]
+        PX & SX --> MG[Merge]
+        MG --> EV[Evaluator]
+        EV -->|pass| AN[Answer]
+        EV -->|replan| RP[Replanner] --> QP
         SF --> U
     end
 
@@ -221,12 +229,14 @@ flowchart LR
 
 **Trade-off**: 比纯 LLM 分类多一次 embedding 计算（~50ms 本地 CPU），但排除了不相关类别减少了 LLM prompt 中的分类候选，提升了准确率。
 
-### 3.4 为什么使用两个 Expert 并行而非单一 Agent
+### 3.4 为什么使用两个专职 Expert 而非单一 Agent
 
 | 方案 | 优点 | 缺点 |
 |------|------|------|
 | 单 Agent | 简单 | 不同维度信息混杂，prompt 过长 |
-| 双 Expert 并行 ✅ | 职责清晰、独立置信度、可分别优化 | 需要 Merge 节点融合 |
+| 双 Expert + 计划驱动调度 ✅ | 职责清晰、独立置信度、可分别优化；可按任务选择并行或串行核验 | 需要 Dispatcher、Merge 和质量评估节点 |
+
+并行不是 Expert 数量的隐式副作用。Planner 的 `parallel` 是严格执行协议：并行用于缩短相互独立分析的延迟，串行用于让后一个 Expert 基于前一个结论做补充或冲突核验。
 
 ### 3.5 Fusion 算法选择 RRF 而不是加权
 
@@ -354,9 +364,12 @@ python data/build_kb.py --whoosh-only    # 仅 Whoosh
 
 ```mermaid
 graph TD
-    START((START)) -->|需解析别名| alias["alias_resolve<br/>别名+实体解析<br/>⚡按需 · 0-2 LLM调用"]
-    START -->|无需解析| hist["history_extractor<br/>提取最近N轮对话<br/>🟢零LLM"]
+    START((START)) -->|图片| image["image_recognition<br/>trace.moe + 可选VLM"]
+    START -->|需解析别名| alias["alias_resolve<br/>别名+实体解析<br/>⚡按需 · 0-2 LLM调用"]
+    START -->|无需解析| skip["alias_skip<br/>设置查询默认值"]
+    image --> hist["history_extractor<br/>提取最近N轮对话<br/>🟢零LLM"]
     alias --> hist
+    skip --> hist
     hist --> ctx["context_builder<br/>构建上下文+指代解析<br/>🟢零LLM · history预拼接"]
     ctx --> planner["planner<br/>Embedding粗筛→LLM分类<br/>⚡1 LLM调用 · 4层路由"]
     planner -->|chat| answer
@@ -376,18 +389,27 @@ graph TD
 
     route -->|0 expert| ap["answer_planner<br/>随机结构<br/>🟢零LLM"]
     route -->|1 expert| expert_direct[直接调用]
-    route -->|2 experts| parallel["Send API 并行"]
+    route -->|N experts, parallel=true| parallel["Send API 并行"]
+    route -->|N experts, parallel=false| serial["serial_expert<br/>按计划顺序循环"]
 
     parallel --> mr["metadata_reasoner<br/>元数据推理<br/>⚡1 LLM调用 · 含重试"]
     parallel --> se["similar_expert<br/>相似推荐<br/>⚡1 LLM调用 · 含重试"]
     expert_direct --> mr
     expert_direct --> se
+    serial --> serial
+    serial --> merge
 
-    mr --> merge["merge<br/>Jaccard去重+过滤+排序<br/>🟢零LLM"]
+    mr --> merge["merge<br/>按execution_id+attempt隔离<br/>Jaccard去重+过滤+排序"]
     se --> merge
 
-    merge -->|触发 Web| wf["web_fallback<br/>Tavily搜索<br/>⚡按需 · 0-1 LLM调用"]
-    merge -->|不触发| ap
+    merge --> evaluator["evaluator<br/>规则优先评估证据质量"]
+    evaluator -->|pass| gate{需要联网?}
+    gate -->|是| wf["web_fallback<br/>Tavily搜索<br/>⚡按需 · 0-1 LLM调用"]
+    gate -->|否| ap
+    evaluator -->|replan且预算未耗尽| replanner["replanner<br/>受限策略修正"]
+    replanner --> qp
+    evaluator -->|fallback或耗尽后需联网| wf
+    evaluator -->|耗尽且无需联网| ap
 
     wf --> ap
     ap --> answer["answer<br/>口语化回答<br/>⚡1 LLM调用 · 含重试"]
@@ -404,6 +426,8 @@ graph TD
     style mr fill:#fce4ec
     style se fill:#fce4ec
     style merge fill:#f3e5f5
+    style evaluator fill:#fff3e0
+    style replanner fill:#fff3e0
     style answer fill:#ffccbc
 ```
 
@@ -413,6 +437,7 @@ graph TD
 
 | 节点 | 文件 | 输入 | 输出 | LLM调用 | 模型 | 可缓存 | 分类 |
 |------|------|------|------|:---:|------|:---:|:---:|
+| image_recognition | image_recognition.py | image_data, messages | 合成查询, entity_*, image_recognition_result | 0-1 (按需) | trace.moe / VLM | ✅ 图片哈希 | 按需 |
 | alias_resolve | graph.py | messages, original_query | resolved_query, entity_* | 0-2 (按需) | deepseek-v4-flash | ✅ LRU(128) | 按需 |
 | history_extractor | history_extractor.py | messages | context.history | 0 | - | ❌ | 必备 |
 | context_builder | context_builder.py | context.history, recent_entities, entity_* | context, resolved_query, history_text, history_text_recent | 0 | - | ❌ | 必备 |
@@ -422,7 +447,10 @@ graph TD
 | simple_fact_answer | simple_fact_answer.py | metadata, original_query, entity_*, history_text_recent | messages, recent_entities | **1 (含重试)** | simple_LLM | ❌ | 按需 |
 | metadata_reasoner | metadata_reasoner.py | resolved_query, metadata, shared_context | expert_results | 1 (含重试) | deepseek-v4-pro / simple_LLM | ❌ | 按需 |
 | similar_expert | similar_expert.py | resolved_query, metadata, shared_context | expert_results | 1 (含重试) | deepseek-v4-pro / simple_LLM | ❌ | 按需 |
-| merge | merge.py | expert_results | merged_results | 0 | - | ❌ | 必备 |
+| serial_expert | graph.py | plan, current_expert_index, 当前轮 Expert 结果 | expert_results, current_expert_index | 0-1 | 对应 Expert 模型 | ❌ | 按需 |
+| merge | merge.py | expert_results, execution_id, attempt | merged_results | 0 | - | ❌ | 必备 |
+| evaluator | evaluator.py | plan, 当前轮 Expert 结果, merged_results | evaluation, quality_trace | 通常 0；冲突时 1 | simple_LLM | ❌ | 必备 |
+| replanner | replanner.py | plan, evaluation, attempt 摘要 | plan patch, attempt+1, replan_feedback | 0-1 | simple_LLM | ❌ | 按需 |
 | web_fallback | web_fallback.py | original_query, merged_results | merged_results(追加) | 0-1 (按需) | deepseek-v4-flash | ❌ | 按需 |
 | answer_planner | graph.py | plan | answer_plan | 0 | - | ❌ | 必备 |
 | answer | answer.py | original_query, plan, merged_results, context, history_text_recent | messages, recent_entities, previous_intent | 1 (含重试) | deepseek-v4-pro/deepseek-v4-flash | ❌ | 必备 |
@@ -444,9 +472,18 @@ class AgentState(TypedDict):
     metadata: list[dict]              # MetadataIndex 结构化结果
     shared_context: list[str]         # Pinecone/Whoosh 文档 (queries→docs 复用字段)
 
-    # Expert 输出 (reducer: operator.add 实现并行合并)
+    # Expert 输出与质量闭环
     expert_results: Annotated[list[dict], add]
     merged_results: str               # Merge 后文本
+    execution_id: str                 # 隔离同一 thread 的不同请求
+    attempt: int                      # 当前质量尝试，首次为 0
+    max_replans: int                  # 默认且上限为 1
+    current_expert_index: int         # 串行 Expert 游标
+    execution_mode: str               # single | parallel | serial
+    evaluation: dict                  # EvaluationResult
+    replan_feedback: dict             # ReplanPatch + plan diff
+    quality_trace: Annotated[list[dict], add]
+    termination_reason: str           # quality_pass | replan_exhausted | web_fallback
 
     # 查询
     original_query: str
@@ -472,7 +509,13 @@ class AgentState(TypedDict):
     context: ConversationContext       # 当前轮上下文
     recent_entities: list[dict]        # 持久化: 最近讨论的实体
     previous_intent: str               # 持久化: 上一轮意图
+
+    # 图片识别
+    image_data: str | None             # base64 原图，识别后清空
+    image_recognition_result: dict
 ```
+
+`expert_results` 的 reducer 只会追加，不能靠写入空列表覆盖历史。Merge、Evaluator 和 Web fallback 必须同时匹配 `execution_id + attempt`；仅按 `attempt` 过滤会让 MemorySaver 中上一次请求的 attempt 0 污染新请求。
 
 #### ConversationContext (TypedDict — v1.1 新增, v2.2 扩展)
 
@@ -498,7 +541,7 @@ class ExecutionPlan(BaseModel):
     alias_resolved: bool   # 别名是否已解析
     rewrite_strategy: str  # direct | rewrite | hyde | decompose
     experts: list[str]     # ["metadata_reasoner"] | ["similar_expert"] | 两者
-    parallel: bool         # Send API 并行
+    parallel: bool         # 严格执行协议：多 Expert 时决定 Send 并行或串行循环
     query_category: str    # metadata | semantic | mixed (检索路径)
     need_web: bool         # 低置信度/梗实体时强制触发 Web Fallback
     reasoning: str
@@ -508,6 +551,9 @@ class ExecutionPlan(BaseModel):
 
 ```python
 class ExpertResult(BaseModel):
+    expert: str            # metadata_reasoner | similar_expert
+    execution_id: str      # 当前请求标识
+    attempt: int           # 当前质量尝试
     answer: str            # 分析结论
     confidence: float      # 0.0-1.0
     evidence: list[str]    # 依据来源
@@ -517,12 +563,14 @@ class ExpertResult(BaseModel):
 
 | 路由点 | 函数 | 逻辑 |
 |--------|------|------|
-| START 后 | `_route_from_start` | 含别名特征 → alias_resolve，否则跳过直达 history_extractor |
+| START 后 | `_route_from_start` | 有图 → image_recognition；否则按需进入 alias_resolve / alias_skip |
 | Planner 后 | `_route_after_planner` | chat → answer，其余 → query_processing |
-| 检索后 | `_route_after_retrieval` | simple_fact → simple_fact_answer；0 Expert → answer_planner；1 Expert → 直接边；2 Experts → Send 并行 |
-| Merge 后 | `_route_after_merge` | need_web 或 无结果 或 低置信度 → web_fallback，否则 answer_planner |
+| 检索后 | `_route_after_retrieval` | simple_fact → 快速回答；0 Expert → answer_planner；1 Expert → 直接执行；多 Expert 按 `parallel` 进入多个 Send 或 serial_expert |
+| 串行 Expert 后 | `_route_after_serial_expert` | 未完成计划列表 → 继续 serial_expert；全部完成 → merge |
+| Merge 后 | `_route_after_merge` | 无条件进入 evaluator，评估 Expert 证据而非最终文案 |
+| Evaluator 后 | `_route_after_evaluator` | pass → Web 判断/回答；replan 且有预算 → replanner；fallback/耗尽 → Web 或不确定性回答 |
 
-**关键结论**: Graph 通过 ExecutionPlan 驱动全部路由，simple_fact 走快速通道跳过 Expert+Merge+Answer 三步，alias_resolve 和 web_fallback 按需触发。
+**关键结论**: `parallel` 已从提示字段升级为严格执行协议。`chat` 与 `simple_fact` 保持快速通道，不进入质量闭环；普通 Expert 路径最多 Replan 一次。
 
 ---
 
@@ -846,13 +894,13 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 
 **收益**: 结构化查询精度大幅提升，metadata 查询延迟 ~10ms (vs Pinecone ~500ms)。
 
-### 10.3 并行 Expert (Parallel Experts via Send API)
+### 10.3 严格 Expert 调度与质量闭环
 
 **问题**: 单 Agent 处理不同类型信息，prompt 过长，职责混杂。
 
-**方案**: metadata_reasoner (元数据) + similar_expert (相似推荐) 并行执行，独立置信度，Merge 融合。
+**方案**: Planner 同时输出 `experts` 与 `parallel`。多 Expert 且 `parallel=true` 时使用多个 Send；`parallel=false` 时按计划顺序执行，后一个 Expert 可读取前一个 Expert 的当前轮结论。Merge 后由 Evaluator 检查证据，失败最多 Replan 一次。
 
-**收益**: 职责清晰、可独立优化、置信度分级触发 Web Fallback。
+**收益**: 拓扑与计划一致；冲突核验有真正的串行上下文；失败证据在生成回答前被拦截，而不是只靠低置信度直接联网。
 
 ### 10.4 Answer Planner (零 LLM 随机结构)
 
@@ -1000,8 +1048,15 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | v2.3 | _extract_recent_from_merged 过滤 | 严格过滤字段标注（**评分**/**声优**等），8 个测试用例验证 |
 | v2.3 | 消除 query_processing 重复判断 | `_retrieve_semantic` 的 already_optimized 改为布尔判断，direct 也跳过 classify |
 | v2.3 | web_fallback 异常不污染 | 异常时只记日志，不把错误信息追加到 merged_results |
+| v2.4 | 严格 Parallel 路由 | `parallel` 从提示字段升级为严格执行协议：多 Expert 且 `parallel=true` 时生成多个 `Send`；`parallel=false` 时进入 `serial_expert` 循环，后项可读取前项结论 |
+| v2.4 | Evaluator-Replan 质量闭环 | Merge 后由 Evaluator 评估证据质量（确定性规则优先，冲突时调用小模型），最多一次 Replan 后按需联网或降级回答 |
+| v2.4 | 图片识别节点 | `image_recognition` 节点（trace.moe 优先 + VLM fallback）位于 START 后，识别结果合成查询写回 messages，复用 `entity_*` 字段，下游零改动 |
+| v2.4 | attempt 隔离 | `expert_results` 按 `execution_id + attempt` 过滤，避免 MemorySaver 中不同请求的历史结果污染当前轮 Merge/Evaluator |
+| v2.4 | 串行 Expert 执行 | `serial_expert` 循环按 `plan.experts` 顺序执行，`current_expert_index` 驱动游标，完成后进入 Merge |
 
-### 12.2 短期 (v2.4)
+> v2.4 已交付，当前版本 v2.4。
+
+### 12.2 短期 (v2.5)
 
 | 优先级 | 优化项 | 预期收益 | 工作量 | 状态 |
 |:---:|------|------|:---:|:---:|
@@ -1010,16 +1065,16 @@ LANGFUSE_PUBLIC_KEY = os.getenv("LANGFUSE_PUBLIC_KEY")
 | P1 | 增量索引更新 | 减少全量重建 | 中 | 待实施 |
 | P2 | 合并 _might_be_alias 和 _should_skip_alias | 规则统一，减少维护成本 | 低 | 待实施 |
 
-### 12.3 中期 (v1.2)
+### 12.3 中期 (v2.6)
 
 - 知识库扩展 (更多番剧、多平台评论)
-- 图片识别 (trace.moe API)
 - 个性化推荐 (用户偏好学习)
 - 自动化 RAGAS 评测
+- 图片识别扩展到多候选交互确认和更完整的视觉内容理解
 
-### 12.4 长期 (v2.0)
+### 12.4 长期 (v3.0)
 
-- 多模态支持 (图片/视频)
+- 视频片段识别与跨模态检索
 - 自动化 RAGAS 评测
 - 知识图谱升级
 - 多语言支持

@@ -3,8 +3,8 @@
 流程:
   START → [alias_resolve]? → history_extractor → context_builder → planner
     → query_processing → knowledge_retrieval
-    → [metadata_reasoner || similar_expert] (parallel via Send)
-    → merge → [web_fallback]? → answer_planner → answer → END
+    → [metadata_reasoner || similar_expert] (parallel via Send or serial)
+    → merge → evaluator → [replanner → query_processing]? → answer → END
     → [simple_fact_answer] → END (快速通道)
 
 节点分类:
@@ -42,6 +42,9 @@ from agents.simple_fact_answer import simple_fact_answer_node
 from agents.answer import answer_node
 from agents.web_fallback import web_fallback_node, should_trigger_web
 from agents.merge import merge_expert_results
+from agents.evaluator import evaluator_node
+from agents.replanner import replanner_node
+from agents.image_recognition import image_recognition_node
 import config
 
 logger = logging.getLogger(__name__)
@@ -233,6 +236,12 @@ async def _query_processing_node(state: AgentState) -> dict:
         fn = tool_registry.get_callable("multi_query_rewrite")
         queries = fn(query) if fn else [query]
 
+    additional = state.get("replan_feedback", {}).get("additional_queries", [])
+    queries = list(dict.fromkeys([
+        q for q in [*queries, *additional]
+        if isinstance(q, str) and q.strip()
+    ]))
+
     return {
         "shared_context": queries,
         "optimized_queries": queries,
@@ -349,9 +358,13 @@ async def _knowledge_retrieval_node(state: AgentState) -> dict:
         shared_context = _retrieve_semantic(search_queries, state)
 
     logger.info(f"知识检索完成: 返回 metadata {len(metadata_results[:30])} 条, shared_context {len(shared_context[:10])} 条 (耗时 {time.time()-t0:.1f}s)")
+    experts = list(dict.fromkeys(plan.get("experts", [])))
+    mode = "single" if len(experts) <= 1 else ("parallel" if plan.get("parallel") else "serial")
     return {
         "metadata": metadata_results[:30],
         "shared_context": shared_context[:10],
+        "execution_mode": mode,
+        "current_expert_index": 0,
     }
 
 
@@ -393,10 +406,12 @@ def _extract_metadata_filters(query: str, plan: dict) -> dict | None:
 # ── 路由函数 ──────────────────────────────────────────────────────
 
 def _route_from_start(state: AgentState) -> str:
-    """START → alias_resolve (按需) 或直接跳过到 history_extractor"""
+    """START -> image_recognition (有图) 或 alias_resolve/alias_skip (无图)"""
+    if config.ENABLE_IMAGE_RECOGNITION and state.get("image_data"):
+        return "image_recognition"
     query = _get_query(state)
     if _should_skip_alias(query):
-        logger.info(f"  [按需跳过] alias_resolve — 查询无需别名解析")
+        logger.info(f"  [按需跳过] alias_resolve - 查询无需别名解析")
         return "alias_skip"
     return "alias_resolve"
 
@@ -417,8 +432,26 @@ def _route_after_planner(state: AgentState) -> str:
     return "query_processing"
 
 
-def _route_after_retrieval(state: AgentState) -> list[Send | str]:
-    """知识检索完后 → 并行分配到 Experts
+def _expert_input(state: AgentState, include_results: bool = False) -> dict:
+    """Build an explicit Expert input for Send or serial execution."""
+    payload = {
+        "metadata": state.get("metadata", []),
+        "shared_context": state.get("shared_context", []),
+        "resolved_query": state.get("resolved_query", ""),
+        "original_query": state.get("original_query", ""),
+        "plan": state.get("plan", {}),
+        "search_keywords": state.get("search_keywords", []),
+        "context": state.get("context", {}),
+        "execution_id": state.get("execution_id", ""),
+        "attempt": state.get("attempt", 0),
+    }
+    if include_results:
+        payload["expert_results"] = state.get("expert_results", [])
+    return payload
+
+
+def _route_after_retrieval(state: AgentState) -> list[Send] | str:
+    """Route Experts according to the strict plan.parallel contract.
 
     ⚠️ 重要: Send 的 arg 会作为目标节点的输入 state，不会自动携带父节点的完整 state。
     必须显式传递 Expert 需要的所有 state 字段，否则 Expert 会收到空 state。
@@ -433,39 +466,59 @@ def _route_after_retrieval(state: AgentState) -> list[Send | str]:
     if not experts:
         return "answer_planner"
 
-    # 构建传递给 Expert 的 state（必须包含 Expert 需要的所有字段）
-    expert_input = {
-        "metadata": state.get("metadata", []),
-        "shared_context": state.get("shared_context", []),
-        "resolved_query": state.get("resolved_query", ""),
-        "original_query": state.get("original_query", ""),
-        "plan": state.get("plan", {}),
-        "search_keywords": state.get("search_keywords", []),
-        "context": state.get("context", {}),
-    }
-
-    # 使用 Send API 并行发送，显式传递完整输入
-    sends = []
-    for expert in experts[:2]:  # 最多 2 个 Expert
-        sends.append(Send(expert, expert_input))
-
-    if not sends:
-        return "answer_planner"  # 无 Expert → 先规划回答结构，再生成回答
-
-    # 单个 Expert 直接返回节点名，走正常边（state 自动继承）
-    if len(sends) == 1:
+    experts = list(dict.fromkeys(experts[:2]))
+    if len(experts) == 1:
         return experts[0]
 
-    return sends
+    if not plan.get("parallel", False):
+        return "serial_expert"
+
+    expert_input = _expert_input(state)
+    return [Send(expert, expert_input) for expert in experts]
 
 
-def _route_after_expert(state: AgentState) -> str:
-    """Expert 处理完 → merge"""
+async def _serial_expert_node(state: AgentState) -> dict:
+    """Run one planned Expert and expose its result to the next Expert."""
+    experts = list(dict.fromkeys(state.get("plan", {}).get("experts", [])))[:2]
+    index = state.get("current_expert_index", 0)
+    if index >= len(experts):
+        return {}
+    expert = experts[index]
+    expert_state = _expert_input(state, include_results=True)
+    if expert == "metadata_reasoner":
+        result = await metadata_reasoner_node(expert_state)
+    elif expert == "similar_expert":
+        result = await similar_expert_node(expert_state)
+    else:
+        logger.warning("Ignoring unknown Expert in serial plan: %s", expert)
+        result = {"expert_results": []}
+    return {**result, "current_expert_index": index + 1}
+
+
+def _route_after_serial_expert(state: AgentState) -> str:
+    experts = list(dict.fromkeys(state.get("plan", {}).get("experts", [])))[:2]
+    if state.get("current_expert_index", 0) < len(experts):
+        return "serial_expert"
     return "merge"
 
 
 def _route_after_merge(state: AgentState) -> str:
-    """Merge 后 → web_fallback 或 answer_planner"""
+    """Merge is always followed by evidence evaluation."""
+    return "evaluator"
+
+
+def _route_after_evaluator(state: AgentState) -> str:
+    evaluation = state.get("evaluation", {})
+    verdict = evaluation.get("verdict", "replan")
+    if verdict == "pass":
+        if should_trigger_web(state):
+            return "web_fallback"
+        return "answer_planner"
+    if verdict == "fallback":
+        return "web_fallback"
+    if state.get("attempt", 0) < state.get("max_replans", 1):
+        return "replanner"
+    logger.info("replan_exhausted attempt=%s issues=%s", state.get("attempt", 0), evaluation.get("issues", []))
     if should_trigger_web(state):
         return "web_fallback"
     return "answer_planner"
@@ -523,6 +576,7 @@ def build_graph():
     # 注册节点
     g.add_node("alias_resolve", _alias_resolve_node)
     g.add_node("alias_skip", _alias_skip_node)
+    g.add_node("image_recognition", image_recognition_node)
     g.add_node("history_extractor", history_extractor_node)
     g.add_node("context_builder", context_builder_node)
     g.add_node("planner", planner_node)
@@ -530,19 +584,24 @@ def build_graph():
     g.add_node("knowledge_retrieval", _knowledge_retrieval_node)
     g.add_node("metadata_reasoner", metadata_reasoner_node)
     g.add_node("similar_expert", similar_expert_node)
+    g.add_node("serial_expert", _serial_expert_node)
     g.add_node("merge", merge_expert_results)
+    g.add_node("evaluator", evaluator_node)
+    g.add_node("replanner", replanner_node)
     g.add_node("simple_fact_answer", simple_fact_answer_node)
     g.add_node("web_fallback", web_fallback_node)
     g.add_node("answer_planner", _answer_planner_node)
     g.add_node("answer", answer_node)
 
-    # ── START 条件边: alias_resolve 按需启用 ──
+    # ── START 条件边: image_recognition / alias_resolve / alias_skip ──
     g.add_conditional_edges(START, _route_from_start, {
+        "image_recognition": "image_recognition",
         "alias_resolve": "alias_resolve",
         "alias_skip": "alias_skip",
     })
 
-    # alias → history_extractor（两条路径汇合）
+    # image_recognition / alias -> history_extractor（三条路径汇合）
+    g.add_edge("image_recognition", "history_extractor")
     g.add_edge("alias_resolve", "history_extractor")
     g.add_edge("alias_skip", "history_extractor")
 
@@ -561,6 +620,7 @@ def build_graph():
     g.add_conditional_edges("knowledge_retrieval", _route_after_retrieval, {
         "metadata_reasoner": "metadata_reasoner",
         "similar_expert": "similar_expert",
+        "serial_expert": "serial_expert",
         "answer_planner": "answer_planner",
         "simple_fact_answer": "simple_fact_answer",
     })
@@ -569,11 +629,22 @@ def build_graph():
     g.add_edge("metadata_reasoner", "merge")
     g.add_edge("similar_expert", "merge")
 
-    # merge → web_fallback 或 answer_planner
+    # Serial controller loops until every planned Expert has completed.
+    g.add_conditional_edges("serial_expert", _route_after_serial_expert, {
+        "serial_expert": "serial_expert",
+        "merge": "merge",
+    })
+
+    # merge → evaluator → replan / web fallback / answer
     g.add_conditional_edges("merge", _route_after_merge, {
+        "evaluator": "evaluator",
+    })
+    g.add_conditional_edges("evaluator", _route_after_evaluator, {
+        "replanner": "replanner",
         "web_fallback": "web_fallback",
         "answer_planner": "answer_planner",
     })
+    g.add_edge("replanner", "query_processing")
 
     g.add_edge("web_fallback", "answer_planner")
     g.add_edge("answer_planner", "answer")

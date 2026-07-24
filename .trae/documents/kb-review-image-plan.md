@@ -1,6 +1,8 @@
 # 知识库扩展 + 评论集成 + 识图功能 实施计划
 
-> **状态**: 📋 未实施 — 知识库扩展（同人/轻小说）、评论集成、识图功能均未实施，后续版本考虑。
+> **状态**: ✅ 部分已实施 — 动漫识图已完成（trace.moe 优先 + VLM fallback）；本文规划的 2010+ 专项扩库与独立评论采集流程未按原方案实施。当前知识库已从 SQLite Comments 表生成评论 chunks。
+
+> **实施说明（2026-07-24）**: 识图没有采用旧架构中的通用 ToolNode 调用方式，而是在 LangGraph `START` 后新增专用 `image_recognition` 节点。`tools/image_search.py` 封装 trace.moe，`agents/image_recognition.py` 负责置信度判断、VLM 补充和标题映射；识别结果合成为自然语言查询写回 `messages`，并填充 `entity_*` 字段后进入现有检索链路。本文其余部分保留为历史设计记录。
 
 ## 总览
 

@@ -3,6 +3,8 @@
 通过 trace.moe API 识别动漫截图，返回番剧名/集数/时间戳/预览；
 低置信度或 API 异常时降级到 VLM（多模态大模型）描述图片内容。
 """
+import base64
+import binascii
 import hashlib
 import logging
 import functools
@@ -202,13 +204,26 @@ async def describe_image_with_vlm(image_b64: str) -> str:
 
 async def _call_trace_moe(image_b64: str) -> dict | None:
     """调用 trace.moe API，带超时 + 1 次重试。返回最佳匹配结果或 None。"""
-    payload = {"image": image_b64}
+    try:
+        image_bytes = base64.b64decode(image_b64, validate=True)
+    except (ValueError, binascii.Error):
+        logging.warning("  [识图] 图片 base64 数据无效")
+        return None
+    if not image_bytes:
+        logging.warning("  [识图] 图片数据为空")
+        return None
+
+    files = {"image": ("frame.jpg", image_bytes, "image/jpeg")}
     max_attempts = 2  # 初始 + 1 次重试
 
     for attempt in range(1, max_attempts + 1):
         try:
             async with httpx.AsyncClient(timeout=config.TRACE_MOE_TIMEOUT) as client:
-                resp = await client.post(config.TRACE_MOE_API_URL, json=payload)
+                resp = await client.post(
+                    config.TRACE_MOE_API_URL,
+                    params={"anilistInfo": "true"},
+                    files=files,
+                )
                 resp.raise_for_status()
                 data = resp.json()
 
@@ -267,20 +282,29 @@ async def search_anime_by_image(image_b64: str) -> dict:
     # 3. 解析结果
     if best and best.get("similarity", 0) >= config.IMAGE_CONFIDENCE_THRESHOLD:
         # 高置信度命中
-        title_obj = best.get("anilist", {}).get("title", {})
+        anilist = best.get("anilist")
+        anilist_info = anilist if isinstance(anilist, dict) else {}
+        title_obj = anilist_info.get("title", {})
         title_raw = (
             title_obj.get("english")
             or title_obj.get("romaji")
             or title_obj.get("native")
             or ""
         )
-        anilist_id = best.get("anilist_id", 0) or best.get("anilist", {}).get("id", 0)
+        anilist_id = (
+            best.get("anilist_id", 0)
+            or anilist_info.get("id", 0)
+            or (anilist if isinstance(anilist, int) else 0)
+        )
         episode = best.get("episode")
         from_time = best.get("from", 0)
         similarity = best.get("similarity", 0)
         preview_url = best.get("video", "")
 
-        title_cn = normalize_to_chinese_title(title_raw, anilist_id)
+        title_cn = title_obj.get("chinese") or normalize_to_chinese_title(
+            title_raw,
+            anilist_id,
+        )
         result = {
             "matched": True,
             "anilist_id": anilist_id,

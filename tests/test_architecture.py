@@ -1,7 +1,8 @@
 """Focused regressions for shared message parsing and tool registration."""
 
 import asyncio
-from unittest.mock import AsyncMock, patch
+import base64
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -90,6 +91,90 @@ def test_trace_moe_result_is_normalized_for_retrieval():
         "preview_url": "https://example.invalid/preview.mp4",
         "source": "trace_moe",
     }
+
+
+def test_trace_moe_uploads_decoded_image_as_multipart():
+    from tools import image_search
+
+    response = MagicMock()
+    response.raise_for_status.return_value = None
+    response.json.return_value = {
+        "result": [{"similarity": 0.91, "episode": 2}]
+    }
+    client = AsyncMock()
+    client.post.return_value = response
+    context = AsyncMock()
+    context.__aenter__.return_value = client
+
+    image = base64.b64encode(b"jpeg-bytes").decode("ascii")
+    with patch.object(image_search.httpx, "AsyncClient", return_value=context):
+        result = asyncio.run(image_search._call_trace_moe(image))
+
+    assert result == {"similarity": 0.91, "episode": 2}
+    kwargs = client.post.await_args.kwargs
+    assert "json" not in kwargs
+    assert kwargs["params"] == {"anilistInfo": "true"}
+    assert kwargs["files"]["image"] == (
+        "frame.jpg",
+        b"jpeg-bytes",
+        "image/jpeg",
+    )
+
+
+def test_trace_moe_rejects_invalid_base64_without_http_request():
+    from tools import image_search
+
+    client = AsyncMock()
+    with patch.object(image_search.httpx, "AsyncClient", return_value=client):
+        result = asyncio.run(image_search._call_trace_moe("not-base64!"))
+
+    assert result is None
+    client.post.assert_not_awaited()
+
+
+def test_trace_moe_integer_anilist_id_does_not_crash_normalization():
+    from tools import image_search
+
+    trace_result = {
+        "anilist": 21034,
+        "episode": 1,
+        "from": 272.1,
+        "similarity": 0.99,
+    }
+    image_search._SEARCH_CACHE.clear()
+    with patch.object(image_search, "_call_trace_moe", AsyncMock(return_value=trace_result)):
+        result = asyncio.run(image_search.search_anime_by_image("integer-anilist"))
+
+    assert result["matched"] is True
+    assert result["anilist_id"] == 21034
+    assert result["title_raw"] == ""
+
+
+def test_trace_moe_prefers_anilist_chinese_title_without_llm_translation():
+    from tools import image_search
+
+    trace_result = {
+        "anilist": {
+            "id": 21034,
+            "title": {
+                "chinese": "请问您今天要来点兔子吗？？",
+                "english": "Is the Order a Rabbit?? Season 2",
+            },
+        },
+        "episode": 1,
+        "from": 272.1,
+        "similarity": 0.99,
+    }
+    image_search._SEARCH_CACHE.clear()
+    with (
+        patch.object(image_search, "_call_trace_moe", AsyncMock(return_value=trace_result)),
+        patch.object(image_search, "normalize_to_chinese_title") as translate,
+    ):
+        result = asyncio.run(image_search.search_anime_by_image("chinese-title"))
+
+    assert result["title_raw"] == "Is the Order a Rabbit?? Season 2"
+    assert result["title_cn"] == "请问您今天要来点兔子吗？？"
+    translate.assert_not_called()
 
 
 def test_image_node_injects_trace_moe_title_and_discards_raw_image():

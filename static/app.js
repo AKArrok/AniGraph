@@ -1,23 +1,18 @@
 /* AniGraph Trace Panel — Chat + Flowchart */
 
-// ════════════════════════════════════════════════════════
-// State
-// ════════════════════════════════════════════════════════
-
 const state = {
   running: false,
   threadId: "default",
-  flowCards: [],          // [{name, display, start, end, llmCalls, error, stateDiff, el}]
-  currentBubble: null,    // 当前正在流式填充的 AI 气泡 DOM
-  currentBubbleContent: "", // 累积的 AI 回答文本
-  selectedImage: null,    // 当前选中的图片 File 对象
+  selectedImage: null,
+  selectedImageFile: null,
+  abortController: null,
+  panelCollapsed: false,
+  flowCards: [],
+  currentBubble: null,
+  currentBubbleContent: "",
 };
 
 const $ = (id) => document.getElementById(id);
-
-// ════════════════════════════════════════════════════════
-// DOM refs
-// ════════════════════════════════════════════════════════
 
 const queryInput = $("query-input");
 const sendBtn = $("send-btn");
@@ -31,27 +26,55 @@ const detailBody = $("detail-body");
 const threadIdSpan = $("thread-id");
 const clearBtn = $("clear-btn");
 const modelInfo = $("model-info");
-const uploadBtn = $("upload-btn");
-const imageInput = $("image-input");
-const imagePreview = $("image-preview");
+const fileInput = $("file-input");
+const imageBtn = $("image-btn");
+const imagePreviewRow = $("image-preview-row");
 const previewImg = $("preview-img");
-const previewDismiss = $("preview-dismiss");
+const removeImgBtn = $("remove-img-btn");
+const stopBtn = $("stop-btn");
+const errorBanner = $("error-banner");
+const errorBannerText = $("error-banner-text");
+const errorDismissBtn = $("error-dismiss-btn");
+const togglePanelBtn = $("toggle-panel-btn");
+const rightPanel = $("right-panel");
+const initialEmptyState = chatEmpty.cloneNode(true);
 
-// ════════════════════════════════════════════════════════
-// Chat
-// ════════════════════════════════════════════════════════
+function showError(message) {
+  errorBannerText.textContent = message || "发生未知错误";
+  errorBanner.classList.add("show");
+}
+
+function hideError() {
+  errorBanner.classList.remove("show");
+  errorBannerText.textContent = "";
+}
 
 const Chat = {
-  addUserMsg(text) {
-    chatEmpty.style.display = "none";
+  addUserMsg(text, image) {
+    const currentEmpty = chatMessages.querySelector("#chat-empty");
+    if (currentEmpty) currentEmpty.style.display = "none";
     const el = document.createElement("div");
     el.className = "chat-msg user";
+    const bubbleContent = document.createElement("div");
+    bubbleContent.className = "chat-bubble";
+    if (text) {
+      const textNode = document.createElement("div");
+      textNode.textContent = text;
+      bubbleContent.appendChild(textNode);
+    }
+    if (image) {
+      const imageNode = document.createElement("img");
+      imageNode.src = image;
+      imageNode.alt = "用户上传的图片";
+      bubbleContent.appendChild(imageNode);
+    }
+
     el.innerHTML = `
       <div class="chat-avatar">U</div>
       <div>
-        <div class="chat-bubble">${escapeHtml(text)}</div>
         <div class="chat-meta">${now()}</div>
       </div>`;
+    el.children[1].insertBefore(bubbleContent, el.children[1].firstChild);
     chatMessages.appendChild(el);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   },
@@ -75,9 +98,14 @@ const Chat = {
   appendText(text) {
     if (!state.currentBubble) return;
     state.currentBubbleContent = text;
-    state.currentBubble.textContent = text;
-    state.currentBubble.classList.remove("streaming");
+    state.currentBubble.innerHTML = renderMarkdown(state.currentBubbleContent);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+  },
+
+  finalize() {
+    if (state.currentBubble) state.currentBubble.classList.remove("streaming");
+    state.currentBubble = null;
+    state.currentBubbleContent = "";
   },
 
   reset() {
@@ -85,10 +113,6 @@ const Chat = {
     state.currentBubbleContent = "";
   },
 };
-
-// ════════════════════════════════════════════════════════
-// FlowChart
-// ════════════════════════════════════════════════════════
 
 const FlowChart = {
   reset() {
@@ -98,7 +122,8 @@ const FlowChart = {
   },
 
   addNode(evt) {
-    flowchartEmpty.style.display = "none";
+    const empty = flowchart.querySelector("#flowchart-empty");
+    if (empty) empty.style.display = "none";
 
     const card = {
       name: evt.node.name,
@@ -123,16 +148,22 @@ const FlowChart = {
           <span class="flow-duration"></span>
         </div>
       </div>`;
-    // 第一个节点不需要箭头
     if (idx === 1) el.querySelector(".flow-arrow").remove();
 
     card.el = el;
     state.flowCards.push(card);
     flowchart.appendChild(el);
 
-    // 点击事件
-    el.querySelector(".flow-card-body").addEventListener("click", () => {
-      showNodeDetail(state.flowCards.length - 1);
+    const cardIndex = state.flowCards.length - 1;
+    const cardBody = el.querySelector(".flow-card-body");
+    cardBody.tabIndex = 0;
+    cardBody.setAttribute("role", "button");
+    cardBody.addEventListener("click", () => showNodeDetail(cardIndex));
+    cardBody.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        showNodeDetail(cardIndex);
+      }
     });
 
     flowchart.scrollTop = flowchart.scrollHeight;
@@ -140,7 +171,6 @@ const FlowChart = {
 
   updateNode(evt) {
     const name = evt.node.name;
-    // 从后往前找匹配的 card
     for (let i = state.flowCards.length - 1; i >= 0; i--) {
       if (state.flowCards[i].name === name && state.flowCards[i].end === 0) {
         const card = state.flowCards[i];
@@ -152,13 +182,11 @@ const FlowChart = {
         const el = card.el;
         const dur = (card.end - card.start).toFixed(1);
 
-        // 更新状态样式
         el.classList.remove("running");
         if (card.error) {
           el.classList.add("error");
           el.querySelector(".flow-status").textContent = "✕ 出错";
           el.querySelector(".flow-duration").textContent = "";
-          // 显示错误信息
           const body = el.querySelector(".flow-card-body");
           const errDiv = document.createElement("div");
           errDiv.className = "flow-error-msg";
@@ -170,7 +198,6 @@ const FlowChart = {
           el.querySelector(".flow-duration").textContent = dur + "s";
         }
 
-        // LLM badge
         if (card.llmCalls.length > 0) {
           const body = el.querySelector(".flow-card-body");
           card.llmCalls.forEach(llm => {
@@ -185,10 +212,6 @@ const FlowChart = {
     }
   },
 };
-
-// ════════════════════════════════════════════════════════
-// Node Detail Viewer
-// ════════════════════════════════════════════════════════
 
 function showNodeDetail(index) {
   const card = state.flowCards[index];
@@ -220,7 +243,7 @@ function showNodeDetail(index) {
           <div class="llm-header">
             <span class="llm-model">${escapeHtml(llm.model)}</span>
           </div>
-          <div class="llm-tokens">${llm.input_tokens} in &middot; ${llm.output_tokens} out</div>
+          <div class="llm-tokens">${llm.input_tokens} in · ${llm.output_tokens} out</div>
         </div>`;
     });
   }
@@ -228,241 +251,249 @@ function showNodeDetail(index) {
   detailBody.innerHTML = html;
 }
 
-// ════════════════════════════════════════════════════════
-// SSE + Event Handlers
-// ════════════════════════════════════════════════════════
-
-function sendQuery() {
-  const q = queryInput.value.trim();
-  if ((!q && !state.selectedImage) || state.running) return;
-
-  state.running = true;
-  sendBtn.disabled = true;
-
-  // 重置流程图
-  FlowChart.reset();
-  Chat.reset();
-
-  // 添加用户消息
-  const hasImage = !!state.selectedImage;
-  Chat.addUserMsg(hasImage ? (q || "[图片]") : q);
-  queryInput.value = "";
-  Chat.createAssistantBubble();
-
-  // 图片走 POST /chat/image (fetch + ReadableStream)，纯文本保持 EventSource GET 不变
-  if (hasImage) {
-    sendImageQuery(q);
-    return;
-  }
-
-  const url = `/chat/stream?query=${encodeURIComponent(q)}&thread_id=${encodeURIComponent(state.threadId)}`;
-  const es = new EventSource(url);
-
-  es.addEventListener("node_start", e => {
-    FlowChart.addNode(JSON.parse(e.data));
-  });
-  es.addEventListener("node_end", e => {
-    FlowChart.updateNode(JSON.parse(e.data));
-  });
-  es.addEventListener("answer_chunk", e => {
-    const evt = JSON.parse(e.data);
-    if (evt.answer_text) Chat.appendText(evt.answer_text);
-  });
-  es.addEventListener("done", e => {
-    state.running = false;
-    sendBtn.disabled = false;
-    es.close();
-  });
-  es.addEventListener("error", e => {
-    try {
-      const err = JSON.parse(e.data || "{}");
-      if (state.currentBubble) {
-        state.currentBubble.textContent = "错误: " + (err.message || "未知错误");
-        state.currentBubble.classList.remove("streaming");
-        state.currentBubble.style.color = "var(--red)";
-      }
-    } catch {
-      if (state.currentBubble) {
-        state.currentBubble.textContent = "连接异常，请重试";
-        state.currentBubble.classList.remove("streaming");
-      }
-    }
-    state.running = false;
-    sendBtn.disabled = false;
-    es.close();
-  });
-}
-
-// ════════════════════════════════════════════════════════
-// Image Upload (POST /chat/image + ReadableStream SSE)
-// ════════════════════════════════════════════════════════
-
-function setSelectedImage(file) {
-  if (!file || !file.type.startsWith("image/")) return;
-  state.selectedImage = file;
-  previewImg.src = URL.createObjectURL(file);
-  imagePreview.style.display = "flex";
+function setRunning(running) {
+  state.running = running;
+  sendBtn.disabled = running;
+  queryInput.disabled = running;
+  fileInput.disabled = running;
+  imageBtn.classList.toggle("disabled", running);
+  stopBtn.classList.toggle("show", running);
 }
 
 function clearSelectedImage() {
-  if (!state.selectedImage) return;
   state.selectedImage = null;
-  imageInput.value = "";
-  if (previewImg.src) URL.revokeObjectURL(previewImg.src);
-  previewImg.src = "";
-  imagePreview.style.display = "none";
+  state.selectedImageFile = null;
+  fileInput.value = "";
+  previewImg.removeAttribute("src");
+  imagePreviewRow.style.display = "none";
 }
 
-function finishStream() {
-  state.running = false;
-  sendBtn.disabled = false;
-}
-
-function showStreamError(err) {
-  if (state.currentBubble) {
-    state.currentBubble.textContent = "错误: " + (err?.message || "未知错误");
-    state.currentBubble.classList.remove("streaming");
-    state.currentBubble.style.color = "var(--red)";
-  }
-  finishStream();
-}
-
-// 复用与 EventSource 一致的事件处理；done/error 返回 true 表示应停止读取
-function dispatchSseEvent(event, data) {
-  try {
-    if (event === "node_start") {
-      FlowChart.addNode(JSON.parse(data));
-    } else if (event === "node_end") {
-      FlowChart.updateNode(JSON.parse(data));
-    } else if (event === "answer_chunk") {
-      const evt = JSON.parse(data);
-      if (evt.answer_text) Chat.appendText(evt.answer_text);
-    } else if (event === "done") {
-      finishStream();
-      return true;
-    } else if (event === "error") {
-      showStreamError(data ? JSON.parse(data) : {});
-      return true;
-    }
-  } catch {
-    showStreamError({ message: "响应解析失败" });
-    return true;
-  }
-  return false;
-}
-
-function parseSseBlock(block) {
-  const lines = block.split("\n");
-  let event = "message";
-  let data = "";
-  for (const line of lines) {
-    if (line.startsWith("event:")) {
-      event = line.slice(6).trim();
-    } else if (line.startsWith("data:")) {
-      data += line.slice(5).trim();
+function dispatchSseEvent(eventName, data) {
+  let evt = {};
+  if (data && data.trim()) {
+    try {
+      evt = JSON.parse(data);
+    } catch {
+      showError("服务器返回了无法解析的流数据");
+      return;
     }
   }
-  return dispatchSseEvent(event, data);
+
+  if (eventName === "node_start") FlowChart.addNode(evt);
+  else if (eventName === "node_end") FlowChart.updateNode(evt);
+  else if (eventName === "answer_chunk" && evt.answer_text) Chat.appendText(evt.answer_text);
+  else if (eventName === "error") showError(evt.message || "服务执行失败");
+  else if (eventName === "done") Chat.finalize();
 }
 
-async function sendImageQuery(q) {
-  const fd = new FormData();
-  fd.append("file", state.selectedImage);
-  fd.append("query", q);
-  fd.append("thread_id", state.threadId);
+function consumeSseBlock(block) {
+  let eventName = "message";
+  const dataLines = [];
+  block.split("\n").forEach(line => {
+    if (line.startsWith("event:")) eventName = line.slice(6).trim();
+    else if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
+  });
+  dispatchSseEvent(eventName, dataLines.join("\n"));
+}
 
-  // 已写入 FormData，发送后立即清除预览
+async function sendQuery() {
+  const q = queryInput.value.trim();
+  const image = state.selectedImage;
+  const imageFile = state.selectedImageFile;
+  if ((!q && !image) || state.running) return;
+
+  hideError();
+  setRunning(true);
+  state.abortController = new AbortController();
+
+  FlowChart.reset();
+  Chat.reset();
+
+  Chat.addUserMsg(q || "识别这张动漫截图", image);
+  queryInput.value = "";
   clearSelectedImage();
+  Chat.createAssistantBubble();
 
-  let resp;
   try {
-    resp = await fetch("/chat/image", { method: "POST", body: fd });
-  } catch (err) {
-    showStreamError({ message: "网络错误: " + err.message });
-    return;
-  }
-
-  if (!resp.ok || !resp.body) {
-    let msg = "HTTP " + resp.status;
-    try { const e = await resp.json(); msg = e.message || msg; } catch {}
-    showStreamError({ message: msg });
-    return;
-  }
-
-  const reader = resp.body.getReader();
-  const decoder = new TextDecoder("utf-8");
-  let buffer = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-
-    let sep;
-    while ((sep = buffer.indexOf("\n\n")) !== -1) {
-      const block = buffer.slice(0, sep);
-      buffer = buffer.slice(sep + 2);
-      if (parseSseBlock(block)) {
-        await reader.cancel();
-        return;
-      }
+    let response;
+    if (imageFile) {
+      const form = new FormData();
+      form.append("file", imageFile);
+      form.append("query", q);
+      form.append("thread_id", state.threadId);
+      response = await fetch("/chat/image", {
+        method: "POST",
+        body: form,
+        signal: state.abortController.signal,
+      });
+    } else {
+      response = await fetch("/chat/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ query: q, thread_id: state.threadId }),
+        signal: state.abortController.signal,
+      });
     }
+
+    if (!response.ok) {
+      let detail = `${response.status} ${response.statusText}`;
+      try {
+        const body = await response.json();
+        detail = body.detail || body.message || detail;
+      } catch { /* keep status message */ }
+      throw new Error(detail);
+    }
+    if (!response.body) throw new Error("浏览器无法读取服务器流");
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      buffer += decoder.decode(value || new Uint8Array(), { stream: !done });
+      buffer = buffer.replace(/\r\n/g, "\n");
+      let boundary;
+      while ((boundary = buffer.indexOf("\n\n")) !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        if (block.trim()) consumeSseBlock(block);
+      }
+      if (done) break;
+    }
+    if (buffer.trim()) consumeSseBlock(buffer);
+  } catch (error) {
+    if (error.name !== "AbortError") showError(error.message || "连接异常，请重试");
+    Chat.finalize();
+  } finally {
+    state.abortController = null;
+    setRunning(false);
+    queryInput.focus();
   }
-  // 处理结尾残留
-  if (buffer.trim()) parseSseBlock(buffer);
 }
 
-// ════════════════════════════════════════════════════════
-// Init
-// ════════════════════════════════════════════════════════
+function abortQuery() {
+  if (state.abortController) state.abortController.abort();
+}
+
+function togglePanel() {
+  state.panelCollapsed = !state.panelCollapsed;
+  rightPanel.classList.toggle("collapsed", state.panelCollapsed);
+  togglePanelBtn.setAttribute("aria-expanded", String(!state.panelCollapsed));
+}
 
 async function init() {
+  if (window.innerWidth <= 768) togglePanel();
   try {
     const r = await fetch("/api/models");
     const d = await r.json();
-    modelInfo.textContent = `LLM: ${d.llm_model}  |  ${d.simple_llm_model}`;
+    const imageProvider = d.image_recognition?.enabled
+      ? `  |  识图: ${d.image_recognition.provider}`
+      : "";
+    modelInfo.textContent = `LLM: ${d.llm_model}${imageProvider}`;
   } catch { modelInfo.textContent = "LLM: -"; }
 
   sendBtn.addEventListener("click", sendQuery);
+  stopBtn.addEventListener("click", abortQuery);
+  errorDismissBtn.addEventListener("click", hideError);
+  togglePanelBtn.addEventListener("click", togglePanel);
   queryInput.addEventListener("keydown", e => {
     if (e.key === "Enter" && !state.running) sendQuery();
   });
-  uploadBtn.addEventListener("click", () => imageInput.click());
-  imageInput.addEventListener("change", e => {
-    const file = e.target.files && e.target.files[0];
-    if (file) setSelectedImage(file);
-  });
-  previewDismiss.addEventListener("click", clearSelectedImage);
-  queryInput.addEventListener("paste", e => {
-    const items = e.clipboardData && e.clipboardData.items;
-    if (!items) return;
-    for (const item of items) {
-      if (item.type && item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) {
-          setSelectedImage(file);
-          e.preventDefault();
-          break;
-        }
-      }
+
+  fileInput.addEventListener("change", () => {
+    const file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      clearSelectedImage();
+      showError("仅支持 JPEG、PNG、WebP 或 GIF 图片");
+      return;
     }
+    if (file.size > 10 * 1024 * 1024) {
+      clearSelectedImage();
+      showError("图片不能超过 10 MB");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      state.selectedImage = String(reader.result || "");
+      state.selectedImageFile = file;
+      previewImg.src = state.selectedImage;
+      previewImg.alt = file.name;
+      imagePreviewRow.style.display = "block";
+    };
+    reader.onerror = () => {
+      clearSelectedImage();
+      showError("读取图片失败");
+    };
+    reader.readAsDataURL(file);
   });
+  removeImgBtn.addEventListener("click", clearSelectedImage);
   clearBtn.addEventListener("click", () => {
     state.threadId = "clear_" + Date.now();
     threadIdSpan.textContent = state.threadId;
-    chatMessages.innerHTML = '<div id="chat-empty">输入问题开始对话</div>';
+    chatMessages.replaceChildren(initialEmptyState.cloneNode(true));
+    clearSelectedImage();
     FlowChart.reset();
   });
 }
-
-// ════════════════════════════════════════════════════════
-// Helpers
-// ════════════════════════════════════════════════════════
 
 function escapeHtml(s) {
   const d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
+}
+
+function renderMarkdown(text) {
+  const codeBlocks = [];
+  let html = escapeHtml(text).replace(/```(?:\w+)?\s*\n?([\s\S]*?)```/g, (_, code) => {
+    codeBlocks.push(`<pre><code>${code}</code></pre>`);
+    return `\u0000CODE${codeBlocks.length - 1}\u0000`;
+  });
+
+  html = html
+    .replace(/^#### (.+)$/gm, "<h4>$1</h4>")
+    .replace(/^### (.+)$/gm, "<h3>$1</h3>")
+    .replace(/^## (.+)$/gm, "<h2>$1</h2>")
+    .replace(/^# (.+)$/gm, "<h1>$1</h1>")
+    .replace(/^---+$/gm, "<hr>")
+    .replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>")
+    .replace(/`([^`\n]+)`/g, "<code>$1</code>")
+    .replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>")
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*\n]+)\*/g, "<em>$1</em>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+
+  const lines = html.split("\n");
+  const output = [];
+  let listType = null;
+  const closeList = () => {
+    if (listType) output.push(`</${listType}>`);
+    listType = null;
+  };
+
+  lines.forEach(line => {
+    const unordered = line.match(/^[-*] (.+)$/);
+    const ordered = line.match(/^\d+\. (.+)$/);
+    const nextType = unordered ? "ul" : ordered ? "ol" : null;
+    if (nextType) {
+      if (listType !== nextType) {
+        closeList();
+        output.push(`<${nextType}>`);
+        listType = nextType;
+      }
+      output.push(`<li>${(unordered || ordered)[1]}</li>`);
+      return;
+    }
+    closeList();
+    if (!line.trim()) output.push("");
+    else if (/^(?:<(?:h[1-4]|blockquote|hr|pre)|\u0000CODE)/.test(line)) output.push(line);
+    else output.push(`<p>${line}</p>`);
+  });
+  closeList();
+
+  html = output.join("\n").replace(/\u0000CODE(\d+)\u0000/g, (_, i) => codeBlocks[Number(i)]);
+  return html;
 }
 
 function now() {

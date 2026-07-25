@@ -7,6 +7,7 @@
   4. 生成完整 ConversationContext（含预拼接的 history_text）
 """
 import re
+from agents.message_content import has_image_block, latest_user_message, message_text
 from agents.state import AgentState, ConversationContext
 
 
@@ -83,12 +84,21 @@ def _infer_topic(query: str) -> str:
 
 async def context_builder_node(state: AgentState) -> dict:
     """构建 ConversationContext"""
-    # 获取当前用户输入：优先从 messages[-1]（跨轮最可靠），fallback 到 original_query
+    # Always read the latest HumanMessage. Tool and AI messages may be
+    # appended after it by graph orchestration.
     messages = state.get("messages", [])
+    message = latest_user_message(messages)
     query = ""
-    if messages:
-        last = messages[-1]
-        query = last.content if hasattr(last, 'content') else ""
+    if (
+        state.get("vision_query")
+        and message is not None
+        and has_image_block(message)
+    ):
+        # vision_analyze has already converted the image into searchable text.
+        # Do not replace it with the original caption before planner/retrieval.
+        query = state["vision_query"]
+    elif message is not None:
+        query = message_text(message.content)
     if not query:
         query = state.get("original_query", "")
     ctx = state.get("context", {})

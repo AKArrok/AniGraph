@@ -20,12 +20,12 @@ __all__ = [
     "classify", "multi_query_rewrite", "hyde_generate", "decompose",
     # Knowledge Retrieval
     "search_whoosh", "fusion", "fusion_rrf", "fusion_weighted", "fusion_max",
-    "rerank", "compress_docs", "verify_answer",
+    "rerank", "warm_reranker", "compress_docs", "verify_answer",
     # Main
     "retrieve_with_optimization", "get_last_debug",
 ]
 
-from tools.knowledge_retrieval import fusion_rrf, fusion_weighted, fusion_max
+from tools.knowledge_retrieval import fusion_rrf, fusion_weighted, fusion_max, warm_reranker
 
 # ══════════════════════════════════════════════════════════════════════
 # 昵称解析 — 联网搜索番剧简称 → 正式名称

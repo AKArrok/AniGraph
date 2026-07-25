@@ -3,7 +3,7 @@
 设计原则:
   - 单一入口: 所有工具在此注册，全局一份元数据
   - 按需加载: 注册时只存 import_path，首次调用才 import（避免循环依赖）
-  - 分类分组: llm_tool(暴露给LLM) / pipeline(检索流水线) / web(联网) / debug
+  - 分类分组: llm_tool(暴露给LLM) / external(外部服务) / pipeline(检索流水线) / debug
   - 开关控制: enabled 字段 + 按 category 过滤
 
 使用:
@@ -15,6 +15,7 @@
 from dataclasses import dataclass, field
 from typing import Callable, Any
 import importlib
+import inspect
 import logging
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,7 @@ class ToolSpec:
 
     name: str                          # 唯一标识
     description: str = ""              # 功能描述
-    category: str = "pipeline"         # llm_tool | pipeline | web | debug
+    category: str = "pipeline"         # llm_tool | external | pipeline | debug
     import_path: str = ""              # "tools.rag.RAG" 格式，首次调用时懒加载
     _callable: Callable | None = field(default=None, repr=False)
     enabled: bool = True
@@ -74,6 +75,16 @@ class ToolRegistry:
             return spec.callable
         return None
 
+    async def ainvoke(self, name: str, *args, **kwargs) -> Any:
+        """调用同步或异步工具；未注册、已禁用或加载失败时返回 None。"""
+        tool = self.get_callable(name)
+        if tool is None:
+            return None
+        result = tool(*args, **kwargs)
+        if inspect.isawaitable(result):
+            return await result
+        return result
+
     def get_llm_tools(self) -> list:
         """返回所有启用且可暴露给 LLM 的工具（用于 bind_tools）"""
         return [
@@ -104,6 +115,15 @@ class ToolRegistry:
         return spec is not None and spec.enabled
 
     # ── 列表 ──
+
+    def reset(self):
+        """Clear all tools and re-enable full initialization.
+
+        Test helpers can call this before re-registering with a different
+        config; production code should not use it after build_graph().
+        """
+        self._tools.clear()
+        self._initialized = False
 
     def list_all(self) -> dict[str, dict]:
         """返回 {name: {enabled, category, description}}"""
@@ -137,6 +157,9 @@ def register_default_tools():
     使用 import_path 懒加载，避免启动时的循环导入问题。
     首次调用 tool_registry.get_llm_tools() 时才真正 import。
     """
+    if tool_registry._initialized:
+        return
+
     import config
 
     # ── LLM 可调用工具（暴露给 LLM 通过 bind_tools 使用）──
@@ -253,7 +276,8 @@ def register_default_tools():
     )
 
     tool_registry._initialized = True
+    llm_tool_count = len(tool_registry.get_enabled(category="llm_tool"))
     logger.info(
         f"  ToolRegistry 初始化完成: {len(tool_registry)} 个工具 "
-        f"(LLM: {len(tool_registry.get_llm_tools())})"
+        f"(LLM: {llm_tool_count})"
     )

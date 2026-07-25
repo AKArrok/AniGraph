@@ -8,8 +8,8 @@
   AnswerVerifier    — 检索依据检查
 """
 import os
-from typing import Literal
-
+import threading
+import time
 import config
 
 _SPARSE_STOP_WORDS = {
@@ -166,28 +166,46 @@ def fusion(
 # ══════════════════════════════════════════════════════════════════════
 
 _reranker = None
+_reranker_lock = threading.Lock()
+_reranker_last_failure = 0.0
+_RERANKER_RETRY_SECONDS = 300.0
 
 
 def _init_reranker():
-    """启动时预加载 CrossEncoder，避免首查询卡顿"""
-    global _reranker
+    """加载 CrossEncoder；失败后退避一段时间再重试。"""
+    global _reranker, _reranker_last_failure
+    if _reranker is not None:
+        return _reranker
+    if (
+        _reranker_last_failure
+        and time.monotonic() - _reranker_last_failure < _RERANKER_RETRY_SECONDS
+    ):
+        return None
     try:
         from sentence_transformers import CrossEncoder
         model_path = config.LOCAL_RERANKER_MODEL or config.RERANKER_MODEL
         tag = "local" if config.LOCAL_RERANKER_MODEL and os.path.exists(config.LOCAL_RERANKER_MODEL) else "HF"
         print(f"  CrossEncoder ({tag}): {model_path} ...")
         _reranker = CrossEncoder(model_path)
+        _reranker_last_failure = 0.0
         print(f"  CrossEncoder 就绪")
     except Exception as e:
         print(f"  CrossEncoder 加载失败: {e}, 精排禁用")
-        _reranker = False
+        _reranker_last_failure = time.monotonic()
+    return _reranker
 
 
 def _get_reranker():
-    global _reranker
     if _reranker is None:
-        _init_reranker()
+        with _reranker_lock:
+            if _reranker is None:
+                _init_reranker()
     return _reranker
+
+
+def warm_reranker():
+    """显式预热精排模型；模块导入本身不会再加载模型。"""
+    return _get_reranker()
 
 
 def rerank(query: str, docs: list[str], top_k: int = 5) -> list[str]:
@@ -247,7 +265,3 @@ def verify_answer(answer: str, docs: list[str]) -> tuple[str, float]:
     if overlap < 0.15:
         return answer + "\n\n(注: 以上内容部分超出知识库范围，仅供参考)", 0.3
     return answer, min(overlap + 0.3, 1.0)
-
-
-# ── 启动时预加载模型（避免首查询 Loading weights 卡顿）──
-_init_reranker()

@@ -28,6 +28,11 @@ import logging
 import time
 from typing import Any
 
+try:
+    import pytest
+except ImportError:  # pytest is optional for the documented direct-run mode
+    pytest = None
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 logging.basicConfig(level=logging.WARNING)
@@ -36,6 +41,10 @@ logging.getLogger("agents").setLevel(logging.WARNING)
 from langchain_core.messages import HumanMessage, AIMessage
 from langgraph.checkpoint.memory import MemorySaver
 from graph import build_graph
+
+# ═══════════════════════════════════════════════════════
+# 用 anyio 插件让 pytest 识别 async def test_*；未安装 pytest 时仍可直接运行。
+pytestmark = pytest.mark.anyio if pytest is not None else []
 
 # ═══════════════════════════════════════════════════════
 # 工具函数
@@ -89,6 +98,8 @@ def _now() -> str:
 
 class TestSession:
     """一个测试会话，封装 thread_id + graph + 断言方法"""
+
+    __test__ = False
 
     def __init__(self, name: str, thread_id: str):
         self.name = name

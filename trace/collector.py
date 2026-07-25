@@ -10,7 +10,6 @@
 
 ⚠️ 关键: 只用一个 astream_events 流，避免 astream + astream_events 双流导致图执行两次。
 """
-import time
 from typing import AsyncIterator, Any
 from trace.models import TraceEvent
 from trace.adapter import EventAdapter
@@ -18,7 +17,7 @@ from trace.adapter import EventAdapter
 
 # ── 需要追踪的图节点（过滤掉 LangGraph 内部链和路由函数）──
 _GRAPH_NODES = frozenset({
-    "alias_resolve", "history_extractor", "context_builder",
+    "vision_analyze", "alias_resolve", "history_extractor", "context_builder",
     "planner", "query_processing", "knowledge_retrieval",
     "metadata_reasoner", "similar_expert", "serial_expert",
     "merge", "evaluator", "replanner",

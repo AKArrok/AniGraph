@@ -128,7 +128,6 @@ class MetadataIndex:
         """
         if not self._loaded:
             self.load()
-
         results = self._data[:]
         limit = filters.pop("limit", 50)
 

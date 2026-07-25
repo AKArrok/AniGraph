@@ -4,6 +4,7 @@
 """
 from langchain_core.messages import HumanMessage, AIMessage
 import config
+from agents.message_content import message_text
 from agents.state import AgentState
 
 
@@ -18,9 +19,9 @@ def _extract_recent_rounds(messages: list, n: int) -> list[dict]:
 
     for m in messages:
         if isinstance(m, HumanMessage):
-            user_msg = m.content
+            user_msg = message_text(m.content)
         elif isinstance(m, AIMessage) and user_msg is not None:
-            paired.append({"user": user_msg, "assistant": m.content})
+            paired.append({"user": user_msg, "assistant": message_text(m.content)})
             user_msg = None
 
     # 只保留最近 N 轮

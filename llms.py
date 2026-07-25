@@ -432,3 +432,10 @@ else:
         "expected 'ark', 'local', or 'dashscope'."
     )
 logging.info(f"  Embedding 后端: {config.EMBEDDING_BACKEND} | 模型: {embeddings.model}")
+
+
+def warm_embeddings():
+    """Preload local embedding weights without making a remote API request."""
+    if isinstance(embeddings, LocalEmbeddings):
+        return embeddings._model
+    return embeddings

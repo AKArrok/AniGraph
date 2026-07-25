@@ -7,7 +7,6 @@
 
 import asyncio
 import sys
-import uuid
 from langchain_core.messages import HumanMessage
 from langgraph.checkpoint.memory import MemorySaver
 from graph import build_graph
@@ -91,9 +90,20 @@ async def chat_loop(app, thread_id: str):
 def _warmup():
     """预加载模型，避免首查询时才 Loading weights。"""
     print("  预热中 ...", end=" ")
-    import llms                          # 触发 LocalEmbeddings / SentenceTransformer 加载
-    import tools.knowledge_retrieval     # 触发 CrossEncoder 加载
-    print("就绪")
+    from llms import warm_embeddings
+    from tools.knowledge_retrieval import warm_reranker
+    failures = []
+    for name, warmer in (("Embedding", warm_embeddings), ("Reranker", warm_reranker)):
+        try:
+            warmer()
+        except Exception as exc:
+            failures.append(f"{name}: {exc}")
+    if failures:
+        print("降级启动")
+        for failure in failures:
+            print(f"  [警告] {failure}")
+    else:
+        print("就绪")
 
 
 def main():

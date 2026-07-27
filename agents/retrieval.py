@@ -15,7 +15,7 @@ _ANIME_TAGS = (
 _SCORE_RANGE_RE = re.compile(r'(\d[\d.]*)\s*分?\s*(以上|以下|超过|高于|低于)')
 _YEAR_RE = re.compile(r'(20\d{2})')
 
-def retrieve_by_keywords(keywords):
+def retrieve_by_keywords(keywords, errors=None):
     results = []
     if not keywords:
         return results
@@ -35,11 +35,14 @@ def retrieve_by_keywords(keywords):
                         results.append(r)
                         known_ids.add(str(r.get('id', '')))
     except Exception as e:
-        logger.warning(f'关键词 Metadata 查询失败: {e}')
+        msg = f'关键词 Metadata 查询失败: {e}'
+        logger.warning(msg)
+        if errors is not None:
+            errors.append({'source': 'metadata_keyword', 'type': type(e).__name__, 'message': str(e)})
     return results
 
 
-def retrieve_metadata(query, plan, search_queries, existing):
+def retrieve_metadata(query, plan, search_queries, existing, errors=None):
     results = list(existing)
     try:
         from agents.metadata_index import index
@@ -60,17 +63,20 @@ def retrieve_metadata(query, plan, search_queries, existing):
                         if str(r.get('id', '')) not in seen_ids:
                             results.append(r)
     except Exception as e:
-        logger.warning(f'Metadata Index 查询失败: {e}')
+        msg = f'Metadata Index 查询失败: {e}'
+        logger.warning(msg)
+        if errors is not None:
+            errors.append({'source': 'metadata_filter', 'type': type(e).__name__, 'message': str(e)})
     return results
 
 
-def retrieve_semantic(search_queries, state):
+def retrieve_semantic(search_queries, state, errors=None):
     docs = []
     try:
         from tools.registry import tool_registry
-        from tools.rag import _get_retriever
+        from tools.rag import get_retriever
         retrieve_opt = tool_registry.get_callable('retrieve_optimized')
-        retriever = _get_retriever()
+        retriever = get_retriever()
         plan = state.get('plan', {})
         k_final = config.RETRIEVER_K
         if plan.get('query_type') == 'recommendation':
@@ -83,7 +89,10 @@ def retrieve_semantic(search_queries, state):
                 d, _ = retrieve_opt(q, retriever, k_final=k_final, skip_optimization=True)
                 docs.extend(d)
     except Exception as e:
-        logger.warning(f'Pinecone/Whoosh 检索失败: {e}')
+        msg = f'语义检索失败: {e}'
+        logger.warning(msg)
+        if errors is not None:
+            errors.append({'source': 'semantic', 'type': type(e).__name__, 'message': str(e)})
     return docs
 
 
@@ -127,12 +136,13 @@ async def knowledge_retrieval_node(state):
     if constraints.get('exclude_same_series') and constraints.get('topic_tags'):
         tag_queries = [f'{tag} 动画 推荐' for tag in constraints['topic_tags'][:3]]
         search_queries = list(dict.fromkeys([*tag_queries, *search_queries]))
-    metadata_results = retrieve_by_keywords(state.get('search_keywords', []))
+    retrieval_errors: list[dict] = []
+    metadata_results = retrieve_by_keywords(state.get('search_keywords', []), errors=retrieval_errors)
     if query_category in ('metadata', 'mixed'):
-        metadata_results = retrieve_metadata(query, plan, search_queries, metadata_results)
+        metadata_results = retrieve_metadata(query, plan, search_queries, metadata_results, errors=retrieval_errors)
     shared_context = []
     if query_category in ('semantic', 'mixed'):
-        shared_context = retrieve_semantic(search_queries, state)
+        shared_context = retrieve_semantic(search_queries, state, errors=retrieval_errors)
     logger.info(
         '知识检索完成: metadata %d 条, shared_context %d 条 (耗时 %.1fs)',
         len(metadata_results[:30]), len(shared_context[:10]), time.time() - t0)
@@ -143,4 +153,5 @@ async def knowledge_retrieval_node(state):
         'shared_context': shared_context[:10],
         'execution_mode': mode,
         'current_expert_index': 0,
+        'retrieval_errors': retrieval_errors,
     }

@@ -31,6 +31,15 @@ def _get_retriever():
     )
 
 
+def get_retriever():
+    """公开接口：获取缓存的 Pinecone retriever。
+
+    外部模块（如 agents.retrieval）应通过此函数获取 retriever，
+    避免直接依赖私有函数 _get_retriever()。
+    """
+    return _get_retriever()
+
+
 def get_rag_debug() -> dict:
     """获取最近一次 RAG 检索的调试信息"""
     from tools.rag_optimizer import get_last_debug

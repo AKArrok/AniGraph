@@ -8,10 +8,9 @@
 import asyncio
 import sys
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.memory import MemorySaver
-from graph import build_graph
 from trace import TraceCollector
 import config
+from agents.session_store import default_store as store
 
 
 def _truncate(text: str, max_len: int = 72) -> str:
@@ -57,10 +56,9 @@ async def chat_loop(app, thread_id: str):
             print(f"  当前会话 ID: {thread_id}")
             continue
         if query == "/clear":
-            # 新建 MemorySaver 即清空记忆
-            nonlocal_memory = MemorySaver()
-            app = build_graph().compile(checkpointer=nonlocal_memory)
-            print("  会话记忆已清空，新的 MemorySaver 已就绪。")
+            store.clear(thread_id)
+            app = store.get_app(thread_id)
+            print("  会话记忆已清空。")
             continue
 
         # ── 发送查询 ──────────────────────────────────────────
@@ -131,9 +129,7 @@ def main():
     _warmup()
     print()
 
-    # 构建图（共享 MemorySaver 实现跨轮记忆）
-    memory = MemorySaver()
-    app = build_graph().compile(checkpointer=memory)
+    app = store.get_app(thread_id)
 
     asyncio.run(chat_loop(app, thread_id))
 

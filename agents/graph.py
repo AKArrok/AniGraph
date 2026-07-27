@@ -45,24 +45,13 @@ from agents.merge import merge_expert_results
 from agents.evaluator import evaluator_node
 from agents.replanner import replanner_node
 from agents.image_recognition import image_recognition_node
+from agents.retrieval import knowledge_retrieval_node
 import config
 
 logger = logging.getLogger(__name__)
 
 
 # ── 模块级常量（避免重复创建）──────────────────────────────────────
-
-# 番剧标签列表（_knowledge_retrieval_node 和 _extract_metadata_filters 共用）
-_ANIME_TAGS: tuple[str, ...] = (
-    "热血", "动作", "搞笑", "异世界", "奇幻", "科幻", "恋爱", "日常",
-    "治愈", "悬疑", "推理", "战斗", "冒险", "校园", "机战", "运动",
-    "魔法", "后宫", "百合", "耽美", "美食", "音乐", "竞技",
-    "战争", "历史", "恐怖", "职场", "偶像", "转生", "游戏",
-)
-
-# 预编译正则（_extract_metadata_filters 用，避免每次调用重新编译）
-_SCORE_RANGE_RE = re.compile(r"(\d[\d.]*)\s*分?\s*(以上|以下|超过|高于|低于)")
-_YEAR_RE = re.compile(r"(20\d{2})")
 
 
 # ── 节点函数 ──────────────────────────────────────────────────────
@@ -201,6 +190,7 @@ def _should_skip_alias(query: str) -> bool:
 
     # 纯元数据查询特征（年份+标签/评分，无具体番剧名）
     # 如 "2024年有哪些热血番"、"评分9分以上的番"
+    from agents.retrieval import _ANIME_TAGS, _SCORE_RANGE_RE, _YEAR_RE
     has_year = _YEAR_RE.search(query) is not None
     has_score = _SCORE_RANGE_RE.search(query) is not None
     has_tag = any(t in query for t in _ANIME_TAGS)
@@ -249,172 +239,9 @@ async def _query_processing_node(state: AgentState) -> dict:
     }
 
 
-def _retrieve_by_keywords(keywords: list[str]) -> list[dict]:
-    """别名关键词优先查 Metadata Index（番剧名 + 标签模糊匹配）"""
-    results: list[dict] = []
-    if not keywords:
-        return results
-    try:
-        from agents.metadata_index import index
-        for kw in keywords[:3]:
-            md = index.search_by_name(kw)
-            if md:
-                results.extend(md)
-        for kw in keywords[:3]:
-            tag_kw = kw.strip("【】！! ")
-            if len(tag_kw) >= 2:
-                # search 支持 name 参数（名称模糊匹配），与 search_by_name 互补
-                tag_hits = index.search(name=tag_kw, limit=5)
-                known_ids = {str(r.get("id", "")) for r in results if r.get("id")}
-                for r in tag_hits:
-                    if str(r.get("id", "")) not in known_ids:
-                        results.append(r)
-                        known_ids.add(str(r.get("id", "")))
-    except Exception as e:
-        logger.warning(f"关键词 Metadata 查询失败: {e}")
-    return results
 
 
-def _retrieve_metadata(query: str, plan: dict, search_queries: list[str],
-                        existing: list[dict]) -> list[dict]:
-    """Metadata Index 查询: 结构化过滤 or 名称/标签搜索"""
-    results = list(existing)
-    try:
-        from agents.metadata_index import index
-        filters = _extract_metadata_filters(query, plan)
-        if filters:
-            results = index.search(**filters)
-        else:
-            for q in search_queries[:2]:
-                md = index.search_by_name(q)
-                if not results:
-                    results = md
-            if plan.get("query_type") in ("recommendation", "comparison"):
-                matched_tags = [t for t in _ANIME_TAGS if t in query]
-                if matched_tags:
-                    tag_results = index.search(tag=matched_tags[0], limit=20)
-                    seen_ids = {str(r.get("id", "")) for r in results}
-                    for r in tag_results:
-                        if str(r.get("id", "")) not in seen_ids:
-                            results.append(r)
-    except Exception as e:
-        logger.warning(f"Metadata Index 查询失败: {e}")
-    return results
-
-
-def _retrieve_semantic(search_queries: list[str], state: dict) -> list[str]:
-    """Pinecone + Whoosh 混合检索（向量 + 稀疏 -> Fusion + Rerank）"""
-    docs: list[str] = []
-    try:
-        from tools.registry import tool_registry
-        from tools.rag import _get_retriever
-        retrieve_opt = tool_registry.get_callable("retrieve_optimized")
-        retriever = _get_retriever()
-        already_optimized = bool(state.get("query_strategy")) and bool(state.get("optimized_queries"))
-        plan = state.get("plan", {})
-        k_final = config.RETRIEVER_K
-        if plan.get("query_type") == "recommendation":
-            k_final = max(k_final, 10)
-        context = state.get("context", {})
-        constraints = context.get("constraints", {}) if isinstance(context, dict) else {}
-        query_count = 3 if constraints.get("exclude_same_series") else 2
-        for q in search_queries[:query_count]:
-            if retrieve_opt:
-                d, _ = retrieve_opt(
-                    q, retriever, k_final=k_final,
-                    skip_optimization=True,
-                )
-                docs.extend(d)
-    except Exception as e:
-        logger.warning(f"Pinecone/Whoosh 检索失败: {e}")
-    return docs
-
-
-async def _knowledge_retrieval_node(state: AgentState) -> dict:
-    """知识检索节点: 根据 query_category 分流检索路径
-
-    metadata  → Metadata Index only（结构化过滤，零 Pinecone）
-    semantic  → Pinecone + Whoosh（向量检索 + 稀疏检索  → Fusion + Rerank）
-    mixed     → 两者全路检索 + 融合
-    """
-    t0 = time.time()
-    plan = state.get("plan", {})
-    query_category = plan.get("query_category", "mixed")
-    query = state.get("resolved_query", "") or state.get("original_query", "")
-    queries = state.get("shared_context", [query])
-    if isinstance(queries, str):
-        queries = [queries]
-
-    search_queries = [q for q in queries if isinstance(q, str)]
-    if not search_queries:
-        search_queries = [query]
-
-    # 同系列排除时，用主题标签扩展检索，避免结果全是主题自身系列
-    context = state.get("context", {})
-    constraints = context.get("constraints", {}) if isinstance(context, dict) else {}
-    if constraints.get("exclude_same_series") and constraints.get("topic_tags"):
-        tag_queries = [f"{tag} 动画 推荐" for tag in constraints["topic_tags"][:3]]
-        search_queries = list(dict.fromkeys([*search_queries, *tag_queries]))
-
-    # ① 别名关键词优先查 Metadata Index
-    metadata_results = _retrieve_by_keywords(state.get("search_keywords", []))
-
-    # ② Metadata Index 查询（metadata / mixed 两类都走）
-    if query_category in ("metadata", "mixed"):
-        metadata_results = _retrieve_metadata(query, plan, search_queries, metadata_results)
-
-    # ③ Pinecone + Whoosh 检索（semantic / mixed 两类才走）
-    shared_context: list[str] = []
-    if query_category in ("semantic", "mixed"):
-        shared_context = _retrieve_semantic(search_queries, state)
-
-    logger.info(f"知识检索完成: 返回 metadata {len(metadata_results[:30])} 条, shared_context {len(shared_context[:10])} 条 (耗时 {time.time()-t0:.1f}s)")
-    experts = list(dict.fromkeys(plan.get("experts", [])))
-    mode = "single" if len(experts) <= 1 else ("parallel" if plan.get("parallel") else "serial")
-    return {
-        "metadata": metadata_results[:30],
-        "shared_context": shared_context[:10],
-        "execution_mode": mode,
-        "current_expert_index": 0,
-    }
-
-
-def _extract_metadata_filters(query: str, plan: dict) -> dict | None:
-    """从查询中提取结构化过滤条件，返回 MetadataIndex.search(**filters) 参数"""
-    filters = {}
-    q = query
-
-    # 提取标签
-    matched_tags = [t for t in _ANIME_TAGS if t in q]
-    if matched_tags and plan.get("query_type") in ("recommendation", "simple_fact"):
-        filters["tag"] = matched_tags[0]
-
-    # 提取评分范围（预编译正则）
-    score_match = _SCORE_RANGE_RE.search(q)
-    if score_match:
-        val = float(score_match.group(1))
-        direction = score_match.group(2)
-        if direction in ("以上", "超过", "高于"):
-            filters["score_min"] = val
-        else:
-            filters["score_max"] = val
-
-    # 提取年份（预编译正则）
-    year_match = _YEAR_RE.search(q)
-    if year_match:
-        year = year_match.group(1)
-        if "之前" in q or "以前" in q:
-            filters["date_to"] = year
-        elif "之后" in q or "以后" in q:
-            filters["date_from"] = year
-        else:
-            filters["date_from"] = year
-            filters["date_to"] = str(int(year) + 1)
-
-    return filters if filters else None
-
-
-# ── 路由函数 ──────────────────────────────────────────────────────
+# ── 路由函数 ─────────────────────────────────────────────────────
 
 def _route_from_start(state: AgentState) -> str:
     """START -> image_recognition (有图) 或 alias_resolve/alias_skip (无图)"""
@@ -617,7 +444,7 @@ def build_graph():
     g.add_node("context_builder", context_builder_node)
     g.add_node("planner", planner_node)
     g.add_node("query_processing", _query_processing_node)
-    g.add_node("knowledge_retrieval", _knowledge_retrieval_node)
+    g.add_node("knowledge_retrieval", knowledge_retrieval_node)
     g.add_node("metadata_reasoner", metadata_reasoner_node)
     g.add_node("similar_expert", similar_expert_node)
     g.add_node("serial_expert", _serial_expert_node)

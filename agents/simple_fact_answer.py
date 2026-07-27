@@ -45,6 +45,7 @@ async def simple_fact_answer_node(state: dict) -> dict:
     metadata = state.get("metadata", [])
     keywords = state.get("search_keywords", [])
     vision_context = state.get("vision_context", "")
+    topic_entity = state.get("topic_entity", {})
 
     # 构建对话上下文段落（追问时帮助 LLM 理解指代）
     context = state.get("context", {})
@@ -54,6 +55,15 @@ async def simple_fact_answer_node(state: dict) -> dict:
 
     # 优先展示匹配关键词的条目，其余截断到 5 条
     prioritized = _prioritize_metadata(metadata, keywords)[:5]
+    # 追问场景：如果 metadata 为空但存在 topic_entity，用主题实体补一次检索
+    if not prioritized and topic_entity.get("name"):
+        try:
+            from agents.metadata_index import index
+            hit = index.get_by_alias(topic_entity["name"])
+            if hit:
+                prioritized = [hit]
+        except Exception:
+            pass
     md_text = _format_metadata(prioritized) if prioritized else "(无相关数据)"
     if vision_context:
         md_text = f"图片分析: {vision_context}\n{md_text}"

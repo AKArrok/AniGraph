@@ -1,11 +1,12 @@
 """Metadata Index — SQLite/JSON 结构化索引，零 LLM 查询
 
 支持: 标签/制作公司/导演/编剧/声优/评分范围/日期范围 过滤
-查询方式: search(**filters) | get_by_alias(name) | get_by_id(sid)
+查询方式: search(**filters) | get_by_alias(name) | get_by_id(sid) | fuzzy_lookup(query)
 """
 from __future__ import annotations
 import json
 import os
+import re
 import sqlite3
 import config
 from typing import Any
@@ -74,6 +75,56 @@ class MetadataIndex:
                 if alias.lower() == n:
                     return item
         return None
+
+    # ── 消息级模糊实体解析（管道匹配，零 LLM）──
+
+    _FUZZY_STRIP_RE = re.compile(
+        r"[呢吗啊吧啦哦呀哎嘿哈]+$|"
+        r"(好不好看|好看吗|怎么样|是啥|是什么|多少分|讲什么|说啥|聊啥|介绍|是谁)[呢吗啊吧啦哦呀哎嘿哈]*$"
+    )
+    _FUZZY_PREFIX_STRIP_RE = re.compile(
+        r"^(有|有没有|这个|那个|这部|那部|什么是|介绍下|知道|听说过|问一下|问下|聊聊|来讲讲|说说)"
+    )
+
+    def fuzzy_lookup(self, query: str) -> dict | None:
+        """管道式实体解析：确定性匹配 → 规则清理 → 返回 None 表示需 LLM。
+
+        策略: 宁可漏（交给 LLM）不可错（返回错误实体）。
+        """
+        if not self._loaded:
+            self.load()
+        q = query.strip()
+        if len(q) < 2:
+            return None
+
+        # 1. 精确匹配
+        hit = self.get_by_alias(q)
+        if hit:
+            return hit
+
+        # 2. 去语气词/疑问后缀
+        trimmed = self._FUZZY_STRIP_RE.sub("", q).strip()
+        if trimmed and trimmed != q:
+            hit = self.get_by_alias(trimmed)
+            if hit:
+                return hit
+
+        # 3. 去前缀再匹配
+        no_prefix = self._FUZZY_PREFIX_STRIP_RE.sub("", q).strip()
+        if no_prefix and no_prefix != q and no_prefix != trimmed:
+            hit = self.get_by_alias(no_prefix)
+            if hit:
+                return hit
+
+        # 4. 去前缀 + 去后缀
+        no_both = self._FUZZY_STRIP_RE.sub("", no_prefix).strip()
+        if no_both and no_both not in (q, trimmed, no_prefix):
+            hit = self.get_by_alias(no_both)
+            if hit:
+                return hit
+
+        return None
+
 
     def search_by_name(self, name: str) -> list[dict]:
         """名称模糊搜索（双向包含匹配）

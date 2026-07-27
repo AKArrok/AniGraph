@@ -31,14 +31,33 @@ logger = logging.getLogger(__name__)
 async def alias_resolve_node(state: AgentState) -> dict:
     """别名/实体解析: 别名 → 角色/梗 → 兜底标记"""
     from agents.alias import resolve_alias
+    from agents.metadata_index import index
     from agents.entity_resolver import resolve_entity
 
     query = _get_query(state)
 
-    # ── 1. 现有别名解析 ──
+    # ── 1. 零 LLM 实体解析 ──
+    #    先走确定性匹配（metadata_index.fuzzy_lookup），
+    #    命中直接短路，不调用任何 LLM。
+    index_hit = index.fuzzy_lookup(query)
+    if index_hit:
+        return {
+            "original_query": query,
+            "resolved_query": query,
+            "search_keywords": [index_hit["name"]],
+            "entity_type": "anime",
+            "entity_name": index_hit["name"],
+            "entity_anime": index_hit["name"],
+            "entity_confidence": 0.95,
+            "entity_source": "fuzzy_lookup",
+            "metadata": [index_hit],
+        }
+
+    # ── 2. 别名解析（词典）──
     resolved, was_resolved = resolve_alias(query, use_llm=False)
 
-    if not was_resolved and _might_be_alias(query):
+    # ── 3. 别名解析（LLM 兜底）──
+    if not was_resolved:
         resolved, was_resolved = resolve_alias(query, use_llm=True)
 
     # ── 2. 实体解析（角色/梗）──

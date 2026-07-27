@@ -210,6 +210,7 @@ async def context_builder_node(state: AgentState) -> dict:
     # 指代解析（不依赖 MetadataIndex，只用已有 entity 信息）
     resolved = query
     topic_entity = state.get("topic_entity", {})
+    matched_recent_entity: dict | None = None
     explicit_title = _EXPLICIT_TITLE_RE.search(query)
     entity_name = state.get("entity_name", "")
     entity_type = state.get("entity_type", "")
@@ -218,17 +219,21 @@ async def context_builder_node(state: AgentState) -> dict:
     elif entity_name and entity_type in ("character", "alias") and entity_name != query:
         topic_entity = {"name": entity_name, "type": entity_type}
 
+    recent_entities = state.get("recent_entities", [])
     if is_followup:
-        # 优先用实体信息（角色/梗名）解析"他/她/它"
-        entities = []
-        if topic_entity.get("name"):
-            entities.append(topic_entity)
-        entities.extend(
-            e for e in state.get("recent_entities", [])
-            if e.get("name") != topic_entity.get("name")
-        )
-        resolved = _resolve_reference(query, entities)
-        # “再推荐两部相似的”没有显式代词，也必须带上当前主题。
+        # 1. 序数指代优先按推荐列表顺序解析（第一个/第二部 → recent_entities[0]/[1]）
+        resolved = _resolve_reference(query, recent_entities)
+        # 2. 代词指代（它/这个/那部）用 topic_entity + recent_entities
+        if resolved == query:
+            entities = []
+            if topic_entity.get("name"):
+                entities.append(topic_entity)
+            entities.extend(
+                e for e in recent_entities
+                if e.get("name") != topic_entity.get("name")
+            )
+            resolved = _resolve_reference(query, entities)
+        # 3. “再推荐两部相似的”没有显式代词，也必须带上当前主题。
         if (
             resolved == query
             and topic_entity.get("name")
@@ -236,6 +241,22 @@ async def context_builder_node(state: AgentState) -> dict:
             and topic_entity["name"] not in query
         ):
             resolved = f"基于《{topic_entity['name']}》，{query}"
+        # 4. 用户直接喊出 recent_entities 中的短名/简称（如“萌蛋呢”）
+        if resolved == query:
+            cleaned = re.sub(r"[呢吗啊吧]$", "", query).strip()
+            for e in recent_entities:
+                name = e.get("name", "")
+                if name and (cleaned == name or cleaned.startswith(name)):
+                    topic_entity = e
+                    resolved = name
+                    matched_recent_entity = e
+                    break
+            if resolved == query and topic_entity.get("name"):
+                cleaned = re.sub(r"[呢吗啊吧]$", "", query).strip()
+                name = topic_entity.get("name", "")
+                if name and (cleaned == name or cleaned.startswith(name)):
+                    resolved = name
+                    matched_recent_entity = topic_entity
 
     # 推断当前话题
     current_topic = _infer_topic(query)
@@ -282,9 +303,16 @@ async def context_builder_node(state: AgentState) -> dict:
         "constraints": constraints,
     }
 
-    return {
+    result = {
         "context": context,
         "resolved_query": resolved,
         "topic_entity": topic_entity,
         "recommendation_count": extract_recommendation_count(query),
     }
+    if matched_recent_entity and matched_recent_entity.get("type") == "anime":
+        result["entity_type"] = "anime"
+        result["entity_name"] = matched_recent_entity["name"]
+        result["entity_anime"] = matched_recent_entity["name"]
+        result["entity_confidence"] = 0.95
+        result["entity_source"] = "recent"
+    return result

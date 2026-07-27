@@ -46,221 +46,27 @@ from agents.evaluator import evaluator_node
 from agents.replanner import replanner_node
 from agents.image_recognition import image_recognition_node
 from agents.retrieval import knowledge_retrieval_node
+from agents.answer_planner import answer_planner_node
+from agents.query_processor import query_processing_node
+from agents.alias_resolve import alias_resolve_node, alias_skip_node, should_skip_alias
 import config
 
 logger = logging.getLogger(__name__)
 
 
-# ── 模块级常量（避免重复创建）──────────────────────────────────────
-
-
-# ── 节点函数 ──────────────────────────────────────────────────────
-
-async def _alias_resolve_node(state: AgentState) -> dict:
-    """别名/实体解析: 别名 → 角色/梗 → 兜底标记"""
-    from agents.alias import resolve_alias
-    from agents.entity_resolver import resolve_entity
-
-    query = _get_query(state)
-
-    # ── 1. 现有别名解析 ──
-    resolved, was_resolved = resolve_alias(query, use_llm=False)
-
-    if not was_resolved and _might_be_alias(query):
-        resolved, was_resolved = resolve_alias(query, use_llm=True)
-
-    # ── 2. 实体解析（角色/梗）──
-    entity = resolve_entity(query)
-
-    # ── 3. 番剧别名命中 → 正常流程 ──
-    # 但如果 entity resolver 已高置信度命中角色/梗，alias 路径不拦截
-    entity_is_strong = (
-        entity
-        and entity["confidence"] >= 0.8
-        and entity["type"] in ("character", "meme")
-        and entity["source"] == "dict"
-    )
-    if was_resolved and not entity_is_strong:
-        if len(query) > 15 and resolved != query:
-            from agents.cache import metadata_cache
-            result = {
-                "original_query": query,
-                "resolved_query": query,
-                "search_keywords": [resolved],
-                "entity_type": "alias",
-                "entity_name": resolved,
-                "entity_anime": resolved,
-                "entity_confidence": 0.90,
-                "entity_source": "dict",
-            }
-            _, meta = metadata_cache.resolve(resolved)
-            if meta:
-                result["metadata"] = [meta]
-            return result
-
-        from agents.cache import metadata_cache
-        result = {
-            "original_query": query,
-            "resolved_query": resolved,
-            "entity_type": "alias",
-            "entity_name": resolved,
-            "entity_anime": resolved,
-            "entity_confidence": 0.90,
-            "entity_source": "dict",
-        }
-        _, meta = metadata_cache.resolve(resolved)
-        if meta:
-            result["metadata"] = [meta]
-        return result
-
-    # ── 4. 角色/梗实体命中（高置信度）→ 记录番剧名到 search_keywords ──
-    if entity and entity["confidence"] >= 0.5 and entity["anime"]:
-        return {
-            "original_query": query,
-            "resolved_query": query,
-            "search_keywords": [entity["anime"]],
-            "entity_type": entity["type"],
-            "entity_name": entity["entity"],
-            "entity_anime": entity["anime"],
-            "entity_confidence": entity["confidence"],
-            "entity_source": entity["source"],
-        }
-
-    # ── 5. 角色/梗低置信度 → 标记，planner 决定是否联网 ──
-    if entity:
-        return {
-            "original_query": query,
-            "resolved_query": query,
-            "entity_type": entity["type"],
-            "entity_name": entity["entity"],
-            "entity_anime": entity.get("anime", ""),
-            "entity_confidence": entity["confidence"],
-            "entity_source": entity["source"],
-        }
-
-    # ── 6. 无实体 ──
-    return {"original_query": query, "resolved_query": query}
-
-
-def _might_be_alias(query: str) -> bool:
-    """判断查询是否可能含番剧简称（避免对明确的长句调用LLM）"""
-    if len(query) <= 15:
-        return True
-    # 查询中包含明显的推荐/对比/闲聊意图 → 不太可能只是问番剧名
-    intent_words = ["推荐", "有没有", "怎么样", "对比", "哪个好", "是什么", "有哪些", "像"]
-    if any(w in query for w in intent_words):
-        return False
-    return True
-
-
-def _should_skip_alias(query: str) -> bool:
-    """快速判断是否可跳过 alias_resolve 节点（按需启用）
-
-    以下场景跳过别名/实体解析:
-      - 纯闲聊/问候（零信息量）
-      - 明确元数据查询不含番剧名（如"2024年有哪些热血番"——查的是标签不是具体番名）
-      - 全局开关关闭
-      - Embedding 预检为 chat 类别且高置信度
-    """
-    if not config.ENABLE_ALIAS_RESOLVE:
-        return True
-
-    q = query.strip().lower()
-
-    # 纯闲聊 / 英文问候
-    simple_greetings = {"你好", "谢谢", "再见", "早上好", "晚上好", "晚安",
-                        "hi", "hello", "hey", "help", "thanks", "bye"}
-    if q in simple_greetings or len(q) <= 2:
-        return True
-
-    # 纯英文短查询（不太可能涉及中文番剧别名）
-    if len(q) <= 10 and q.isascii() and not any(w in q for w in ["re0", "eva", "sao"]):
-        return True
-
-    # Embedding 预检: chat 类别高置信度 → 纯闲聊，跳过
-    if config.ENABLE_EMBEDDING_PREFILTER:
-        try:
-            from agents.planner import _prefilter
-            route, confidence, _ = _prefilter(query)
-            if route == "chat" and confidence >= config.EMBEDDING_PREFILTER_THRESHOLD:
-                logger.info(f"  [alias_skip] embedding预检 chat={confidence:.2f}")
-                return True
-        except Exception:
-            pass
-
-    # 纯元数据查询特征（年份+标签/评分，无具体番剧名）
-    # 如 "2024年有哪些热血番"、"评分9分以上的番"
-    from agents.retrieval import _ANIME_TAGS, _SCORE_RANGE_RE, _YEAR_RE
-    has_year = _YEAR_RE.search(query) is not None
-    has_score = _SCORE_RANGE_RE.search(query) is not None
-    has_tag = any(t in query for t in _ANIME_TAGS)
-    # 有明确的元数据过滤词但没有短名称特征
-    if (has_year or has_score or has_tag) and len(query) > 15:
-        # 检查是否包含可能的番剧短名（2-6个中文字符的连续词）
-        # 简单启发: 如果查询以"有哪些/推荐/是什么"结尾，大概率是泛查询
-        broad_patterns = ["有哪些", "推荐", "是什么", "介绍", "列表"]
-        if any(p in query for p in broad_patterns):
-            logger.info(f"  [alias_skip] 泛查询特征: {query[:30]}...")
-            return True
-
-    return False
-
-
-async def _query_processing_node(state: AgentState) -> dict:
-    """查询处理节点: 根据 plan.rewrite_strategy 执行 Rewrite/HyDE/Decompose/Direct"""
-    plan = state.get("plan", {})
-    strategy = plan.get("rewrite_strategy", "rewrite")
-    query = state.get("resolved_query", "") or state.get("original_query", "")
-
-    from tools.registry import tool_registry
-
-    if strategy == "direct":
-        queries = [query]
-    elif strategy == "hyde":
-        fn = tool_registry.get_callable("hyde_generate")
-        queries = fn(query) if fn else [query]
-    elif strategy == "decompose":
-        fn = tool_registry.get_callable("decompose")
-        queries = fn(query) if fn else [query]
-    else:  # rewrite
-        fn = tool_registry.get_callable("multi_query_rewrite")
-        queries = fn(query) if fn else [query]
-
-    additional = state.get("replan_feedback", {}).get("additional_queries", [])
-    queries = list(dict.fromkeys([
-        q for q in [*queries, *additional]
-        if isinstance(q, str) and q.strip()
-    ]))
-
-    return {
-        "shared_context": queries,
-        "optimized_queries": queries,
-        "query_strategy": strategy,
-    }
-
-
-
-
 # ── 路由函数 ─────────────────────────────────────────────────────
+
 
 def _route_from_start(state: AgentState) -> str:
     """START -> image_recognition (有图) 或 alias_resolve/alias_skip (无图)"""
     if config.ENABLE_IMAGE_RECOGNITION and state.get("image_data"):
         return "image_recognition"
-    query = _get_query(state)
-    if _should_skip_alias(query):
+    query = get_query(state)
+    if should_skip_alias(query):
         logger.info(f"  [按需跳过] alias_resolve - 查询无需别名解析")
         return "alias_skip"
     return "alias_resolve"
 
-
-async def _alias_skip_node(state: AgentState) -> dict:
-    """alias_resolve 被跳过时设置必需字段的默认值"""
-    query = _get_query(state)
-    return {
-        "original_query": query,
-        "resolved_query": query,
-    }
 
 def _route_after_planner(state: AgentState) -> str:
     """Planner 处理完的路由"""
@@ -376,49 +182,7 @@ def _route_after_evaluator(state: AgentState) -> str:
     return "answer_planner"
 
 
-def _answer_planner_node(state: AgentState) -> dict:
-    """零 LLM 成本的回答结构规划器，随机选结构避免套路化"""
-    plan = state.get("plan", {})
-    query_type = plan.get("query_type", "recommendation")
-
-    if query_type == "chat":
-        return {"answer_plan": {"structure": "简短闲聊"}}
-
-    structures = {
-        "recommendation": [
-            "top_pick — 先重点安利最推荐的1-2部，多说几句为什么喜欢，后面简略带过",
-            "compare — 用对比的方式介绍，突出每部特点，让用户自己选",
-            "theme — 按主题/风格归类推荐，先说共同点再展开",
-            "honest — 先夸优点再说槽点，显得客观，加一句看你自己口味",
-        ],
-        "simple_fact": [
-            "direct — 直接回答核心问题，顺带讲个相关趣事",
-            "expand — 先回答核心问题，再补充1-2个相关维度",
-        ],
-        "comparison": [
-            "vs — 逐项对比，最后一句总结谁更适合什么人",
-            "narration — 先分别讲每部特点，最后说更看重X就选A看重Y就选B",
-        ],
-    }
-
-    options = structures.get(query_type, structures["recommendation"])
-    chosen = random.choice(options)
-
-    recommendation_count = state.get("recommendation_count", 0)
-    if query_type == "recommendation" and recommendation_count:
-        chosen = (
-            f"优先推荐约 {recommendation_count} 部作品；每部说明推荐理由；"
-            "重点保证相关性，不要堆砌备选"
-        )
-
-    return {"answer_plan": {
-        "structure": chosen,
-        "tone": "casual",
-        "recommendation_count": recommendation_count,
-    }}
-
-
-def _get_query(state: dict) -> str:
+def get_query(state: dict) -> str:
     """从 state 提取用户查询（优先 messages[-1]，跨轮最可靠）"""
     if state.get("messages"):
         last_msg = state["messages"][-1]
@@ -437,13 +201,13 @@ def build_graph():
     g = StateGraph(AgentState)
 
     # 注册节点
-    g.add_node("alias_resolve", _alias_resolve_node)
-    g.add_node("alias_skip", _alias_skip_node)
+    g.add_node("alias_resolve", alias_resolve_node)
+    g.add_node("alias_skip", alias_skip_node)
     g.add_node("image_recognition", image_recognition_node)
     g.add_node("history_extractor", history_extractor_node)
     g.add_node("context_builder", context_builder_node)
     g.add_node("planner", planner_node)
-    g.add_node("query_processing", _query_processing_node)
+    g.add_node("query_processing", query_processing_node)
     g.add_node("knowledge_retrieval", knowledge_retrieval_node)
     g.add_node("metadata_reasoner", metadata_reasoner_node)
     g.add_node("similar_expert", similar_expert_node)
@@ -453,7 +217,7 @@ def build_graph():
     g.add_node("replanner", replanner_node)
     g.add_node("simple_fact_answer", simple_fact_answer_node)
     g.add_node("web_fallback", web_fallback_node)
-    g.add_node("answer_planner", _answer_planner_node)
+    g.add_node("answer_planner", answer_planner_node)
     g.add_node("answer", answer_node)
 
     # ── START 条件边: image_recognition / alias_resolve / alias_skip ──

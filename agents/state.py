@@ -100,6 +100,7 @@ class AgentState(TypedDict):
     execution_mode: str                    # parallel | serial | single
     termination_reason: str                # quality_pass / replan_exhausted / web_fallback
     quality_trace: Annotated[list[dict], add]  # 可观测的质量闭环事件
+    retrieval_errors: Annotated[list[dict], add]  # 检索失败事件（结构化，前端可展示）
     original_query: str                    # 用户原始查询
     resolved_query: str                    # 别名解析后的查询
     search_keywords: list[str]             # Alias从长查询中提取的番剧名

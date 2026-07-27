@@ -6,10 +6,95 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from langchain_core.messages import AIMessage, HumanMessage
 
-from agents.context_builder import context_builder_node
+from agents.context_builder import context_builder_node, extract_recommendation_count
 from agents.history_extractor import _extract_recent_rounds
 from agents.message_content import has_image_block, latest_user_message, message_text
 from tools.registry import register_default_tools, tool_registry
+
+
+def test_similar_expert_prepares_deduplicated_candidates_without_llm():
+    from agents.similar_expert import similar_expert_node
+
+    semantic = "番剧: 命运石之门\n评分: 8.8\n类型/标签: 科幻、悬疑"
+    with (
+        patch("agents.similar_expert._find_structured_similar", return_value=[{
+            "name_cn": "命运石之门",
+            "score": 8.8,
+            "tags": ["科幻", "悬疑"],
+        }]),
+        patch("llms.llm_ainvoke_with_retry", new=AsyncMock()) as llm_call,
+    ):
+        result = asyncio.run(similar_expert_node({
+            "resolved_query": "推荐相似动画",
+            "shared_context": [semantic],
+            "execution_id": "run",
+            "attempt": 0,
+        }))
+
+    assert len(result["recommendation_candidates"]) == 1
+    candidate = result["recommendation_candidates"][0]
+    assert candidate["title"] == "命运石之门"
+    assert candidate["sources"] == ["semantic", "metadata"]
+    assert candidate["evidence"] == [" ".join(semantic.splitlines())]
+    llm_call.assert_not_awaited()
+
+
+def test_similar_expert_excludes_current_topic():
+    from agents.similar_expert import similar_expert_node
+
+    with patch("agents.similar_expert._find_structured_similar", return_value=[
+        {"name_cn": "命运石之门", "tags": ["科幻"]},
+        {"name_cn": "魔法少女小圆", "tags": ["悬疑"]},
+    ]):
+        result = asyncio.run(similar_expert_node({
+            "resolved_query": "推荐和命运石之门相似的动画",
+            "shared_context": [],
+            "context": {"topic_entity": {"name": "命运石之门", "type": "anime"}},
+            "execution_id": "run",
+            "attempt": 0,
+        }))
+
+    assert [item["title"] for item in result["recommendation_candidates"]] == ["魔法少女小圆"]
+
+
+def test_similar_expert_excludes_same_series_after_metadata_enrichment():
+    from agents.similar_expert import similar_expert_node
+
+    semantic = [
+        "番剧: 命运石之门 0\n类型/标签: 科幻、悬疑",
+        "番剧: 命运石之门 负荷领域的既视感\n类型/标签: 科幻、剧场版",
+        "番剧: 四叠半神话大系\n类型/标签: 科幻、轮回",
+    ]
+    structured = [
+        {"name_cn": "命运石之门 0", "tags": ["命运石之门", "续作"]},
+        {
+            "name_cn": "命运石之门 负荷领域的既视感",
+            "tags": ["命运石之门", "剧场版"],
+        },
+        {"name_cn": "四叠半神话大系", "tags": ["科幻", "轮回"]},
+    ]
+    with (
+        patch("agents.similar_expert._find_structured_similar", return_value=structured),
+        patch("agents.similar_expert._series_markers", return_value={"命运石之门"}),
+    ):
+        result = asyncio.run(similar_expert_node({
+            "resolved_query": "再推荐两部和它气质相近的动画",
+            "shared_context": semantic,
+            "context": {
+                "topic_entity": {"name": "命运石之门", "type": "anime"},
+                "constraints": {"exclude_same_series": True, "excluded_series": ["命运石之门"]},
+            },
+            "execution_id": "run",
+            "attempt": 0,
+        }))
+
+    assert [item["title"] for item in result["recommendation_candidates"]] == ["四叠半神话大系"]
+
+
+def test_series_filter_ignores_ambiguous_short_topic_titles():
+    from agents.similar_expert import _series_markers
+
+    assert _series_markers("日常") == set()
 
 
 def test_message_helpers_parse_multimodal_content():
@@ -48,6 +133,90 @@ def test_context_builder_ignores_trailing_ai_message():
     }))
 
     assert result["resolved_query"] == "命运石之门讲了什么"
+
+
+def test_context_builder_resolves_internal_pronoun_to_topic_entity():
+    result = asyncio.run(context_builder_node({
+        "messages": [HumanMessage(content="再推荐两部和它气质相近的动画")],
+        "context": {"history": [{"user": "命运石之门讲了什么", "assistant": "..."}]},
+        "topic_entity": {"name": "命运石之门", "type": "alias"},
+        "recent_entities": [
+            {"name": "娜娜", "type": "anime"},
+            {"name": "命运石之门", "type": "anime"},
+        ],
+    }))
+
+    assert "命运石之门气质相近" in result["resolved_query"]
+    assert "它" not in result["resolved_query"]
+    assert result["topic_entity"]["name"] == "命运石之门"
+    assert result["recommendation_count"] == 2
+
+
+def test_context_builder_anchors_elliptical_recommendation_followup():
+    result = asyncio.run(context_builder_node({
+        "messages": [HumanMessage(content="再推荐两部相似的")],
+        "context": {"history": [{"user": "聊聊命运石之门", "assistant": "..."}]},
+        "topic_entity": {"name": "命运石之门", "type": "alias"},
+        "recent_entities": [],
+    }))
+
+    assert result["resolved_query"] == "基于《命运石之门》，再推荐两部相似的"
+
+
+def test_context_builder_does_not_treat_recommendation_count_as_ordinal():
+    result = asyncio.run(context_builder_node({
+        "messages": [HumanMessage(content="再推荐三部相似的")],
+        "context": {"history": [{"user": "推荐科幻番", "assistant": "..."}]},
+        "topic_entity": {"name": "命运石之门", "type": "anime"},
+        "recent_entities": [
+            {"name": "命运石之门", "type": "anime"},
+            {"name": "夏日重现", "type": "anime"},
+            {"name": "寒蝉鸣泣之时", "type": "anime"},
+        ],
+    }))
+
+    assert result["resolved_query"] == "基于《命运石之门》，再推荐三部相似的"
+    assert result["recommendation_count"] == 3
+
+
+def test_context_builder_replaces_complete_ordinal_reference():
+    result = asyncio.run(context_builder_node({
+        "messages": [HumanMessage(content="那第一个的评分是多少？")],
+        "context": {"history": [{"user": "推荐两部动画", "assistant": "..."}]},
+        "recent_entities": [
+            {"name": "命运石之门", "type": "anime"},
+            {"name": "夏日重现", "type": "anime"},
+        ],
+    }))
+
+    assert result["resolved_query"] == "那命运石之门的评分是多少？"
+
+
+def test_extract_recommendation_count_supports_chinese_and_arabic_numbers():
+    assert extract_recommendation_count("推荐两部科幻动画") == 2
+    assert extract_recommendation_count("给我推荐3部日常番") == 3
+    assert extract_recommendation_count("推荐一些动画") == 0
+    assert extract_recommendation_count("推荐十二部科幻番") == 12
+    assert extract_recommendation_count("再推荐十三部热血番") == 13
+    assert extract_recommendation_count("推荐十部日常番") == 10
+    assert extract_recommendation_count("推荐一部") == 1
+    assert extract_recommendation_count("给我找三部") == 3
+    assert extract_recommendation_count("推荐四十二部") == 0  # 超出 20 上限
+
+
+def test_extract_recommendation_count_rejects_malformed_chinese_numbers():
+    assert extract_recommendation_count("推荐一三部") == 0
+    assert extract_recommendation_count("推荐十十部") == 0
+    assert extract_recommendation_count("推荐两八部") == 0
+
+
+def test_explicit_anime_title_becomes_persistent_topic():
+    result = asyncio.run(context_builder_node({
+        "messages": [HumanMessage(content="《命运石之门》的主要剧情是什么？")],
+        "context": {},
+    }))
+
+    assert result["topic_entity"] == {"name": "命运石之门", "type": "anime"}
 
 
 def test_default_tool_registration_is_idempotent_and_uses_current_image_tool():

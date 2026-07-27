@@ -70,8 +70,6 @@ async def chat_stream(body: ChatRequest):
                 "event": "error",
                 "data": json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False),
             }
-        finally:
-            yield {"event": "done", "data": ""}
 
     return EventSourceResponse(
         event_generator(),
@@ -136,8 +134,6 @@ async def chat_image(
                 "event": "error",
                 "data": json.dumps({"type": "error", "message": str(e)}, ensure_ascii=False),
             }
-        finally:
-            yield {"event": "done", "data": ""}
 
     return EventSourceResponse(
         event_generator(),

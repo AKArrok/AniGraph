@@ -440,6 +440,29 @@ _plan_cache: "OrderedDict[str, dict]" = OrderedDict()
 _plan_cache_max = 500
 
 
+def _fast_recommendation_plan(query: str) -> dict | None:
+    """Route obvious recommendation requests without spending LLM calls on routing."""
+    recommendation_terms = (
+        "推荐", "类似", "相似", "相近", "像它", "同类型",
+        "再来一部", "再来", "换一部", "更接近", "其他推荐",
+    )
+    metadata_terms = ("评分", "声优", "制作公司", "导演", "年份", "多少集")
+    if not any(term in query for term in recommendation_terms):
+        return None
+    if any(term in query for term in metadata_terms):
+        return None
+    return {
+        "query_category": "semantic",
+        "query_type": "recommendation",
+        "rewrite_strategy": "direct",
+        "experts": ["similar_expert"],
+        "parallel": False,
+        "need_web": False,
+        "alias_resolved": False,
+        "reasoning": "明确的相似推荐请求，走低延迟直接检索",
+    }
+
+
 def _get_cached_plan(query: str, history_text: str = "") -> dict | None:
     """检查计划缓存（命中时移到末尾，实现 LRU）"""
     key = _hash_query(query, history_text)
@@ -534,6 +557,11 @@ def plan(query: str, history_text: str = "") -> dict:
       1. Embedding 预检: 拦截闲聊 + 排除明显不相关类别缩小 LLM 决策空间
       2. 复杂度分析: 用小模型判断是否需要多查询扩展，省去不必要的策略细化
     """
+    fast_plan = _fast_recommendation_plan(query)
+    if fast_plan is not None:
+        logger.info("  [快速规划] 明确推荐请求 - 跳过 LLM 路由")
+        return fast_plan
+
     # 层1: Embedding 粗筛（拦截闲聊 + 排除不相关类别）
     early_plan, excluded = _route_embedding(query)
     if early_plan is not None:

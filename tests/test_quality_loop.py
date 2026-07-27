@@ -8,6 +8,7 @@ from agents.evaluator import evaluator_node
 from agents.graph import (
     _route_after_evaluator,
     _route_after_retrieval,
+    _route_after_similar_expert,
     _route_after_serial_expert,
     _serial_expert_node,
     build_graph,
@@ -69,6 +70,18 @@ class RoutingTests(unittest.IsolatedAsyncioTestCase):
         for parallel in (False, True):
             plan = {**_state()["plan"], "experts": ["similar_expert"], "parallel": parallel}
             self.assertEqual(_route_after_retrieval(_state(plan=plan)), "similar_expert")
+
+    def test_single_similar_recommendation_bypasses_quality_loop(self):
+        plan = {**_state()["plan"], "experts": ["similar_expert"]}
+        self.assertEqual(_route_after_similar_expert(_state(plan=plan)), "answer_planner")
+
+    def test_comparison_with_similar_expert_keeps_quality_loop(self):
+        plan = {
+            **_state()["plan"],
+            "query_type": "comparison",
+            "experts": ["similar_expert"],
+        }
+        self.assertEqual(_route_after_similar_expert(_state(plan=plan)), "merge")
 
     def test_simple_fact_fast_path_is_unchanged(self):
         plan = {**_state()["plan"], "query_type": "simple_fact"}

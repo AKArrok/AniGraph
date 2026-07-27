@@ -99,6 +99,7 @@ LANGFUSE_HOST       = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 # Agent Tuning
 RETRIEVER_K       = int(os.getenv("RETRIEVER_K", "5"))
 RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K", "50"))
+PINECONE_SEARCH_TYPE = os.getenv("PINECONE_SEARCH_TYPE", "similarity").lower()
 
 # ── RAG 检索优化 ──
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
@@ -106,7 +107,8 @@ RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
 LOCAL_RERANKER_MODEL = os.getenv("LOCAL_RERANKER_MODEL", "")
 FUSION_STRATEGY = os.getenv("FUSION_STRATEGY", "rrf")  # rrf | weighted | max
 ENABLE_QUERY_OPTIMIZATION = os.getenv("ENABLE_QUERY_OPTIMIZATION", "true").lower() == "true"
-ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
+# CPU 重排单次约需数秒，默认关闭以保证交互延迟；有 GPU 或离线评测时可显式开启。
+ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "false").lower() == "true"
 ENABLE_COMPRESSION = os.getenv("ENABLE_COMPRESSION", "true").lower() == "true"
 HYBRID_DENSE_K = int(os.getenv("HYBRID_DENSE_K", "20"))
 HYBRID_SPARSE_K = int(os.getenv("HYBRID_SPARSE_K", "20"))
@@ -121,7 +123,7 @@ METADATA_CACHE_SIZE = int(os.getenv("METADATA_CACHE_SIZE", "2000"))
 EXPERT_TEMPERATURE = float(os.getenv("EXPERT_TEMPERATURE", "0.7"))
 ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.7"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))  # Web fallback 触发阈值
-MAX_REPLANS = min(1, max(0, int(os.getenv("MAX_REPLANS", "1"))))
+MAX_REPLANS = min(1, max(0, int(os.getenv("MAX_REPLANS", "0"))))
 
 # ── Embedding 预检（零 LLM 成本拦截闲聊/简单查询）──
 ENABLE_EMBEDDING_PREFILTER = os.getenv("ENABLE_EMBEDDING_PREFILTER", "true").lower() == "true"
@@ -164,7 +166,9 @@ def validate_retrieval_settings() -> None:
     non_positive = [name for name, value in values.items() if value <= 0]
     if non_positive:
         raise ValueError(f"Retrieval settings must be positive: {non_positive}")
-    if RETRIEVER_FETCH_K < HYBRID_DENSE_K:
+    if PINECONE_SEARCH_TYPE not in ("similarity", "mmr"):
+        raise ValueError("PINECONE_SEARCH_TYPE must be 'similarity' or 'mmr'")
+    if PINECONE_SEARCH_TYPE == "mmr" and RETRIEVER_FETCH_K < HYBRID_DENSE_K:
         raise ValueError(
             "RETRIEVER_FETCH_K must be >= HYBRID_DENSE_K for MMR retrieval"
         )

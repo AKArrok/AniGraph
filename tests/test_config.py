@@ -8,10 +8,26 @@ def test_retrieval_settings_accept_default_candidate_funnel():
 
 
 def test_retrieval_settings_reject_mmr_pool_smaller_than_dense_pool(monkeypatch):
+    monkeypatch.setattr(config, "PINECONE_SEARCH_TYPE", "mmr")
     monkeypatch.setattr(config, "RETRIEVER_FETCH_K", 10)
     monkeypatch.setattr(config, "HYBRID_DENSE_K", 20)
 
     with pytest.raises(ValueError, match="RETRIEVER_FETCH_K"):
+        config.validate_retrieval_settings()
+
+
+def test_similarity_does_not_require_mmr_fetch_pool(monkeypatch):
+    monkeypatch.setattr(config, "PINECONE_SEARCH_TYPE", "similarity")
+    monkeypatch.setattr(config, "RETRIEVER_FETCH_K", 1)
+    monkeypatch.setattr(config, "HYBRID_DENSE_K", 20)
+
+    config.validate_retrieval_settings()
+
+
+def test_retrieval_settings_reject_unknown_search_type(monkeypatch):
+    monkeypatch.setattr(config, "PINECONE_SEARCH_TYPE", "fastest")
+
+    with pytest.raises(ValueError, match="PINECONE_SEARCH_TYPE"):
         config.validate_retrieval_settings()
 
 

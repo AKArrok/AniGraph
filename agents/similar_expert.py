@@ -1,70 +1,64 @@
-"""Similar Expert Agent — 基于 Embedding 召回 + Metadata Index 发现相似作品
+"""Similar Expert — 基于 Embedding 召回 + Metadata Index 整理相似候选
 
 工作流:
   1. 从用户查询中提取目标番剧（如有）
   2. Metadata Index: 同标签/同公司/同导演等结构相似
   3. Embedding 检索: 语义相似 TopK
-  4. 合并去重 → LLM 排序 + 解释
+  4. 确定性合并、去重和排序
 
 输出:
-  ExpertResult {answer, confidence, evidence}
+  recommendation_candidates + 兼容质量闭环的 ExpertResult
 """
-import json
+import re
 import time
 import logging
-from langchain_core.messages import HumanMessage, SystemMessage
-import config
 
 logger = logging.getLogger(__name__)
 
-_SIMILAR_SYSTEM = """你是资深动漫宅，专门帮人找"像 XX 的番"。用聊天的方式推荐。
-
-## 输出格式
-严格 JSON:
-{
-  "answer": "口语化的推荐，每个推荐2-3句",
-  "confidence": 0.85,
-  "evidence": ["引用来源"]
-}
-
-## 推荐角度（每个推荐至少覆盖 2 个维度）
-- 剧情走向: 叙事结构、反转密度、节奏感
-- 角色塑造: 人设深度、角色弧光
-- 世界观: 背景设定复杂度
-- 观看体验: 情感冲击、代入感
-- 观众反馈: 上下文中如有"观众评论"，引用作为佐证
-
-## 不要做的事
-- 别只说"风格相似"，要说具体哪里像
-- 别罗列评分标签，融入句子里
-- 评分差距大的要提
-- 也说说差异点和适合谁/不适合谁"""
-
-_SIMILAR_USER = """## 用户查询
-{query}
-
-## 结构相似候选（同标签/同公司/同导演）
-{structured_candidates}
-
-## 语义相似候选（Embedding 召回）
-{semantic_candidates}
-
-## 前序 Expert 结论（串行核验时提供）
-{peer_findings}
-
-请推荐最相似的作品并说明理由。"""
+_TITLE_RE = re.compile(r"^(?:番剧|【番剧】)[:：]?\s*([^\n（(]+)", re.MULTILINE)
 
 
-def _format_peer_findings(state: dict) -> str:
-    execution_id = state.get("execution_id", "")
-    attempt = state.get("attempt", 0)
-    findings = [
-        r for r in state.get("expert_results", [])
-        if r.get("execution_id") == execution_id
-        and r.get("attempt", 0) == attempt
-        and r.get("expert") != "similar_expert"
-    ]
-    return "\n".join(r.get("answer", "") for r in findings if r.get("answer")) or "(无)"
+def _normalize_title(title: str) -> str:
+    return re.sub(r"[\s《》【】\[\]（）()·:：;；!！?？._-]", "", title).casefold()
+
+
+def _series_markers(topic_title: str) -> set[str]:
+    """Build conservative franchise markers from the current topic metadata."""
+    if not topic_title:
+        return set()
+
+    names = {topic_title}
+    try:
+        from agents.metadata_index import index
+
+        item = index.get_by_alias(topic_title)
+        if item:
+            names.update({
+                str(item.get("name_cn", "")),
+                str(item.get("name", "")),
+                *(str(alias) for alias in item.get("alias", [])),
+            })
+    except Exception:
+        pass
+
+    # Short names such as "日常" are too ambiguous to use as substring markers.
+    return {
+        normalized
+        for name in names
+        if (normalized := _normalize_title(name)) and len(normalized) >= 4
+    }
+
+
+def _belongs_to_series(candidate: dict, markers: set[str]) -> bool:
+    if not markers:
+        return False
+    title = _normalize_title(str(candidate.get("title", "")))
+    tags = {
+        _normalize_title(str(tag))
+        for tag in candidate.get("tags", [])
+        if tag
+    }
+    return any(marker in title or marker in tags for marker in markers)
 
 
 def _find_structured_similar(query: str, state: dict) -> list[dict]:
@@ -76,7 +70,14 @@ def _find_structured_similar(query: str, state: dict) -> list[dict]:
         if not metadata:
             return []
 
-        similar = set()
+        similar: list[str] = []
+        seen: set[str] = set()
+
+        def remember(name: str) -> None:
+            if name and name not in seen:
+                seen.add(name)
+                similar.append(name)
+
         for item in metadata[:3]:
             # 同标签
             tags = item.get("tags", [])
@@ -84,14 +85,14 @@ def _find_structured_similar(query: str, state: dict) -> list[dict]:
                 for tag in tags[:2]:
                     results = index.search(tag=tag, limit=5)
                     for r in results:
-                        similar.add(r.get("name_cn", ""))
+                        remember(r.get("name_cn", ""))
 
             # 同制作公司
             studio = item.get("studio", "")
             if studio:
                 results = index.search(studio=studio, limit=3)
                 for r in results:
-                    similar.add(r.get("name_cn", ""))
+                    remember(r.get("name_cn", ""))
 
         # 返回 Metadata Index 中的完整信息
         candidates = []
@@ -105,40 +106,130 @@ def _find_structured_similar(query: str, state: dict) -> list[dict]:
         return []
 
 
-def _format_candidates(candidates: list[dict]) -> str:
-    """格式化候选列表为文本"""
-    if not candidates:
-        return "(无)"
+def _candidate_from_metadata(item: dict) -> dict | None:
+    title = str(item.get("name_cn") or item.get("name") or item.get("title") or "").strip()
+    if not title:
+        return None
+    tags = item.get("tags", [])
+    if isinstance(tags, str):
+        tags = [tag.strip() for tag in re.split(r"[,，、]", tags) if tag.strip()]
+    return {
+        "title": title,
+        "score": item.get("score", ""),
+        "tags": tags[:8],
+        "studio": item.get("studio") or item.get("studios") or "",
+        "date": item.get("date", ""),
+        "evidence": [],
+        "sources": ["metadata"],
+    }
 
+
+def _candidate_from_semantic(text: str) -> dict | None:
+    match = _TITLE_RE.search(text or "")
+    if not match:
+        return None
+    title = match.group(1).strip()
+    evidence = " ".join(line.strip() for line in text.splitlines() if line.strip())
+    return {
+        "title": title,
+        "score": "",
+        "tags": [],
+        "studio": "",
+        "date": "",
+        "evidence": [evidence[:700]],
+        "sources": ["semantic"],
+    }
+
+
+def _merge_candidates(
+    structured: list[dict],
+    semantic: list[str],
+    limit: int = 8,
+    excluded_titles: set[str] | None = None,
+    excluded_series_markers: set[str] | None = None,
+) -> list[dict]:
+    """Merge evidence by exact normalized title while preserving retrieval order."""
+    excluded = {
+        _normalize_title(title)
+        for title in (excluded_titles or set())
+        if title
+    }
+    merged: dict[str, dict] = {}
+    order: list[str] = []
+    # Semantic retrieval carries the relevance ranking. Metadata enriches those
+    # candidates and contributes fallback candidates without overriding that order.
+    raw_candidates = [
+        *(_candidate_from_semantic(text) for text in semantic),
+        *(_candidate_from_metadata(item) for item in structured),
+    ]
+    for candidate in raw_candidates:
+        if not candidate:
+            continue
+        key = _normalize_title(candidate["title"])
+        if key in excluded:
+            continue
+        if key not in merged:
+            merged[key] = candidate
+            order.append(key)
+            continue
+        current = merged[key]
+        for field in ("score", "studio", "date"):
+            if not current.get(field) and candidate.get(field):
+                current[field] = candidate[field]
+        current["tags"] = list(dict.fromkeys([*current["tags"], *candidate["tags"]]))[:8]
+        current["evidence"] = list(dict.fromkeys([*current["evidence"], *candidate["evidence"]]))[:2]
+        current["sources"] = list(dict.fromkeys([*current["sources"], *candidate["sources"]]))
+    candidates = [merged[key] for key in order]
+    markers = excluded_series_markers or set()
+    if markers:
+        candidates = [
+            candidate
+            for candidate in candidates
+            if not _belongs_to_series(candidate, markers)
+        ]
+    return candidates[:limit]
+
+
+def _format_candidate_summary(candidates: list[dict]) -> str:
     lines = []
-    for i, c in enumerate(candidates[:10], 1):
-        name = c.get("name_cn") or c.get("name", "未知")
-        score = c.get("score", "?")
-        tags = ", ".join(c.get("tags", [])[:5])
-        studio = c.get("studio", "")
-        date = c.get("date", "")
-        lines.append(
-            f"{i}. {name} | 评分: {score} | 标签: {tags} | "
-            f"公司: {studio} | 日期: {date}"
-        )
-
+    for candidate in candidates:
+        details = []
+        if candidate.get("score") not in ("", None):
+            details.append(f"评分 {candidate['score']}")
+        if candidate.get("tags"):
+            details.append("标签 " + "、".join(candidate["tags"][:5]))
+        if candidate.get("studio"):
+            details.append(f"制作 {candidate['studio']}")
+        evidence = candidate.get("evidence", [])
+        if evidence:
+            details.append("证据 " + evidence[0][:240])
+        lines.append(f"**{candidate['title']}**：" + "；".join(details))
     return "\n".join(lines)
 
 
 async def similar_expert_node(state: dict) -> dict:
-    """LangGraph 节点: Similar Expert"""
+    """Prepare recommendation candidates without an LLM call."""
     t0 = time.time()
-    from llms import answer_LLM, simple_LLM, llm_ainvoke_with_retry
-
     query = state.get("resolved_query") or state.get("original_query", "")
 
-    # 1. 结构相似候选（从 Metadata Index）
     structured = _find_structured_similar(query, state)
-    structured_text = _format_candidates(structured)
-
-    # 2. 语义相似候选（从 shared_context）
     shared_context = state.get("shared_context", [])
-    semantic_text = "\n\n---\n\n".join(shared_context[:5]) if shared_context else "(无)"
+    context = state.get("context", {})
+    topic = context.get("topic_entity", {}) if isinstance(context, dict) else {}
+    topic_title = str(topic.get("name", ""))
+    constraints = context.get("constraints", {}) if isinstance(context, dict) else {}
+    exclude_same_series = bool(constraints.get("exclude_same_series", False))
+    excluded_titles = {
+        *state.get("search_keywords", []),
+        topic_title,
+    }
+    candidates = _merge_candidates(
+        structured,
+        shared_context,
+        limit=8,
+        excluded_titles=excluded_titles,
+        excluded_series_markers=_series_markers(topic_title) if exclude_same_series else set(),
+    )
 
     logger.debug(
         f"Similar Expert 收到 state: "
@@ -146,65 +237,22 @@ async def similar_expert_node(state: dict) -> dict:
         f"context={len(shared_context)}条, "
         f"structured_candidates={len(structured)}个"
     )
-    if len(semantic_text) > 2000:
-        semantic_text = semantic_text[:2000] + "\n... (truncated)"
-
-    # 3. 如果没有数据，降 confidence
-    no_data = (not structured) and (not shared_context)
-
-    if no_data:
-        return {
-            "expert_results": [{
-                "expert": "similar_expert",
-                "attempt": state.get("attempt", 0),
-                "execution_id": state.get("execution_id", ""),
-                "answer": "当前知识库中没有足够的相似作品数据。",
-                "confidence": 0.2,
-                "evidence": [],
-            }],
-        }
-
-    llm = answer_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
-
-    # simple_fact 查询用轻量模型（快 + 省）
-    plan = state.get("plan", {})
-    if plan.get("query_type") == "simple_fact":
-        llm = simple_LLM.bind(temperature=config.EXPERT_TEMPERATURE)
-
-    resp = await llm_ainvoke_with_retry(llm, [
-        SystemMessage(content=_SIMILAR_SYSTEM),
-        HumanMessage(content=_SIMILAR_USER.format(
-            query=query,
-            structured_candidates=structured_text,
-            semantic_candidates=semantic_text,
-            peer_findings=_format_peer_findings(state),
-        )),
-    ])
-
-    # 解析
-    text = resp.content.strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[-1]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
-
-    try:
-        result = json.loads(text)
-    except json.JSONDecodeError:
-        result = {
-            "answer": text[:500],
-            "confidence": 0.5,
-            "evidence": ["LLM 输出非 JSON 格式"],
-        }
-
-    result.update({
+    summary = _format_candidate_summary(candidates)
+    result = {
         "expert": "similar_expert",
         "attempt": state.get("attempt", 0),
         "execution_id": state.get("execution_id", ""),
-    })
+        "answer": summary or "当前知识库中没有足够的相似作品数据。",
+        "confidence": 0.85 if candidates else 0.2,
+        "evidence": [
+            evidence
+            for candidate in candidates
+            for evidence in candidate.get("evidence", [])[:1]
+        ][:8],
+    }
 
-    logger.info(f"  similar_expert 耗时 {time.time()-t0:.1f}s")
+    logger.info(f"  similar_expert 整理 {len(candidates)} 个候选，耗时 {time.time()-t0:.1f}s")
     return {
+        "recommendation_candidates": candidates,
         "expert_results": [result],
     }

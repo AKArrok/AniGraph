@@ -5,7 +5,7 @@
     2. on_chain_start → adapter.adapt_task_start → yield node_start event
     3. on_chain_end   → adapter.adapt_task_end   → yield node_end event
     4. on_chat_model_end → adapter.record_llm_call（token 用量）
-    5. on_chat_model_stream → 累积并发送 answer_chunk（打字机流）
+    5. on_chat_model_stream → 发送增量 answer_chunk（打字机流）
     6. 完成 → adapter.build_summary → yield done event
 
 ⚠️ 关键: 只用一个 astream_events 流，避免 astream + astream_events 双流导致图执行两次。
@@ -103,7 +103,7 @@ class TraceCollector:
                     content = chunk.content
                     if isinstance(content, str):
                         answer_text += content
-                        yield self.adapter.build_answer_chunk(answer_text)
+                        yield self.adapter.build_answer_chunk(content)
 
         # ── 如果回答了但没流式（如 non-streaming LLM），从节点输出中提取 ──
         if not answer_streaming and collected_nodes:

@@ -76,11 +76,16 @@ async def simple_fact_answer_node(state: dict) -> dict:
                 [{"name": entity_name, "type": entity_type}] + existing_recent
             )[:5]
 
+    topic_entity = state.get("topic_entity", {})
+    if entity_name and entity_type in ("character", "alias"):
+        topic_entity = {"name": entity_name, "type": entity_type}
+
     logger.info(f"  simple_fact_answer 耗时 {time.time()-t0:.1f}s")
     return {
         "messages": [resp],
         "previous_intent": "simple_fact",
         "recent_entities": existing_recent,
+        "topic_entity": topic_entity,
     }
 
 

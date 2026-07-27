@@ -7,6 +7,8 @@
 
 对外接口: retrieve_with_optimization() / get_last_debug()
 """
+import time
+
 from tools.query_processing import classify, multi_query_rewrite, hyde_generate, decompose
 from tools.knowledge_retrieval import search_whoosh, fusion, rerank, compress_docs, verify_answer
 import config
@@ -119,9 +121,12 @@ def retrieve_with_optimization(
     """
     global _last_debug
     _last_debug = {"query": query}
+    retrieval_started = time.perf_counter()
 
     # Step 0: 昵称解析（本地优先，联网 fallback）
+    phase_started = time.perf_counter()
     resolved_name = _resolve_nickname(query)
+    _last_debug["nickname_seconds"] = round(time.perf_counter() - phase_started, 3)
     if resolved_name:
         _last_debug["nickname_resolved"] = f"{query} → {resolved_name}"
         search_query = f"{query} {resolved_name}"
@@ -167,15 +172,25 @@ def retrieve_with_optimization(
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     def _retrieve_dense(q: str):
+        started = time.perf_counter()
         try:
             docs = dense_retriever.invoke(q)
-            return ("dense", q, [(d.page_content, 1.0) for d in docs], len(docs))
-        except Exception:
-            return ("dense", q, [], 0)
+            return (
+                "dense", q, [(d.page_content, 1.0) for d in docs], len(docs),
+                time.perf_counter() - started, None,
+            )
+        except Exception as exc:
+            return (
+                "dense", q, [], 0, time.perf_counter() - started,
+                f"{type(exc).__name__}: {exc}"[:300],
+            )
 
     def _retrieve_sparse(q: str):
+        started = time.perf_counter()
         docs = search_whoosh(q, k=config.HYBRID_SPARSE_K)
-        return ("sparse", q, docs, len(docs))
+        return (
+            "sparse", q, docs, len(docs), time.perf_counter() - started, None,
+        )
 
     max_workers = min(len(queries) * 2, 8)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -184,13 +199,17 @@ def retrieve_with_optimization(
             futures.append(executor.submit(_retrieve_dense, q))
             futures.append(executor.submit(_retrieve_sparse, q))
         for future in as_completed(futures):
-            kind, q, docs, cnt = future.result()
+            kind, q, docs, cnt, elapsed, error = future.result()
             if kind == "dense":
                 all_dense.extend(docs)
                 dense_counts[q] = cnt
+                _last_debug.setdefault("dense_seconds_per_query", {})[q] = round(elapsed, 3)
+                if error:
+                    _last_debug.setdefault("dense_errors", {})[q] = error
             else:
                 all_sparse.extend(docs)
                 sparse_counts[q] = cnt
+                _last_debug.setdefault("sparse_seconds_per_query", {})[q] = round(elapsed, 3)
 
     _last_debug["dense_retrieved"] = sum(dense_counts.values())
     _last_debug["sparse_retrieved"] = sum(sparse_counts.values())
@@ -198,6 +217,7 @@ def retrieve_with_optimization(
     _last_debug["sparse_per_query"] = sparse_counts
 
     # Step 4: 融合
+    phase_started = time.perf_counter()
     if all_sparse:
         fused_docs = fusion(all_dense, all_sparse)
         _last_debug["fusion_strategy"] = config.FUSION_STRATEGY
@@ -209,10 +229,12 @@ def retrieve_with_optimization(
                 seen.add(doc)
                 fused_docs.append(doc)
         _last_debug["fusion_strategy"] = "Dense-only (无稀疏索引)"
+    _last_debug["fusion_seconds"] = round(time.perf_counter() - phase_started, 3)
 
     _last_debug["post_fusion_count"] = len(fused_docs)
 
     # Step 5: 精排
+    phase_started = time.perf_counter()
     if config.ENABLE_RERANKING and len(fused_docs) > k_final:
         rerank_top_k = max(k_final, config.RERANK_TOP_K)
         fused_docs = rerank(search_query, fused_docs, top_k=rerank_top_k)
@@ -222,8 +244,10 @@ def retrieve_with_optimization(
     else:
         _last_debug["reranking"] = "跳过" if not config.ENABLE_RERANKING else f"跳过 (仅 {len(fused_docs)} 条，无需精排)"
     _last_debug["post_rerank_count"] = len(fused_docs)
+    _last_debug["rerank_seconds"] = round(time.perf_counter() - phase_started, 3)
 
     # Step 6: 压缩
+    phase_started = time.perf_counter()
     pre_compress = len(fused_docs)
     if config.ENABLE_COMPRESSION:
         fused_docs = compress_docs(fused_docs, query, top_k=k_final)
@@ -232,5 +256,7 @@ def retrieve_with_optimization(
         _last_debug["compression"] = "已禁用"
 
     _last_debug["final_count"] = len(fused_docs[:k_final])
+    _last_debug["compression_seconds"] = round(time.perf_counter() - phase_started, 3)
+    _last_debug["total_seconds"] = round(time.perf_counter() - retrieval_started, 3)
 
     return fused_docs[:k_final], strategy

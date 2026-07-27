@@ -310,15 +310,19 @@ def _retrieve_semantic(search_queries: list[str], state: dict) -> list[str]:
         from tools.rag import _get_retriever
         retrieve_opt = tool_registry.get_callable("retrieve_optimized")
         retriever = _get_retriever()
-        # 上游 _query_processing_node 已基于 plan.rewrite_strategy 做过决策
-        # 只要 query_strategy 字段存在，就跳过 retrieve_optimized 内部的 classify 调用
-        # 避免与 planner 决策冲突（如 planner 判 direct 但 classify 重判为 rewrite）
         already_optimized = bool(state.get("query_strategy")) and bool(state.get("optimized_queries"))
-        for q in search_queries[:2]:
+        plan = state.get("plan", {})
+        k_final = config.RETRIEVER_K
+        if plan.get("query_type") == "recommendation":
+            k_final = max(k_final, 10)
+        context = state.get("context", {})
+        constraints = context.get("constraints", {}) if isinstance(context, dict) else {}
+        query_count = 3 if constraints.get("exclude_same_series") else 2
+        for q in search_queries[:query_count]:
             if retrieve_opt:
                 d, _ = retrieve_opt(
-                    q, retriever, k_final=config.RETRIEVER_K,
-                    skip_optimization=already_optimized,
+                    q, retriever, k_final=k_final,
+                    skip_optimization=True,
                 )
                 docs.extend(d)
     except Exception as e:
@@ -344,6 +348,13 @@ async def _knowledge_retrieval_node(state: AgentState) -> dict:
     search_queries = [q for q in queries if isinstance(q, str)]
     if not search_queries:
         search_queries = [query]
+
+    # 同系列排除时，用主题标签扩展检索，避免结果全是主题自身系列
+    context = state.get("context", {})
+    constraints = context.get("constraints", {}) if isinstance(context, dict) else {}
+    if constraints.get("exclude_same_series") and constraints.get("topic_tags"):
+        tag_queries = [f"{tag} 动画 推荐" for tag in constraints["topic_tags"][:3]]
+        search_queries = list(dict.fromkeys([*search_queries, *tag_queries]))
 
     # ① 别名关键词优先查 Metadata Index
     metadata_results = _retrieve_by_keywords(state.get("search_keywords", []))
@@ -444,6 +455,7 @@ def _expert_input(state: AgentState, include_results: bool = False) -> dict:
         "context": state.get("context", {}),
         "execution_id": state.get("execution_id", ""),
         "attempt": state.get("attempt", 0),
+        "recommendation_count": state.get("recommendation_count", 0),
     }
     if include_results:
         payload["expert_results"] = state.get("expert_results", [])
@@ -502,6 +514,19 @@ def _route_after_serial_expert(state: AgentState) -> str:
     return "merge"
 
 
+def _is_recommendation_fast_path(state: AgentState) -> bool:
+    plan = state.get("plan", {})
+    experts = list(dict.fromkeys(plan.get("experts", [])))
+    return plan.get("query_type") == "recommendation" and experts == ["similar_expert"]
+
+
+def _route_after_similar_expert(state: AgentState) -> str:
+    """Single-expert recommendations already have evidence; generate once and stream."""
+    if _is_recommendation_fast_path(state):
+        return "answer_planner"
+    return "merge"
+
+
 def _route_after_merge(state: AgentState) -> str:
     """Merge is always followed by evidence evaluation."""
     return "evaluator"
@@ -552,7 +577,18 @@ def _answer_planner_node(state: AgentState) -> dict:
     options = structures.get(query_type, structures["recommendation"])
     chosen = random.choice(options)
 
-    return {"answer_plan": {"structure": chosen, "tone": "casual"}}
+    recommendation_count = state.get("recommendation_count", 0)
+    if query_type == "recommendation" and recommendation_count:
+        chosen = (
+            f"优先推荐约 {recommendation_count} 部作品；每部说明推荐理由；"
+            "重点保证相关性，不要堆砌备选"
+        )
+
+    return {"answer_plan": {
+        "structure": chosen,
+        "tone": "casual",
+        "recommendation_count": recommendation_count,
+    }}
 
 
 def _get_query(state: dict) -> str:
@@ -625,9 +661,13 @@ def build_graph():
         "simple_fact_answer": "simple_fact_answer",
     })
 
-    # experts → merge
+    # Experts normally enter the quality loop. A single recommendation candidate
+    # organizer can go straight to the sole prose-generating answer call.
     g.add_edge("metadata_reasoner", "merge")
-    g.add_edge("similar_expert", "merge")
+    g.add_conditional_edges("similar_expert", _route_after_similar_expert, {
+        "answer_planner": "answer_planner",
+        "merge": "merge",
+    })
 
     # Serial controller loops until every planned Expert has completed.
     g.add_conditional_edges("serial_expert", _route_after_serial_expert, {

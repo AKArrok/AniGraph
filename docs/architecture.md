@@ -21,51 +21,38 @@ AniGraph 是一个基于 LangGraph 的多 Agent ACG 番剧检索、问答与推�
 
 ## 图流程
 
-```
-START
-  │
-  │  route_from_start()
-  ├── 有图片 ──────→ image_recognition ─┐
-  ├── 需解析别名 ──→ alias_resolve ─────┼→ history_extractor
-  └── 可跳过别名 ──→ alias_skip ────────┘
-  │
-  ▼
-history_extractor      ← 从 messages 提取最近 N 轮对话历史
-  │
-  ▼
-context_builder        ← 构建 ConversationContext：追问检测、指代消解、话题推断
-  │                       同时生成 history_text（完整版）和 history_text_recent（截断版）
-  ▼
-planner                ← 4 层路由（Embedding 预过滤 → 缓存 → LLM 分类 → 复杂度分析）
-  │                       输出 ExecutionPlan
-  │
-  │  route_after_planner()
-  ├── chat ────────────────────────────────────→ answer（闲聊直达回答）
-  │
-  └── 其他 ──→ query_processing   ← 查询优化：direct / rewrite / hyde / decompose
-                  │
-                  ▼
-           knowledge_retrieval    ← 知识检索：metadata / semantic / mixed 三路径
-                  │
-                  │  route_after_retrieval()
-                  ├── simple_fact ──→ simple_fact_answer ──→ END（快速通道）
-                  ├── 无 Expert  ──→ answer_planner
-                  └── 有 Expert  ──→ Expert Dispatcher
-                                          ├── parallel=true  → Send(experts) 并行
-                                          ├── parallel=false → serial_expert 按顺序循环
-                                          └── 单 Expert      → 直接执行
-                                                   │
-                                                   ▼
-                                              merge（仅当前 attempt）
-                                                   │
-                                                   ▼
-                                               evaluator
-                                      ┌────────────┼──────────────┐
-                                      │ pass       │ replan       │ fallback/exhausted
-                                      ▼            ▼              ▼
-                              web判断/answer  replanner ─────→ web判断/降级回答
-                                                   │
-                                                   └→ query_processing（最多一次）
+```mermaid
+flowchart TD
+    Start([START]) --> RouteStart{route_from_start}
+    RouteStart -- 有图片 --> Image[image_recognition]
+    RouteStart -- 需解析别名 --> Alias[alias_resolve]
+    RouteStart -- 可跳过 --> Skip[alias_skip]
+    Image --> Hist[history_extractor<br/>最近 N 轮对话历史]
+    Alias --> Hist
+    Skip --> Hist
+    Hist --> Ctx[context_builder<br/>追问检测 / 指代消解 / 话题推断]
+    Ctx --> Planner[planner<br/>4 层路由 → ExecutionPlan]
+    Planner --> RoutePlanner{route_after_planner}
+    RoutePlanner -- chat --> Answer[answer]
+    RoutePlanner -- 其他 --> QP[query_processing<br/>direct / rewrite / hyde / decompose]
+    QP --> KR[knowledge_retrieval<br/>metadata / semantic / mixed]
+    KR --> RouteRet{route_after_retrieval}
+    RouteRet -- simple_fact --> SF[simple_fact_answer] --> End([END])
+    RouteRet -- 无 Expert --> AP[answer_planner]
+    RouteRet -- parallel=true --> Parallel[Send&#40;experts&#41; 并行]
+    RouteRet -- parallel=false --> Serial[serial_expert 顺序循环]
+    RouteRet -- 单 Expert --> Single[直接执行]
+    Parallel --> Merge[merge<br/>仅当前 attempt]
+    Serial --> Merge
+    Single --> Merge
+    Merge --> Eval{evaluator}
+    Eval -- pass --> WebGate[web 判断]
+    Eval -- replan --> Replan[replanner] --> QP
+    Eval -- fallback/exhausted --> Degrade[降级回答]
+    WebGate --> AP
+    AP --> Answer
+    Degrade --> Answer
+    Answer --> End
 ```
 
 `chat` 与 `simple_fact` 是显式快速通道，不进入质量闭环。普通查询的 Expert 结果按 `execution_id + attempt` 隔离，避免不同请求或重规划轮次的结果污染 Merge。

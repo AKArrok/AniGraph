@@ -48,3 +48,9 @@ data/*
 uploads/
 
 models/
+
+# Test scratch / diagnostic artifacts
+tests/_*.py
+tests/_emb_cache.json
+tests/*.bak.json
+tests/append_run.err

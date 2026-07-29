@@ -1,6 +1,15 @@
 # AniGraph 内部 Python API 参考
 
-> 本文面向维护者，记录模块、状态和内部函数。HTTP / Python 对外接入方式见 [接口文档](api.md)。
+> 本文面向维护者，记录模块、状态和内部函数。HTTP / Python 对外接入方式见 [接口文档](api.md)。版本 v2.5（2026-07-29）。
+
+## v2.5 关键结构变化
+
+- 检索节点从 `agents/graph.py` 内联函数迁到 `agents/retrieval.py`
+- 查询优化节点从 `tools/query_processing.py` 迁到 `agents/query_processor.py`
+- 新增 `agents/metadata_fallbacks.py` — Simple Fact 与全流程共享的检索兜底
+- 新增 `agents/session_store.py` — 统一 `MemorySaver` 与已编译图实例池
+- 新增 `agents/answer_planner.py` — 零 LLM 回答结构规划器
+- `MAX_REPLANS` 默认值改为 `0`（v2.5 默认关闭重规划，硬上限仍为 1）
 
 ## 入口函数
 
@@ -63,13 +72,13 @@ app = g.compile(checkpointer=MemorySaver())
 | 节点 | 文件 | LLM |
 |------|------|:---:|
 | `image_recognition` | `agents/image_recognition.py` | 0-1 |
-| `alias_resolve` | `agents/graph.py` | 0-2 |
-| `alias_skip` | `agents/graph.py` | 0 |
+| `alias_resolve` | `agents/alias_resolve.py` | 0-2 |
+| `alias_skip` | `agents/alias_resolve.py` | 0 |
 | `history_extractor` | `agents/history_extractor.py` | 0 |
 | `context_builder` | `agents/context_builder.py` | 0 |
 | `planner` | `agents/planner.py` | 0-1 |
-| `query_processing` | `agents/graph.py` | 0-1 |
-| `knowledge_retrieval` | `agents/graph.py` | 0 |
+| `query_processing` | `agents/query_processor.py` | 0-1 |
+| `knowledge_retrieval` | `agents/retrieval.py` | 0 |
 | `simple_fact_answer` | `agents/simple_fact_answer.py` | 1 |
 | `metadata_reasoner` | `agents/metadata_reasoner.py` | 1 |
 | `similar_expert` | `agents/similar_expert.py` | 1 |
@@ -78,7 +87,7 @@ app = g.compile(checkpointer=MemorySaver())
 | `evaluator` | `agents/evaluator.py` | 0-1 |
 | `replanner` | `agents/replanner.py` | 0 |
 | `web_fallback` | `agents/web_fallback.py` | 0-1 |
-| `answer_planner` | `agents/graph.py` | 0 |
+| `answer_planner` | `agents/answer_planner.py` | 0 |
 | `answer` | `agents/answer.py` | 1 |
 
 ---
@@ -165,7 +174,7 @@ from llms import embeddings
 | `EXPERT_TEMPERATURE` | `0.7` | Expert LLM 温度 |
 | `ANSWER_TEMPERATURE` | `0.7` | Answer LLM 温度 |
 | `CONFIDENCE_THRESHOLD` | `0.5` | Web fallback 触发阈值 |
-| `MAX_REPLANS` | `1` | 最大重规划次数；配置值被强制限制在 0-1 |
+| `MAX_REPLANS` | `0` | 最大重规划次数；配置值被强制限制在 0-1（v2.5 默认关闭） |
 | `ENABLE_RERANKING` | `true` | 是否启用 CrossEncoder 精排 |
 
 ### 短期记忆
@@ -197,7 +206,7 @@ class AgentState(TypedDict):
     merged_results: str
     execution_id: str              # 隔离同一 checkpoint 中的不同请求
     attempt: int                   # 当前质量尝试，首次为 0
-    max_replans: int               # 最大重规划次数，默认 1
+    max_replans: int               # 最大重规划次数，v2.5 默认 0（硬上限 1）
     current_expert_index: int       # 串行 Expert 下标
     evaluation: dict               # EvaluationResult
     replan_feedback: dict          # 补丁、附加查询和 plan diff
@@ -382,6 +391,43 @@ class MetadataIndex:
 
 结构化元数据索引（JSON/SQLite）。
 
+`fuzzy_lookup(query)` 提供精确 → 去语气词 → 去前缀的管道式匹配，`alias_resolve` 调用它在 LLM 前先短路已知别名（例：萌蛋呢 19s → 0.12s）。
+
+---
+
+## Metadata Fallbacks
+
+```python
+# agents/metadata_fallbacks.py
+def is_list_query(query: str) -> bool
+def format_metadata(entries: list[dict], verbose: bool = False) -> str
+def filter_metadata_by_query(metadata: list[dict], query: str) -> list[dict]
+def fetch_by_studio_year(query: str) -> list[dict]
+def fetch_by_title(query: str, search_keywords: list[str] | None) -> list[dict]
+```
+
+Simple Fact 快速通道与全流程检索层共享的兜底规则。
+
+- `fetch_by_studio_year(query)` — 查询同时命中制作公司和 4 位年份时直接查 Metadata Index，绕过 embedding 检索
+- `fetch_by_title(query, keywords)` — 查询指向具体标题（括号内、`search_keywords` 或大写词）时直接查 Metadata Index
+- `filter_metadata_by_query(metadata, query)` — 将已有列表按查询中的年份/公司/导演过滤；查询无提示则返回 `[]`
+
+---
+
+## SessionStore
+
+```python
+# agents/session_store.py
+from agents.session_store import default_store, SessionStore
+
+app = default_store.get_app(thread_id)  # 获取或创建已编译图实例
+default_store.clear(thread_id)           # 清空单会话记忆
+default_store.clear_all()                # 清空全部
+default_store.session_count()            # 活跃会话数
+```
+
+`main.py` / `chat.py` / `server.py` 共用模块级 `default_store`；`SessionStore` 内部按 `thread_id` 缓存 `MemorySaver` 和已编译图实例，避免每次调用重编译。
+
 ---
 
 ## Web Trace Server
@@ -433,18 +479,23 @@ python server.py [port]
 ## 运行测试
 
 ```bash
-# 交互式多轮测试（支持短期记忆）
-python tests/test_agent.py
+# 无依赖单元测试子集
+pytest -q tests/test_config.py tests/test_quality_loop.py tests/test_retry_system.py \
+          tests/test_chunking.py tests/test_planner_fast_path.py \
+          tests/test_streaming.py tests/test_constraints.py
 
-# 全链路集成测试
-python tests/test_integration.py
+# 需要真实 LLM/Pinecone 配置的集成测试
+pytest -q tests/test_agent.py tests/test_architecture.py \
+          tests/test_alias_layered.py tests/test_rag_optimizer.py \
+          tests/test_ark_embeddings.py
 
-# 实体解析测试
-python tests/test_entity_resolver.py
-
-# 知识库检查
-python tests/check_db.py
+# 消融实验 / Hard Eval
+python tests/ablation.py --dry-run   # 预览实验矩阵
+python tests/run_full_pipeline.py    # 全流程评测
+python tests/run_hard_ablation.py    # Hard Eval 消融
 
 # 简单单次查询（run() 入口）
 python main.py
 ```
+
+`test_agent.py`（及其他集成测试）依赖 `pytest-asyncio` 与真实 API 配置，需额外安装并配好 `.env`。

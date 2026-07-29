@@ -1,0 +1,686 @@
+[
+  {
+    "id": "L37245",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《勇者凯撒》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "勇者凯撒"
+    ],
+    "gold_answer_keywords": [
+      "6.5",
+      "1990"
+    ],
+    "gold_evidence": {
+      "anime_id": 37245,
+      "score": 6.5,
+      "score_count": 55,
+      "release_date": "1990-02-03",
+      "production": [
+        "サンライズ"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "C005",
+    "type": "comment_anchor",
+    "difficulty": "hard",
+    "query": "根据用户评论，《安妮·雪莉》被观众提到最多的一个具体评价点是什么？（引用一句原话作为佐证）",
+    "gold_entities": [
+      "安妮·雪莉"
+    ],
+    "gold_answer_keywords": [
+      "好看欸",
+      "好看",
+      "看欸",
+      "女主人设"
+    ],
+    "gold_evidence": {
+      "comment": "好看欸~女主人设是我喜欢的那种童话故事的感觉，整篇的风格也很童话，油画般的背景，很喜欢，有宫崎骏的感觉！",
+      "anime_id": 524801
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L41733",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《装甲骑兵 荣耀的背后》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "装甲骑兵 荣耀的背后"
+    ],
+    "gold_answer_keywords": [
+      "6.5",
+      "1994"
+    ],
+    "gold_evidence": {
+      "anime_id": 41733,
+      "score": 6.5,
+      "score_count": 168,
+      "release_date": "1994-03-21",
+      "production": [
+        "サンライズ"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L02088",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《苍天航路》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "苍天航路"
+    ],
+    "gold_answer_keywords": [
+      "6.7",
+      "2009"
+    ],
+    "gold_evidence": {
+      "anime_id": 2088,
+      "score": 6.7,
+      "score_count": 173,
+      "release_date": "2009-04-07",
+      "production": [
+        "MADHOUSE"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M004",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "サンライズ 在 1992 年制作了哪些动画？",
+    "gold_entities": [
+      "高智能方程式：Cyber Formula 11",
+      "勇者传说"
+    ],
+    "gold_answer_keywords": [
+      "高智能方程式：Cyber Formula 11",
+      "勇者传说"
+    ],
+    "gold_evidence": {
+      "studio": "サンライズ",
+      "year": "1992",
+      "titles": [
+        "高智能方程式：Cyber Formula 11",
+        "勇者传说"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L528635",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《电影蜡笔小新：超华丽！灼热的春日部舞者》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "电影蜡笔小新：超华丽！灼热的春日部舞者"
+    ],
+    "gold_answer_keywords": [
+      "5.5",
+      "2025"
+    ],
+    "gold_evidence": {
+      "anime_id": 528635,
+      "score": 5.5,
+      "score_count": 108,
+      "release_date": "2025-08-08",
+      "production": [
+        "シンエイ動画"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L20529",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《怪医美女RAY》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "怪医美女RAY"
+    ],
+    "gold_answer_keywords": [
+      "6.1",
+      "2006"
+    ],
+    "gold_evidence": {
+      "anime_id": 20529,
+      "score": 6.1,
+      "score_count": 106,
+      "release_date": "2006-04-06",
+      "production": [
+        "OLM"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L55015",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《鲁邦三世 东方见闻录～Another Page～》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "鲁邦三世 东方见闻录～Another Page～"
+    ],
+    "gold_answer_keywords": [
+      "6.6",
+      "2012"
+    ],
+    "gold_evidence": {
+      "anime_id": 55015,
+      "score": 6.6,
+      "score_count": 157,
+      "release_date": "2012-11-02",
+      "production": [
+        "トムス・エンタテインメント"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M008",
+    "type": "metadata_cross",
+    "difficulty": "hard",
+    "query": "导演 中沢大樹 参与执导过哪些动画？",
+    "gold_entities": [
+      "灌篮高手",
+      "航海王：黄金梅利号之章 另一位伙伴的故事",
+      "京骚戏画",
+      "剧场版总集篇 少女乐队的呐喊 青春狂走曲"
+    ],
+    "gold_answer_keywords": [
+      "灌篮高手",
+      "航海王：黄金梅利号之章 另一位伙伴的故事",
+      "京骚戏画"
+    ],
+    "gold_evidence": {
+      "director": "中沢大樹",
+      "titles": [
+        "灌篮高手",
+        "航海王：黄金梅利号之章 另一位伙伴的故事",
+        "京骚戏画",
+        "剧场版总集篇 少女乐队的呐喊 青春狂走曲"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M007",
+    "type": "metadata_cross",
+    "difficulty": "hard",
+    "query": "导演 谷紫織 参与执导过哪些动画？",
+    "gold_entities": [
+      "来自深渊 深沉灵魂的黎明",
+      "盾之勇者成名录",
+      "来自深渊 烈日的黄金乡 Blu-ray BOX／DVD BOX上卷 特典迷你动画《与爸爸一起》"
+    ],
+    "gold_answer_keywords": [
+      "来自深渊 深沉灵魂的黎明",
+      "盾之勇者成名录",
+      "来自深渊 烈日的黄金乡 Blu-ray BOX／DVD BOX上卷 特典迷你动画《与爸爸一起》"
+    ],
+    "gold_evidence": {
+      "director": "谷紫織",
+      "titles": [
+        "来自深渊 深沉灵魂的黎明",
+        "盾之勇者成名录",
+        "来自深渊 烈日的黄金乡 Blu-ray BOX／DVD BOX上卷 特典迷你动画《与爸爸一起》"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "C004",
+    "type": "comment_anchor",
+    "difficulty": "hard",
+    "query": "根据用户评论，《剧场版 空之境界 第七章 杀人考察（后）》被观众提到最多的一个具体评价点是什么？（引用一句原话作为佐证）",
+    "gold_entities": [
+      "剧场版 空之境界 第七章 杀人考察（后）"
+    ],
+    "gold_answer_keywords": [
+      "做什么呢",
+      "做什么",
+      "什么呢",
+      "做什"
+    ],
+    "gold_evidence": {
+      "comment": "我在做什么呢？如果杀人狂真的存在的话，我也不是杀人狂啊。我只是想回去，只是想置身于和他一起生活的日子，只是想证明我也能过正常的生活，所以才必须和杀人狂这个对手做个了结。全部……都怪他。",
+      "anime_id": 3423
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L47694",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《胜负师传说 哲也》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "胜负师传说 哲也"
+    ],
+    "gold_answer_keywords": [
+      "6.6",
+      "2000"
+    ],
+    "gold_evidence": {
+      "anime_id": 47694,
+      "score": 6.6,
+      "score_count": 69,
+      "release_date": "2000-10-07",
+      "production": [
+        "東映アニメーション"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L413680",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《Vspo！新LOGO原创动画PV》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "Vspo！新LOGO原创动画PV"
+    ],
+    "gold_answer_keywords": [
+      "6.4",
+      "2022"
+    ],
+    "gold_evidence": {
+      "anime_id": 413680,
+      "score": 6.4,
+      "score_count": 64,
+      "release_date": "2022-12-31",
+      "production": [
+        "スタジオバインド"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M010",
+    "type": "metadata_cross",
+    "difficulty": "hard",
+    "query": "导演 大谷美里 参与执导过哪些动画？",
+    "gold_entities": [
+      "王牌投手 振臂高挥～夏日大会篇～",
+      "×××HOLiC",
+      "武装神姬"
+    ],
+    "gold_answer_keywords": [
+      "王牌投手 振臂高挥～夏日大会篇～",
+      "×××HOLiC",
+      "武装神姬"
+    ],
+    "gold_evidence": {
+      "director": "大谷美里",
+      "titles": [
+        "王牌投手 振臂高挥～夏日大会篇～",
+        "×××HOLiC",
+        "武装神姬"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M002",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+    "gold_entities": [
+      "幸运星",
+      "CLANNAD"
+    ],
+    "gold_answer_keywords": [
+      "幸运星",
+      "CLANNAD"
+    ],
+    "gold_evidence": {
+      "studio": "京都アニメーション",
+      "year": "2007",
+      "titles": [
+        "幸运星",
+        "CLANNAD"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M003",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "サンライズ 在 2015 年制作了哪些动画？",
+    "gold_entities": [
+      "机动战士高达 THE ORIGIN",
+      "机动战士高达 雷霆宙域",
+      "Love Live! 学园偶像 电影",
+      "机动战士高达 铁血的奥尔芬斯"
+    ],
+    "gold_answer_keywords": [
+      "机动战士高达 THE ORIGIN",
+      "机动战士高达 雷霆宙域",
+      "Love Live! 学园偶像 电影"
+    ],
+    "gold_evidence": {
+      "studio": "サンライズ",
+      "year": "2015",
+      "titles": [
+        "机动战士高达 THE ORIGIN",
+        "机动战士高达 雷霆宙域",
+        "Love Live! 学园偶像 电影",
+        "机动战士高达 铁血的奥尔芬斯"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "C006",
+    "type": "comment_anchor",
+    "difficulty": "hard",
+    "query": "根据用户评论，《网球并不可笑嘛 9期》被观众提到最多的一个具体评价点是什么？（引用一句原话作为佐证）",
+    "gold_entities": [
+      "网球并不可笑嘛 9期"
+    ],
+    "gold_answer_keywords": [
+      "2020",
+      "202",
+      "020",
+      "20"
+    ],
+    "gold_evidence": {
+      "comment": "2020-08-31。B站和谐了全集ED还有第6话的某刑具。下载BD版对照了下，发现原来OP也和谐掉了一帧地图（就是第8季第3话那个地图），看来应该是特供而不是B站自主和谐。",
+      "anime_id": 212675
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M001",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "京都アニメーション 在 2015 年制作了哪些动画？",
+    "gold_entities": [
+      "吹响吧！上低音号",
+      "境界的彼方 -I'LL BE HERE- 未来篇"
+    ],
+    "gold_answer_keywords": [
+      "吹响吧！上低音号",
+      "境界的彼方 -I'LL BE HERE- 未来篇"
+    ],
+    "gold_evidence": {
+      "studio": "京都アニメーション",
+      "year": "2015",
+      "titles": [
+        "吹响吧！上低音号",
+        "境界的彼方 -I'LL BE HERE- 未来篇"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "B002",
+    "type": "kb_boundary",
+    "difficulty": "hard",
+    "query": "《相合之物》官方英文标语是什么？",
+    "gold_entities": [
+      "相合之物"
+    ],
+    "gold_answer_keywords": [
+      "未记录",
+      "不知道",
+      "无相关信息",
+      "not in database",
+      "boundary_tagline"
+    ],
+    "gold_evidence": {
+      "note": "DB does not store this field; correct answer is 'unknown'"
+    },
+    "expects_rag": false,
+    "expects_refusal": true
+  },
+  {
+    "id": "C003",
+    "type": "comment_anchor",
+    "difficulty": "hard",
+    "query": "根据用户评论，《干物妹！小埋R》被观众提到最多的一个具体评价点是什么？（引用一句原话作为佐证）",
+    "gold_entities": [
+      "干物妹！小埋R"
+    ],
+    "gold_answer_keywords": [
+      "解到作者",
+      "解到作",
+      "到作者",
+      "他妹妹"
+    ],
+    "gold_evidence": {
+      "comment": "了解到作者与他妹妹的故事还是挺感动的，稍微也能接受点小埋的任性了，貌似动画组乱改剧情搞了点后宫味，后面确实是有点小突兀，本身段子也没一期有意思",
+      "anime_id": 212775
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "B001",
+    "type": "kb_boundary",
+    "difficulty": "hard",
+    "query": "《摇曳百合 3☆High!》的原声带作曲家是谁？",
+    "gold_entities": [
+      "摇曳百合 3☆High!"
+    ],
+    "gold_answer_keywords": [
+      "未记录",
+      "不知道",
+      "无相关信息",
+      "not in database",
+      "boundary_ost"
+    ],
+    "gold_evidence": {
+      "note": "DB does not store this field; correct answer is 'unknown'"
+    },
+    "expects_rag": false,
+    "expects_refusal": true
+  },
+  {
+    "id": "C002",
+    "type": "comment_anchor",
+    "difficulty": "hard",
+    "query": "根据用户评论，《笨蛋，测验，召唤兽》被观众提到最多的一个具体评价点是什么？（引用一句原话作为佐证）",
+    "gold_entities": [
+      "笨蛋，测验，召唤兽"
+    ],
+    "gold_answer_keywords": [
+      "着古早",
+      "动画特",
+      "种风格",
+      "着古"
+    ],
+    "gold_evidence": {
+      "comment": "有着古早的动画特有的那种风格，不过也可能是大沼心个人特色（，情节很欢乐，动画组很有活，人物画得也很像10年左右的galgame很好看，总的来说是部很值得回味古早二次元味的佳作",
+      "anime_id": 3326
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M009",
+    "type": "metadata_cross",
+    "difficulty": "hard",
+    "query": "导演 金到暎 参与执导过哪些动画？",
+    "gold_entities": [
+      "偶像大师 灰姑娘女孩 U149",
+      "DDDD 恶魔的破坏",
+      "防风少年"
+    ],
+    "gold_answer_keywords": [
+      "偶像大师 灰姑娘女孩 U149",
+      "DDDD 恶魔的破坏",
+      "防风少年"
+    ],
+    "gold_evidence": {
+      "director": "金到暎",
+      "titles": [
+        "偶像大师 灰姑娘女孩 U149",
+        "DDDD 恶魔的破坏",
+        "防风少年"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "B004",
+    "type": "kb_boundary",
+    "difficulty": "hard",
+    "query": "《东京喰种:re 第二季》的音响监督是谁？",
+    "gold_entities": [
+      "东京喰种:re 第二季"
+    ],
+    "gold_answer_keywords": [
+      "未记录",
+      "不知道",
+      "无相关信息",
+      "not in database",
+      "boundary_sound"
+    ],
+    "gold_evidence": {
+      "note": "DB does not store this field; correct answer is 'unknown'"
+    },
+    "expects_rag": false,
+    "expects_refusal": true
+  },
+  {
+    "id": "C001",
+    "type": "comment_anchor",
+    "difficulty": "hard",
+    "query": "根据用户评论，《鬼灯的冷彻》被观众提到最多的一个具体评价点是什么？（引用一句原话作为佐证）",
+    "gold_entities": [
+      "鬼灯的冷彻"
+    ],
+    "gold_answer_keywords": [
+      "轻松搞笑",
+      "剧情像流",
+      "情像流水",
+      "样拂过我"
+    ],
+    "gold_evidence": {
+      "comment": "轻松搞笑的剧情像流水一样拂过我平滑的大脑皮层，只留下了洗脑的op空耳，那还说啥了，挤蘑菇就完事了\r\nps：剧情很有意思啦但本人实在记性差哈哈哈",
+      "anime_id": 77188
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L10246",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《神样家族》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "神样家族"
+    ],
+    "gold_answer_keywords": [
+      "6.2",
+      "2006"
+    ],
+    "gold_evidence": {
+      "anime_id": 10246,
+      "score": 6.2,
+      "score_count": 186,
+      "release_date": "2006-05-18",
+      "production": [
+        "東映アニメーション"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M005",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "サンライズ 在 2007 年制作了哪些动画？",
+    "gold_entities": [
+      "机动战士高达00",
+      "装甲骑兵 佩鲁森档案",
+      "偶像大师 XENOGLOSSIA",
+      "超剧场版 Keroro军曹2 深海的公主"
+    ],
+    "gold_answer_keywords": [
+      "机动战士高达00",
+      "装甲骑兵 佩鲁森档案",
+      "偶像大师 XENOGLOSSIA"
+    ],
+    "gold_evidence": {
+      "studio": "サンライズ",
+      "year": "2007",
+      "titles": [
+        "机动战士高达00",
+        "装甲骑兵 佩鲁森档案",
+        "偶像大师 XENOGLOSSIA",
+        "超剧场版 Keroro军曹2 深海的公主"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "M006",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "MADHOUSE 在 2025 年制作了哪些动画？",
+    "gold_entities": [
+      "绝妙舞步",
+      "推理要在晚餐后"
+    ],
+    "gold_answer_keywords": [
+      "绝妙舞步",
+      "推理要在晚餐后"
+    ],
+    "gold_evidence": {
+      "studio": "MADHOUSE",
+      "year": "2025",
+      "titles": [
+        "绝妙舞步",
+        "推理要在晚餐后"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "L08882",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《梦幻拉拉》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "梦幻拉拉"
+    ],
+    "gold_answer_keywords": [
+      "7.2",
+      "1998"
+    ],
+    "gold_evidence": {
+      "anime_id": 8882,
+      "score": 7.2,
+      "score_count": 99,
+      "release_date": "1998-04-05",
+      "production": [
+        "ぴえろ"
+      ]
+    },
+    "expects_rag": true
+  },
+  {
+    "id": "B003",
+    "type": "kb_boundary",
+    "difficulty": "hard",
+    "query": "《长门有希酱的消失》第一话的播出准确时间（几点几分）是什么？",
+    "gold_entities": [
+      "长门有希酱的消失"
+    ],
+    "gold_answer_keywords": [
+      "未记录",
+      "不知道",
+      "无相关信息",
+      "not in database",
+      "boundary_airtime"
+    ],
+    "gold_evidence": {
+      "note": "DB does not store this field; correct answer is 'unknown'"
+    },
+    "expects_rag": false,
+    "expects_refusal": true
+  }
+]

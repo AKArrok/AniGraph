@@ -208,12 +208,17 @@ def _make_result(etype: str, entity: str, anime: str, confidence: float, source:
 
 # ── L1: LLM 推理 ──
 
-_LLM_PROMPT = """你是 ACG 番剧专家。用户提到了一个{type_label}，请写出它对应番剧的正式中文名称及你的置信度。
+_LLM_PROMPT = """给出一个 ACG {type_label}对应番剧的正式中文名和置信度。
+
+判断标准：
+- 确定是某部番剧里的{type_label}：写出该番剧正式中文名，confidence 按你的把握（0.5-1.0）。
+- 不确定或该{type_label}可能属于多部作品：anime 留空，confidence 设为 0.0。
+- 输入不像是番剧{type_label}（是普通词语、问候语、其他领域名词）：anime 留空，confidence 设为 0.0。
 
 {type_label}: {query}
 
-输出严格 JSON: {{"anime": "番剧正式中文名", "confidence": 0.85}}
-如果无法确认，输出: {{"anime": "", "confidence": 0.0}}"""
+严格输出 JSON，不要额外文字：
+{{"anime": "番剧正式中文名 或 空字符串", "confidence": 0.0-1.0}}"""
 
 
 @functools.lru_cache(maxsize=128)

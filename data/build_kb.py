@@ -125,6 +125,17 @@ def _fetch_anime_detail(conn, anime_id: int) -> dict | None:
     ).fetchall()
     info["comments"] = [c[0] for c in comments if c[0]]
 
+    # 别名（Bangumi 官方登记，scripts/fetch_aliases.py 抓取；'__none__' 为已扫描无别名哨兵）
+    try:
+        aliases = conn.execute(
+            "SELECT alias FROM Alias WHERE anime_id = ? AND key != '__none__' AND alias IS NOT NULL",
+            (anime_id,)
+        ).fetchall()
+        info["alias"] = sorted({a[0].strip() for a in aliases if a[0] and a[0].strip()})
+    except sqlite3.OperationalError:
+        # Alias 表不存在（未跑 fetch_aliases.py）时优雅降级
+        info["alias"] = []
+
     return info
 
 
@@ -142,7 +153,7 @@ def _make_metadata_entry(info: dict) -> dict:
         "director": info.get("directors", [None])[0] if info.get("directors") else "",
         "writer": info.get("writers", [None])[0] if info.get("writers") else "",
         "seiyuu": info.get("seiyuu", []),
-        "alias": [],
+        "alias": info.get("alias", []),
     }
 
 

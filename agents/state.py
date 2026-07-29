@@ -12,10 +12,12 @@ class ConversationContext(TypedDict):
     history_text: str               # 完整拼接文本（planner 用，做意图分类需全量上下文）
     history_text_recent: str        # 最近 3 轮截断版（answer 用，避免 token 膨胀）
     recent_entities: list[dict]     # 最近讨论的实体: [{name: str, type: str}]
+    topic_entity: dict              # 当前讨论主题，不随推荐候选列表变化
     current_topic: str              # 当前话题
     is_followup: bool               # 是否为追问
     resolved_query: str             # 指代解析后的查询
     previous_intent: str            # 上一轮意图: recommend | fact | compare | chat
+    constraints: dict               # 跨轮继承的约束 e.g. {"exclude_same_series": True, "excluded_series": ["命运石之门"]}
 
 
 class ExecutionPlan(BaseModel):
@@ -98,12 +100,15 @@ class AgentState(TypedDict):
     execution_mode: str                    # parallel | serial | single
     termination_reason: str                # quality_pass / replan_exhausted / web_fallback
     quality_trace: Annotated[list[dict], add]  # 可观测的质量闭环事件
+    retrieval_errors: Annotated[list[dict], add]  # 检索失败事件（结构化，前端可展示）
     original_query: str                    # 用户原始查询
     resolved_query: str                    # 别名解析后的查询
     search_keywords: list[str]             # Alias从长查询中提取的番剧名
     metadata_cache: dict                   # {name: metadata_dict}
     alias_cache: dict                      # {alias: full_name}
     answer_plan: dict                      # Answer Planner 输出的结构指引
+    recommendation_count: int              # 用户明确要求的推荐数量，0 表示未指定
+    recommendation_candidates: list[dict]  # Similar Expert 确定性整理的推荐候选列表
     entity_type: str                       # 实体类型: "character" | "meme" | "alias" | ""
     entity_name: str                       # 解析出的实体名
     entity_anime: str                      # 对应番剧名
@@ -112,6 +117,7 @@ class AgentState(TypedDict):
     # ── 对话上下文 (v1.1) ──
     context: ConversationContext            # 当前轮上下文（由 context_builder 生成）
     recent_entities: list[dict]             # 持久化: 最近讨论的实体 [{name, type}]
+    topic_entity: dict                      # 持久化: 当前话题实体 {name, type}
     previous_intent: str                    # 持久化: 上一轮意图
     # ── 识图 (v1.2) ──
     image_data: str                        # base64 图片（仅识图节点消费，识别后清空）

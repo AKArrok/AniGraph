@@ -1,0 +1,374 @@
+{
+  "summary": {
+    "n": 17,
+    "strict_accuracy": 0.7647058823529411,
+    "avg_latency": 28.499,
+    "by_type": {
+      "metadata_cross": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "longtail_fact": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "similar_recommendation": {
+        "n": 4,
+        "correct": 1,
+        "acc": 0.25
+      },
+      "bangumi_tags": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "bangumi_score_precise": {
+        "n": 3,
+        "correct": 2,
+        "acc": 0.667
+      },
+      "kb_boundary": {
+        "n": 1,
+        "correct": 1,
+        "acc": 1.0
+      }
+    }
+  },
+  "details": [
+    {
+      "id": "M001",
+      "type": "metadata_cross",
+      "query": "ufotable 在 2019 年制作了哪些动画？",
+      "answer": "ufotable 在 2019 年制作了以下动画：  \n- 剧场版《Fate/stay night [Heaven's Feel] II.lost butterfly》（2019-01-12）  \n- TV 动画《鬼灭之刃》（2019-04-06）  \n- 剧场版《鬼灭之刃 兄妹的羁绊》（2019-03-29）  \n\n这三部都是改编作品，前两者为系列代表作，《兄妹的羁绊》是 TV 版第 1–5 话的再剪辑总集篇。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+          "鬼灭之刃",
+          "鬼灭之刃 兄妹的羁绊"
+        ],
+        "misses": []
+      },
+      "latency": 39.15,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "M002",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+      "answer": "京都アニメーション 在 2007 年制作了《CLANNAD》（2007-10-04 播出）和《幸运星》（2007-04-08 播出）。《CLANNAD》的标签包括校园、日常、治愈、神作等，《幸运星》则是漫改校园搞笑番，两部的声优阵容也各不相同。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "幸运星",
+          "CLANNAD"
+        ],
+        "misses": []
+      },
+      "latency": 16.153,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "M003",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2021 年制作了哪些动画？",
+      "answer": "京都アニメーション在2021年制作了两部动画：《小林家的龙女仆S》（2021-07-07）和《迷你龙小剧场》（2021-04-07）。后者是前者的衍生短篇，每集时长很短，偏向日常治愈。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "小林家的龙女仆S",
+          "迷你龙小剧场"
+        ],
+        "misses": []
+      },
+      "latency": 14.234,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "L014643",
+      "type": "longtail_fact",
+      "query": "《阴阳大战记》的评分是多少？上映年份是哪一年？",
+      "answer": "评分6.9，2004年上映。这部由日升制作、藤野貞義执导的动画，福山潤和森田成一都有参与配音。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 6.835,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "L036484",
+      "type": "longtail_fact",
+      "query": "《兽兵卫忍风帖 龙宝玉篇》的评分是多少？上映年份是哪一年？",
+      "answer": "评分5.7，2003年首播（2003-04-14）。导演田中洋之，制作公司MADHOUSE。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 7.763,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "L038965",
+      "type": "longtail_fact",
+      "query": "《袖珍女侍小梅》的评分是多少？上映年份是哪一年？",
+      "answer": "《袖珍女侍小梅》评分5.9，上映年份是2000年。导演是たなかかずや，标签包括TV、日本、漫画改、日常、搞笑、原创、日本动画、TVA。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 7.084,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "R000298",
+      "type": "similar_recommendation",
+      "query": "有没有跟《天空之城》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "从制作公司和核心班底来看，《天空色的种子》是跟你提的《天空之城》血缘最近的——吉卜力出品、宫崎骏亲自执导，老宫对“天空”“飞行”“失落文明”的迷恋在这部里一点没少。不过体量上是个短篇，没有那种横跨世界的冒险弧光。\n\n《风之谷》可以算同一个创作母题下的另一张脸。吉卜力草创期的奠基作，世界观宏大得奢侈，但叙事比《天空之城》沉重不少，那些腐海和虫族的段落带着很强的末世悲歌气质，很多人被震撼的同时也有点被压得喘不过气。如果你喜欢的是《天空之城》里巴鲁和希达那种少年心气、明朗的冒险感，这部可能比你想象得更“灰”。内核都是人和自然的冲突，只不过《风之谷》把刀口翻得更血淋淋。\n\n《幽灵公主》在 Bangumi 拿到 8.4 分，标签里“神作”“经典”“治愈”都挂上了，但这部是真的硬核。吉卜力 90 年代后期倾全社之力做的，画面上天入地的奇观一点不缺，可主题完全是成年向的——人和自然、工业和神祇之间没有简单的黑白对错。豆瓣有条热评说得挺准：“它不是童话，而是一首用血与火写就的悲歌。”跟《天空之城》那种可以安心沉浸的纯净冒险梦，是完全不同的路数。制作极其精良，但看得会很累。\n\n所以你要是冲着吉卜力和宫崎骏那个味去的，《天空色的种子》最对路，短但纯粹；想加重一点思考深度就《风之谷》；《幽灵公主》则是这个序列里最沉重、也最有争议的一部。这三部一个比一个“重”，看你现在是想泡一个干净的梦，还是准备去碰一些更硬的东西了。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "风之谷",
+          "幽灵公主"
+        ],
+        "n_hits": 2,
+        "anchor_tag": "经典",
+        "expanded_pool_size": 147,
+        "note": "rescored with widened pool"
+      },
+      "latency": 97.83,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "R000793",
+      "type": "similar_recommendation",
+      "query": "有没有跟《Code Geass 反叛的鲁路修》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "要说跟《Code Geass》像的，我脑子里蹦出来的第一部就是《**星际牛仔**》。这片子是同一个亲爹日升社出的，那种赛璐珞时代的质感、对音乐的极致使用、还有骨子里那股浪漫到死的劲儿，跟鲁路修那种舞台剧式的华丽感是通的。Bangumi 9.1 分，常年霸榜。不过它单元剧居多，主线收得很克制，不像鲁路修那样每集结尾都给你扔个反转炸弹，想看连续爆点的话可能会觉得节奏温吞。\n\n另一条路子是《**攻壳机动队 STAND ALONE COMPLEX**》系列。两部 TV 版 Bangumi 一个 9.1 一个 9.2，都是 Production I.G 的看家作品。它虽然不是日升，但在\"科幻+政治智斗\"这个赛道上比鲁路修走得更深更硬。鲁路修靠 Geass 掀棋盘，攻壳靠的是电子脑入侵、政变阴谋和情报战，那种一层套一层的诡计和立场博弈，爽感是另一种。槽点也很明显：台词密度大，哲学嘴炮多，看得累。如果鲁路修是\"爽燃\"，那攻壳就是\"硬烧脑\"，看你吃不吃这套。\n\n还有一部我个人私心很推的《**少女革命**》。Bangumi 8.4，1997 年的老片子了，几原邦彦的巅峰。它跟鲁路修的相似绝对不是表面上的机战或者校园，而是内核里那种\"用决斗推翻体制\"的仪式感。鲁路修戴上面具成为 Zero，少女革命里的天上欧蒂娜也是拔出剑就成了决斗场的王子。舞台式的打光、重复的变身 Bank、还有大量隐喻符号，喜欢鲁路修里 Zero 登场配乐和披风一甩那种演出的人，大概率会吃这套。但它比鲁路修意识流得多，看到后半段经常是满头问号，不是剧情向的路子，是意象向的。看你自己口味。",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "hits": [
+          "音乐"
+        ],
+        "n_hits": 1,
+        "anchor_tag": "剧情",
+        "expanded_pool_size": 235,
+        "note": "rescored with widened pool"
+      },
+      "latency": 63.119,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "R000822",
+      "type": "similar_recommendation",
+      "query": "有没有跟《FLCL》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "FLCL 的续作我先帮你排雷——**FLCL Alternative** Bangumi 6.2 分，**FLCL: Shoegaze** 更惨，只有 4.4 分，71 个人打分。这俩虽然挂着同一个名字，但那股不讲道理的灵气基本散了，Alternative 勉强算校园青春皮，内核差太远，Shoegaze 我看了两集就有点扛不住。所以直接跳过，聊几部真正能摸到 FLCL 影子的东西。\n\n---\n\n**《宇宙巡警露露子》**——Trigger 出品，导演雨宫哲当年就是 FLCL 原画阵里的。这部每集十来分钟，节奏跟嗑了药似的，恋爱、变身、宇宙执法混在一起，画风切得比人格分裂还快。优点就是那股不管不顾的疯劲儿，FLCL 那种「看不懂但很爽」的感觉它复刻了七八成。槽点嘛，故事收束得太跳，情感落地那一下差点意思，更像一个炫技短片合集。你要是好这口电波，这部我私心很推。\n\n**《心灵游戏》**——STUDIO 4℃ 的剧场版，汤浅政明编剧，从头到尾都在用画面告诉你什么叫「动画能做的事真人拍不出来」。意识流程度比 FLCL 有过之无不及，一枪崩出个上帝视角、大段手绘狂奔、鲸鱼肚子里过家家…… Bangumi 这部我手上信息不多，没调到具体评分，但它在圈子里的地位不需要分数来撑。缺点也很明显：你要是偏好看得懂的故事，这片会让你有点累，奇观堆得太满，叙事收敛不够。\n\n**《摇滚新乐团》**——这部闷骚慢热的音乐番，骨头硬得硌牙，前期节奏拖、矛盾安排也有点莫名其妙，但它的「真实」和人物成长弧是实打实的。有观众评论我直接搬过来：「全番最感动的地方居然是 the pillows 的客串，FLCL 的含金量还在上升。」没错，就是给 FLCL 唱主题曲的那个 the pillows，在这片里客串了自己。如果你找 FLCL 续集是因为那股青春混着吉他噪音的味道，这部到后半程音乐节部分会看得你起鸡皮疙瘩。但提醒一句，前中期观看体验真的糟糕，需要你耐心陪角色长大。\n\n**《攻壳机动队 S.A.C.》系列**——Production I.G 同公司出品，两部 TV 一个 9.1、一个 9.2，配乐菅野洋子，科幻顶流。咋说呢，这就像 FLCL 把青春期砸进贝斯里炸开花，攻壳是把社会结构拆成代码再拼回去，冷峻精密，没有那种胡来的荷尔蒙。优点是哲学、战斗、音乐全都在线，硬得无可挑剔；缺点就是跟你想找的 FLCL 气质完全不是一个品种。如果你只是冲着 Production I.G 的制作水准和科幻皮去，这两部属于教科书级别，但别期望在里面找到黄蓝机车拽脸砸下去的生猛率性。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0,
+        "anchor_tag": "神配乐",
+        "expanded_pool_size": 14,
+        "note": "rescored with widened pool"
+      },
+      "latency": 91.181,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "T000247",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《银魂》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "《银魂》（2006年TV版）在Bangumi上的标签有：科幻,TV,日本,漫画改,战斗,漫改,搞笑,2006,SUNRISE,热血,冒险,杉田智和,JUMP,喜剧,银他妈,吐槽,银魂,恶搞,銀魂~搞笑才是人生~,GINTAMA,天然卷发,銀魂,kuso,钉宫,2006年4月,高松信司,灵魂支柱,人生的意义,假发,土银,S田。该作品评分8.7，排名第13位。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "S田",
+          "假发",
+          "冒险",
+          "吐槽",
+          "喜剧"
+        ],
+        "misses": []
+      },
+      "latency": 12.551,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "T000440",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《校园迷糊大王》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "TV, 日本, 漫画改, 2004, 漫改, 校园, 日常, 青春, 搞笑, 恋爱, TVA, 2004年, 半年番, 喜剧, 恶搞, 高松信司, 爆笑, 恋爱喜剧, 能登麻美子, 堀江由衣, 小清水亚美, 校园迷糊大王, 小林尽, 2004年10月, StudioComet, 大小姐, SchoolRumble\n\n这个条目评分8.0，排名200，2004年10月5日开播，制作公司是Studio Comet，导演是たなかかずや。续作《二学期》和OVA《一学期补习》的标签侧重点稍有不同，比如《二学期》多了“神作”“续作”，《一学期补习》则多了“傲娇”“笨蛋”。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "喜剧",
+          "恋爱",
+          "恶搞",
+          "搞笑",
+          "日常"
+        ],
+        "misses": []
+      },
+      "latency": 10.046,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "T001453",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《少女革命》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "《少女革命》TV版在 Bangumi 上被观众/编辑打上的标签有：TV，日本，战斗，神作，经典，校园，百合，原创，90年代，1990s，奇幻，意识流，1997，1997年，内涵，童年，J.C.STAFF，幾原邦彥，少女革命，几原邦彦，榎户洋司，幾原邦彦，细田守，榎戸洋司，五十岚卓哉，象徵手法，少女革命ウテナ，1997年4月，川上ともこ。共30个标签——其中“象徵手法”和“意识流”常被拿来讨论本片独特的演出风格。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "内涵",
+          "奇幻",
+          "战斗",
+          "校园",
+          "百合"
+        ],
+        "misses": []
+      },
+      "latency": 11.855,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "S000310",
+      "type": "bangumi_score_precise",
+      "query": "《幽灵公主》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "score_str": "8.4"
+      },
+      "latency": 0.0,
+      "web_used": false,
+      "termination_reason": "ERROR: 3 validation errors for IntentOutput\nquery_category\n  Field required [type=missing, input_value={'description': '第一...tput', 'type': 'object'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nquery_type\n  Field required [type=missing, input_value={'description': '第一...tput', 'type': 'object'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing\nreasoning\n  Field required [type=missing, input_value={'description': '第一...tput', 'type': 'object'}, input_type=dict]\n    For further information visit https://errors.pydantic.dev/2.13/v/missing"
+    },
+    {
+      "id": "S001608",
+      "type": "bangumi_score_precise",
+      "query": "《灌篮高手》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《灌篮高手》TV版在 Bangumi 上的评分是 8.6 分。该作在总排名中位列第 29。若问的是 2022 年剧场版《灌篮高手》，则评分为 7.7 分。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.6"
+      },
+      "latency": 7.774,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "S072941",
+      "type": "bangumi_score_precise",
+      "query": "《斩服少女》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "8.1 分。它在 Bangumi 上排名第 178 位，由 TRIGGER 制作，标签包括战斗、神作、百合、原创等。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.1"
+      },
+      "latency": 6.805,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "R105969",
+      "type": "similar_recommendation",
+      "query": "有没有跟《幸腹涂鸦》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "要说跟《幸腹涂鸦》味儿最对的，还得是《向阳素描》。这片也是SHAFT做的，你看原作班底里潮月一也、宮西多麻子这几个名字，在《幸腹涂鸦》那边也挂着作画监督，所以视觉上那种暖融融、带点软萌的调调非常像。更关键的是，这俩骨子里都是“用一顿饭、一件小事托住日常生活”的节奏，没什么大起大落，就是看几个女孩子凑一块儿吃饭聊天画画，特别下饭。\n\n《天真与闪电》也值得一说。这片标签直接挂着“美食、治愈、养女儿”，核心就是单亲爸爸为了女儿开始认真做每一餐饭。跟《幸腹涂鸦》那种“食物即幸福”的内核高度重叠，只不过这边是父女温情，那边是少女情谊。Bangumi 6.9分看着不算高，但如果你吃“一道菜抚慰一天疲惫”这套，它会很对你胃口。\n\n另外《元气囝仔》《学园奶爸》《幸运星》这几部，手上信息不多，就不硬凑了。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0,
+        "anchor_tag": "轻百",
+        "expanded_pool_size": 119,
+        "note": "rescored with widened pool"
+      },
+      "latency": 56.664,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "B001",
+      "type": "kb_boundary",
+      "query": "《Z/X IGNITION》原声带的作曲家是谁？请只根据知识库回答。",
+      "answer": "这个我没有确切信息。元数据里没有收录《Z/X IGNITION》原声带作曲家的信息。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "refusal_hit": "没有确切信息",
+        "possibly_fabricated_names": [
+          "的信息"
+        ]
+      },
+      "latency": 6.944,
+      "web_used": false,
+      "termination_reason": ""
+    }
+  ]
+}

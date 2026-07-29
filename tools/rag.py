@@ -8,20 +8,36 @@ import config
 
 @lru_cache(maxsize=1)
 def _get_retriever():
-    """创建 Pinecone retriever（缓存，避免每次调用重建连接）"""
+    """创建 Pinecone retriever（缓存，避免每次调用重建连接）。
+
+    使用 similarity 而非 MMR 检索，因为实测 MMR 延迟约 29s 而 similarity 仅约 1.4s，
+    后续的 RRF 融合和去重压缩已能处理多样性，MMR 的多样性收益不值得额外 20 倍延迟。
+    """
     config.validate_retrieval_settings()
+    search_kwargs = {"k": config.HYBRID_DENSE_K}
+    if config.PINECONE_SEARCH_TYPE == "mmr":
+        search_kwargs.update({
+            "fetch_k": config.RETRIEVER_FETCH_K,
+            "lambda_mult": 0.7,
+        })
+
     return PineconeVectorStore(
         index_name=config.PINECONE_INDEX,
         embedding=embeddings,
         pinecone_api_key=config.PINECONE_API_KEY,
     ).as_retriever(
-        search_type="mmr",
-        search_kwargs={
-            "k": config.HYBRID_DENSE_K,
-            "fetch_k": config.RETRIEVER_FETCH_K,
-            "lambda_mult": 0.7,
-        },
+        search_type=config.PINECONE_SEARCH_TYPE,
+        search_kwargs=search_kwargs,
     )
+
+
+def get_retriever():
+    """公开接口：获取缓存的 Pinecone retriever。
+
+    外部模块（如 agents.retrieval）应通过此函数获取 retriever，
+    避免直接依赖私有函数 _get_retriever()。
+    """
+    return _get_retriever()
 
 
 def get_rag_debug() -> dict:

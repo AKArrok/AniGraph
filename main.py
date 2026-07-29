@@ -18,23 +18,11 @@ import asyncio
 import sys
 from typing import AsyncIterator
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.memory import MemorySaver
-from graph import build_graph
 from trace import TraceCollector
 import config
+from agents.session_store import default_store as store
 
 config.validate()
-
-# 模块级 MemorySaver 池 —— 同一个 thread_id 共享记忆
-_memories: dict[str, MemorySaver] = {}
-
-
-def _get_app(thread_id: str):
-    """获取（或创建）thread_id 对应的已编译图实例。"""
-    if thread_id not in _memories:
-        _memories[thread_id] = MemorySaver()
-    g = build_graph()
-    return g.compile(checkpointer=_memories[thread_id])
 
 
 async def run(query: str = "", thread_id: str = "1", image_data: str = None) -> str:
@@ -50,7 +38,7 @@ async def run(query: str = "", thread_id: str = "1", image_data: str = None) -> 
     Returns:
         模型生成的回答字符串。
     """
-    app = _get_app(thread_id)
+    app = store.get_app(thread_id)
     initial_state = {"messages": [HumanMessage(content=query)]}
     if image_data:
         initial_state["image_data"] = image_data
@@ -76,7 +64,7 @@ async def run_stream(query: str = "", thread_id: str = "1", image_data: str = No
         TraceEvent dict，按时间顺序: node_start -> node_end -> ... -> answer_chunk -> done.
     """
     collector = TraceCollector()
-    app = _get_app(thread_id)
+    app = store.get_app(thread_id)
     input_state = {"messages": [HumanMessage(content=query)]}
     if image_data:
         input_state["image_data"] = image_data

@@ -228,6 +228,19 @@ def rerank(query: str, docs: list[str], top_k: int = 5) -> list[str]:
 
 def compress_docs(docs: list[str], query: str, top_k: int = 5) -> list[str]:
     """去重 + 取最相关段落"""
+    import re
+
+    # 按番剧标题去重，优先保留首次出现的标题
+    _TITLE_PAT = re.compile(r"^(?:番剧|【番剧】)[:：]?\s*([^\n（(]+)", re.MULTILINE)
+
+    def _extract_title(text: str) -> str:
+        m = _TITLE_PAT.search(text)
+        if not m:
+            return ""
+        return re.sub(r"[\s《》【】\[\]（）()·:：;；!！?？._-]", "", m.group(1)).casefold()
+
+    # 对无标题标记的文档，用 trigram 相似度去重。标题明确的文档只按
+    # 标准化标题精确去重；同系列判断属于推荐专家的职责。
     def _sim(a: str, b: str) -> float:
         a_grams = set(a[i:i+3] for i in range(len(a)-3))
         b_grams = set(b[i:i+3] for i in range(len(b)-3))
@@ -235,9 +248,20 @@ def compress_docs(docs: list[str], query: str, top_k: int = 5) -> list[str]:
             return 0
         return len(a_grams & b_grams) / len(a_grams | b_grams)
 
-    unique = []
+    seen_titles: set[str] = set()
+    unstructured_docs: list[str] = []
+    unique: list[str] = []
     for doc in docs:
-        if all(_sim(doc, u) < 0.6 for u in unique):
+        title = _extract_title(doc)
+        if title:
+            if title in seen_titles:
+                continue
+            seen_titles.add(title)
+            unique.append(doc)
+            continue
+
+        if all(_sim(doc, other) < 0.6 for other in unstructured_docs):
+            unstructured_docs.append(doc)
             unique.append(doc)
 
     compressed = [doc[:500] for doc in unique[:top_k]]

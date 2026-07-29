@@ -35,4 +35,6 @@ async def history_extractor_node(state: AgentState) -> dict:
 
     rounds = _extract_recent_rounds(messages, n)
 
-    return {"context": {"history": rounds}}
+    # 保留上一轮 context 中的其他字段（如 constraints），只更新 history
+    context = state.get("context", {}) if isinstance(state.get("context"), dict) else {}
+    return {"context": {**context, "history": rounds}}

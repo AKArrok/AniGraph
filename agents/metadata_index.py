@@ -1,11 +1,12 @@
 """Metadata Index — SQLite/JSON 结构化索引，零 LLM 查询
 
 支持: 标签/制作公司/导演/编剧/声优/评分范围/日期范围 过滤
-查询方式: search(**filters) | get_by_alias(name) | get_by_id(sid)
+查询方式: search(**filters) | get_by_alias(name) | get_by_id(sid) | fuzzy_lookup(query)
 """
 from __future__ import annotations
 import json
 import os
+import re
 import sqlite3
 import config
 from typing import Any
@@ -18,6 +19,7 @@ class MetadataIndex:
         self._index_path = index_path or config.METADATA_INDEX_PATH
         self._data: list[dict] = []
         self._by_id: dict[str, dict] = {}
+        self._by_alias: dict[str, dict] = {}
         self._loaded = False
 
     # ── 加载 ─────────────────────────────────────────────────────
@@ -35,10 +37,14 @@ class MetadataIndex:
 
         # 构建 ID 索引
         self._by_id = {}
+        # 构建别名索引：name_cn / name / alias[] 全部小写归一 -> 首个命中的条目生效
+        self._by_alias = {}
         for item in self._data:
             sid = str(item.get("id", ""))
             if sid:
                 self._by_id[sid] = item
+            for key in self._alias_keys(item):
+                self._by_alias.setdefault(key, item)
 
         self._loaded = True
 
@@ -47,6 +53,7 @@ class MetadataIndex:
         self._loaded = False
         self._data = []
         self._by_id = {}
+        self._by_alias = {}
         self.load()
 
     # ── 查询 ─────────────────────────────────────────────────────
@@ -57,23 +64,81 @@ class MetadataIndex:
             self.load()
         return self._by_id.get(str(sid))
 
+    @staticmethod
+    def _alias_keys(item: dict):
+        """产出该条目所有可匹配的归一化键：name_cn / name / alias[]。"""
+        seen = set()
+        for raw in (item.get("name_cn", ""), item.get("name", "")):
+            k = (raw or "").strip().lower()
+            if k and k not in seen:
+                seen.add(k)
+                yield k
+        for alias in item.get("alias", []) or []:
+            k = (alias or "").strip().lower()
+            if k and k not in seen:
+                seen.add(k)
+                yield k
+
     def get_by_alias(self, name: str) -> dict | None:
-        """别名精确匹配 → 直接返回元数据"""
+        """别名精确匹配 → 直接返回元数据（O(1) 预建索引查找）"""
         if not self._loaded:
             self.load()
         n = name.strip().lower()
-        for item in self._data:
-            # 中文名
-            if item.get("name_cn", "").lower() == n:
-                return item
-            # 日文名
-            if item.get("name", "").lower() == n:
-                return item
-            # 别名列表
-            for alias in item.get("alias", []):
-                if alias.lower() == n:
-                    return item
+        if not n:
+            return None
+        return self._by_alias.get(n)
+
+    # ── 消息级模糊实体解析（管道匹配，零 LLM）──
+
+    _FUZZY_STRIP_RE = re.compile(
+        r"[呢吗啊吧啦哦呀哎嘿哈]+$|"
+        r"(好不好看|好看吗|怎么样|是啥|是什么|多少分|讲什么|说啥|聊啥|介绍|是谁)[呢吗啊吧啦哦呀哎嘿哈]*$"
+    )
+    # 分支按长度降序：正则在同一位置取最左分支，短词在前会截断长词
+    # （如 "有" 排在 "有没有" 前会把 "有没有X" 只剥成 "没有X"）
+    _FUZZY_PREFIX_STRIP_RE = re.compile(
+        r"^(有没有|什么是|介绍下|听说过|问一下|来讲讲|这个|那个|这部|那部|知道|问下|聊聊|说说|有)"
+    )
+
+    def fuzzy_lookup(self, query: str) -> dict | None:
+        """管道式实体解析：确定性匹配 → 规则清理 → 返回 None 表示需 LLM。
+
+        策略: 宁可漏（交给 LLM）不可错（返回错误实体）。
+        """
+        if not self._loaded:
+            self.load()
+        q = query.strip()
+        if len(q) < 2:
+            return None
+
+        # 1. 精确匹配
+        hit = self.get_by_alias(q)
+        if hit:
+            return hit
+
+        # 2. 去语气词/疑问后缀
+        trimmed = self._FUZZY_STRIP_RE.sub("", q).strip()
+        if trimmed and trimmed != q:
+            hit = self.get_by_alias(trimmed)
+            if hit:
+                return hit
+
+        # 3. 去前缀再匹配
+        no_prefix = self._FUZZY_PREFIX_STRIP_RE.sub("", q).strip()
+        if no_prefix and no_prefix != q and no_prefix != trimmed:
+            hit = self.get_by_alias(no_prefix)
+            if hit:
+                return hit
+
+        # 4. 去前缀 + 去后缀
+        no_both = self._FUZZY_STRIP_RE.sub("", no_prefix).strip()
+        if no_both and no_both not in (q, trimmed, no_prefix):
+            hit = self.get_by_alias(no_both)
+            if hit:
+                return hit
+
         return None
+
 
     def search_by_name(self, name: str) -> list[dict]:
         """名称模糊搜索（双向包含匹配）

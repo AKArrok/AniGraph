@@ -99,6 +99,7 @@ LANGFUSE_HOST       = os.getenv("LANGFUSE_HOST", "https://cloud.langfuse.com")
 # Agent Tuning
 RETRIEVER_K       = int(os.getenv("RETRIEVER_K", "5"))
 RETRIEVER_FETCH_K = int(os.getenv("RETRIEVER_FETCH_K", "50"))
+PINECONE_SEARCH_TYPE = os.getenv("PINECONE_SEARCH_TYPE", "similarity").lower()
 
 # ── RAG 检索优化 ──
 RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
@@ -106,7 +107,8 @@ RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
 LOCAL_RERANKER_MODEL = os.getenv("LOCAL_RERANKER_MODEL", "")
 FUSION_STRATEGY = os.getenv("FUSION_STRATEGY", "rrf")  # rrf | weighted | max
 ENABLE_QUERY_OPTIMIZATION = os.getenv("ENABLE_QUERY_OPTIMIZATION", "true").lower() == "true"
-ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "true").lower() == "true"
+# CPU 重排单次约需数秒，默认关闭以保证交互延迟；有 GPU 或离线评测时可显式开启。
+ENABLE_RERANKING = os.getenv("ENABLE_RERANKING", "false").lower() == "true"
 ENABLE_COMPRESSION = os.getenv("ENABLE_COMPRESSION", "true").lower() == "true"
 HYBRID_DENSE_K = int(os.getenv("HYBRID_DENSE_K", "20"))
 HYBRID_SPARSE_K = int(os.getenv("HYBRID_SPARSE_K", "20"))
@@ -121,7 +123,7 @@ METADATA_CACHE_SIZE = int(os.getenv("METADATA_CACHE_SIZE", "2000"))
 EXPERT_TEMPERATURE = float(os.getenv("EXPERT_TEMPERATURE", "0.7"))
 ANSWER_TEMPERATURE = float(os.getenv("ANSWER_TEMPERATURE", "0.7"))
 CONFIDENCE_THRESHOLD = float(os.getenv("CONFIDENCE_THRESHOLD", "0.5"))  # Web fallback 触发阈值
-MAX_REPLANS = min(1, max(0, int(os.getenv("MAX_REPLANS", "1"))))
+MAX_REPLANS = min(1, max(0, int(os.getenv("MAX_REPLANS", "0"))))
 
 # ── Embedding 预检（零 LLM 成本拦截闲聊/简单查询）──
 ENABLE_EMBEDDING_PREFILTER = os.getenv("ENABLE_EMBEDDING_PREFILTER", "true").lower() == "true"
@@ -136,6 +138,28 @@ ENABLE_COMPLEXITY_CHECK = os.getenv("ENABLE_COMPLEXITY_CHECK", "true").lower() =
 ENABLE_ALIAS_RESOLVE = os.getenv("ENABLE_ALIAS_RESOLVE", "true").lower() == "true"
 # 联网搜索: 是否允许触发 Tavily（不影响 plan.need_web 标记，只影响实际调用）
 ENABLE_WEB_SEARCH = os.getenv("ENABLE_WEB_SEARCH", "true").lower() == "true"
+# 别名解析 Web 兜底: LLM 说不知道时是否用 Tavily 搜再抽取
+# 需同时满足 ENABLE_WEB_SEARCH=true 且 TAVILY_API_KEY 有效
+ENABLE_ALIAS_WEB_FALLBACK = os.getenv("ENABLE_ALIAS_WEB_FALLBACK", "true").lower() == "true"
+# 磁盘持久化 alias 缓存路径（None/空表示不落盘，仅进程内）
+ALIAS_CACHE_PATH = os.getenv(
+    "ALIAS_CACHE_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "alias_cache.json"),
+)
+
+# ── 消融开关（生产默认全 false；离线实验时按环境变量打开） ──
+# 关闭 simple_fact 快速通道：所有 simple_fact 查询也走完整 planner → experts → answer 链路
+ABLATION_NO_FAST_PATH = os.getenv("ABLATION_NO_FAST_PATH", "false").lower() == "true"
+# 关闭 evaluator 的语义冲突判断（仍执行确定性规则），跳过 _llm_conflict_judgement
+ABLATION_NO_EVALUATOR_CONFLICT = os.getenv("ABLATION_NO_EVALUATOR_CONFLICT", "false").lower() == "true"
+# 关闭 query rewrite（强制走 direct 单查询，不做 multi_query / HyDE / decompose）
+ABLATION_NO_QUERY_REWRITE = os.getenv("ABLATION_NO_QUERY_REWRITE", "false").lower() == "true"
+
+# Bangumi 官方别名 SQLite（由 scripts/fetch_aliases.py 抓取到 Alias 表）
+ALIAS_DB_PATH = os.getenv(
+    "ALIAS_DB_PATH",
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "anime_data.db"),
+)
 
 # ── 动漫识图（trace.moe + VLM fallback）──
 ENABLE_IMAGE_RECOGNITION = os.getenv("ENABLE_IMAGE_RECOGNITION", "true").lower() == "true"
@@ -164,7 +188,9 @@ def validate_retrieval_settings() -> None:
     non_positive = [name for name, value in values.items() if value <= 0]
     if non_positive:
         raise ValueError(f"Retrieval settings must be positive: {non_positive}")
-    if RETRIEVER_FETCH_K < HYBRID_DENSE_K:
+    if PINECONE_SEARCH_TYPE not in ("similarity", "mmr"):
+        raise ValueError("PINECONE_SEARCH_TYPE must be 'similarity' or 'mmr'")
+    if PINECONE_SEARCH_TYPE == "mmr" and RETRIEVER_FETCH_K < HYBRID_DENSE_K:
         raise ValueError(
             "RETRIEVER_FETCH_K must be >= HYBRID_DENSE_K for MMR retrieval"
         )

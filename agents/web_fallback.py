@@ -14,14 +14,20 @@ logger = logging.getLogger(__name__)
 
 
 # 模块级 prompt（避免每次调用重建字符串）
-_EXTRACT_PROMPT = """从以下搜索结果中提取与 ACG 番剧相关的关键信息，简洁列出:
+_EXTRACT_PROMPT = """从下面的联网搜索结果里，把跟"查询"相关的 ACG 番剧事实抽出来，按短条目排列。
+
+要求：
+- 只抽搜索结果里明确出现过的信息（作品名、评分、播出年份、制作公司、观众评价原文片段）。
+- 不要编造搜索结果里没有的数字或结论；没找到就不写这一条。
+- 每条一行，尽量短，不要写成推荐话术，不要给评价倾向。
+- 如果搜索结果里完全没有跟查询相关的 ACG 内容，直接输出一行：无相关信息。
 
 查询: {query}
 
 搜索结果:
 {results}
 
-关键信息（番剧名、评分、推荐理由等）:"""
+抽取结果:"""
 
 
 def should_trigger_web(state: dict) -> bool:
@@ -81,7 +87,13 @@ async def web_fallback_node(state: dict) -> dict:
             )),
         ])
 
-        web_info = f"\n\n---\n[联网搜索结果]\n{resp.content.strip()}"
+        extracted = resp.content.strip()
+        # 抽取器判定为空时不污染 merged_results
+        if not extracted or "无相关信息" in extracted:
+            logger.info(f"  web_fallback: LLM 抽取判定无相关信息")
+            return {"merged_results": state.get("merged_results", ""), "termination_reason": "web_fallback"}
+
+        web_info = f"\n\n---\n[联网搜索结果]\n{extracted}"
         merged = state.get("merged_results", "") + web_info
 
         return {"merged_results": merged, "termination_reason": "web_fallback"}

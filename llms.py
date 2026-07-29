@@ -15,18 +15,65 @@ import config
 
 T = TypeVar("T", bound=BaseModel)
 
-# ── 主 LLM（OpenAI 兼容协议）──
-_base = dict(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY,
-             model=config.LLM_MODEL, request_timeout=45, max_retries=2)
+# ══════════════════════════════════════════════════════════════════════
+# LLM Factory — 消除模块级单例，支持依赖注入和测试隔离
+# ══════════════════════════════════════════════════════════════════════
 
-# temperature 用 config.ANSWER_TEMPERATURE（默认 0.7），避免 0.9 过高导致回答不稳定
-answer_LLM = ChatOpenAI(**_base, temperature=config.ANSWER_TEMPERATURE)
-# router_LLM / tool_LLM 未使用，已移除
+_answer_llm: ChatOpenAI | None = None
+_simple_llm: ChatOpenAI | None = None
 
-# ── 轻量 LLM（简单事实查询：评分/声优/公司等）──
-_base_simple = dict(base_url=config.LLM_BASE_URL, api_key=config.LLM_API_KEY,
-                    model=config.SIMPLE_LLM_MODEL, request_timeout=30, max_retries=2)
-simple_LLM = ChatOpenAI(**_base_simple, temperature=0.5)
+
+def get_answer_llm(**overrides) -> ChatOpenAI:
+    """获取或构造主推理 LLM，支持 key=value 覆盖配置。"""
+    global _answer_llm
+    if _answer_llm is None or overrides:
+        kwargs = dict(
+            base_url=overrides.pop("base_url", config.LLM_BASE_URL),
+            api_key=overrides.pop("api_key", config.LLM_API_KEY),
+            model=overrides.pop("model", config.LLM_MODEL),
+            temperature=overrides.pop("temperature", config.ANSWER_TEMPERATURE),
+            request_timeout=45,
+            max_retries=2,
+        )
+        kwargs.update(overrides)
+        _answer_llm = ChatOpenAI(**kwargs)
+    return _answer_llm
+
+
+def get_simple_llm(**overrides) -> ChatOpenAI:
+    """获取或构造轻量 LLM，支持 key=value 覆盖配置。"""
+    global _simple_llm
+    if _simple_llm is None or overrides:
+        kwargs = dict(
+            base_url=overrides.pop("base_url", config.LLM_BASE_URL),
+            api_key=overrides.pop("api_key", config.LLM_API_KEY),
+            model=overrides.pop("model", config.SIMPLE_LLM_MODEL),
+            temperature=overrides.pop("temperature", 0.5),
+            request_timeout=30,
+            max_retries=2,
+        )
+        kwargs.update(overrides)
+        _simple_llm = ChatOpenAI(**kwargs)
+    return _simple_llm
+
+
+def reset_llms() -> None:
+    """清空缓存的 LLM 实例，下次调用重新构造（测试用）。"""
+    global _answer_llm, _simple_llm
+    _answer_llm = None
+    _simple_llm = None
+
+
+# ── 向后兼容别名 ──
+
+def __getattr__(name: str):
+    if name == "answer_LLM":
+        return get_answer_llm()
+    if name == "embeddings":
+        return get_embeddings()
+    if name == "simple_LLM":
+        return get_simple_llm()
+    raise AttributeError(name)
 
 
 # ══════════════════════════════════════════════════════════════════════
@@ -408,34 +455,43 @@ class ArkCodingEmbeddings(Embeddings):
 
 # ── Embedding 实例（根据 EMBEDDING_BACKEND 自动选择）──
 
-if config.EMBEDDING_BACKEND == "ark":
-    embeddings = ArkCodingEmbeddings(
-        api_key=config.ARK_EMBEDDING_API_KEY,
-        base_url=config.ARK_EMBEDDING_BASE_URL,
-        model=config.ARK_EMBEDDING_MODEL,
-        dimension=config.ARK_EMBEDDING_DIMENSIONS,
-    )
-elif config.EMBEDDING_BACKEND == "local":
-    embeddings = LocalEmbeddings(
-        model_name=config.LOCAL_EMBEDDING_MODEL,
-        device=config.LOCAL_EMBEDDING_DEVICE,
-    )
-elif config.EMBEDDING_BACKEND == "dashscope":
-    embeddings = DashScopeEmbeddings(
-        api_key=config.DASHSCOPE_API_KEY,
-        base_url=config.DASHSCOPE_BASE_URL,
-        models=config.EMBEDDING_MODELS,
-    )
-else:
-    raise ValueError(
-        f"Unsupported EMBEDDING_BACKEND={config.EMBEDDING_BACKEND!r}; "
-        "expected 'ark', 'local', or 'dashscope'."
-    )
-logging.info(f"  Embedding 后端: {config.EMBEDDING_BACKEND} | 模型: {embeddings.model}")
+_embeddings: Embeddings | None = None
+
+
+def get_embeddings() -> Embeddings:
+    global _embeddings
+    if _embeddings is not None:
+        return _embeddings
+    if config.EMBEDDING_BACKEND == 'ark':
+        _embeddings = ArkCodingEmbeddings(
+            api_key=config.ARK_EMBEDDING_API_KEY,
+            base_url=config.ARK_EMBEDDING_BASE_URL,
+            model=config.ARK_EMBEDDING_MODEL,
+            dimension=config.ARK_EMBEDDING_DIMENSIONS,
+        )
+    elif config.EMBEDDING_BACKEND == 'local':
+        _embeddings = LocalEmbeddings(
+            model_name=config.LOCAL_EMBEDDING_MODEL,
+            device=config.LOCAL_EMBEDDING_DEVICE,
+        )
+    elif config.EMBEDDING_BACKEND == 'dashscope':
+        _embeddings = DashScopeEmbeddings(
+            api_key=config.DASHSCOPE_API_KEY,
+            base_url=config.DASHSCOPE_BASE_URL,
+            models=config.EMBEDDING_MODELS,
+        )
+    else:
+        raise ValueError(
+            f'Unsupported EMBEDDING_BACKEND={config.EMBEDDING_BACKEND!r}; '
+            'expected ark, local, or dashscope.'
+        )
+    logging.info(f'  Embedding: {config.EMBEDDING_BACKEND} | {_embeddings.model}')
+    return _embeddings
 
 
 def warm_embeddings():
     """Preload local embedding weights without making a remote API request."""
-    if isinstance(embeddings, LocalEmbeddings):
-        return embeddings._model
-    return embeddings
+    emb = get_embeddings()
+    if isinstance(emb, LocalEmbeddings):
+        return emb._model
+    return emb

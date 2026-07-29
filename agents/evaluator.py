@@ -85,8 +85,10 @@ async def _llm_conflict_judgement(state: dict, results: list[dict]) -> bool:
         f"{r.get('expert')}: {r.get('answer', '')[:600]}" for r in results
     )
     prompt = (
-        "判断以下 Expert 是否对用户问题给出实质矛盾的结论。"
-        "仅输出 JSON：{\"conflict\": true/false}。\n"
+        "判断下面几个 Expert 对同一个用户问题给出的结论是否存在实质矛盾。\n"
+        "实质矛盾指：核心结论互相冲突（一个推荐 vs 另一个反对；指向不同作品；给出的关键事实相反）。\n"
+        "只是措辞、语气、评价角度不同，不算实质矛盾。\n"
+        "仅输出 JSON：{\"conflict\": true} 或 {\"conflict\": false}，不要其他文字。\n\n"
         f"用户问题：{state.get('resolved_query') or state.get('original_query', '')}\n"
         f"Expert 结论：\n{summaries}"
     )
@@ -104,7 +106,11 @@ async def evaluator_node(state: dict) -> dict:
     """Apply deterministic quality rules; avoid a fixed per-request LLM cost."""
     evaluation = _deterministic_evaluation(state)
     results = current_expert_results(state)
-    if evaluation.verdict == "pass" and _may_conflict(results):
+    if (
+        evaluation.verdict == "pass"
+        and _may_conflict(results)
+        and not getattr(config, "ABLATION_NO_EVALUATOR_CONFLICT", False)
+    ):
         if await _llm_conflict_judgement(state, results):
             evaluation = evaluation.model_copy(update={
                 "verdict": "replan",

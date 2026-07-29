@@ -8,9 +8,9 @@
 import asyncio
 import sys
 from langchain_core.messages import HumanMessage
-from langgraph.checkpoint.memory import MemorySaver
-from graph import build_graph
+from trace import TraceCollector
 import config
+from agents.session_store import default_store as store
 
 
 def _truncate(text: str, max_len: int = 72) -> str:
@@ -56,34 +56,40 @@ async def chat_loop(app, thread_id: str):
             print(f"  当前会话 ID: {thread_id}")
             continue
         if query == "/clear":
-            # 新建 MemorySaver 即清空记忆
-            nonlocal_memory = MemorySaver()
-            app = build_graph().compile(checkpointer=nonlocal_memory)
-            print("  会话记忆已清空，新的 MemorySaver 已就绪。")
+            store.clear(thread_id)
+            app = store.get_app(thread_id)
+            print("  会话记忆已清空。")
             continue
 
         # ── 发送查询 ──────────────────────────────────────────
-        print(f"  ⏳ 思考中 ...", end="\r")
+        print("  ⏳ 思考中 ...", end="\r", flush=True)
         try:
-            resp = await app.ainvoke(
+            collector = TraceCollector()
+            streamed_text = ""
+            answer_started = False
+            async for event in collector.collect(
+                app,
                 {"messages": [HumanMessage(content=query)]},
                 {"configurable": {"thread_id": thread_id}},
-            )
+            ):
+                if event["type"] != "answer_chunk":
+                    continue
+                chunk = event.get("answer_text", "")
+                streamed_text += chunk
+                if not answer_started:
+                    print(" " * 30, end="\r")
+                    print("─" * 60)
+                    answer_started = True
+                print(chunk, end="", flush=True)
         except Exception as e:
             print(f"\n  ❌ 调用失败: {e}")
             continue
 
-        msgs = resp.get("messages", [])
-        if not msgs:
+        if not streamed_text:
             print("\n  ⚠️ (系统未返回回答)")
             continue
 
-        answer = msgs[-1].content
-
-        # ── 输出回答 ──────────────────────────────────────────
-        print(" " * 30)  # 清除"思考中"
-        print("─" * 60)
-        print(answer)
+        print()
         print("─" * 60)
 
 
@@ -91,9 +97,12 @@ def _warmup():
     """预加载模型，避免首查询时才 Loading weights。"""
     print("  预热中 ...", end=" ")
     from llms import warm_embeddings
-    from tools.knowledge_retrieval import warm_reranker
+    warmers = [("Embedding", warm_embeddings)]
+    if config.ENABLE_RERANKING:
+        from tools.knowledge_retrieval import warm_reranker
+        warmers.append(("Reranker", warm_reranker))
     failures = []
-    for name, warmer in (("Embedding", warm_embeddings), ("Reranker", warm_reranker)):
+    for name, warmer in warmers:
         try:
             warmer()
         except Exception as exc:
@@ -120,9 +129,7 @@ def main():
     _warmup()
     print()
 
-    # 构建图（共享 MemorySaver 实现跨轮记忆）
-    memory = MemorySaver()
-    app = build_graph().compile(checkpointer=memory)
+    app = store.get_app(thread_id)
 
     asyncio.run(chat_loop(app, thread_id))
 

@@ -1,8 +1,8 @@
 # AniGraph 接口文档
 
-> **版本**: v2.4
+> **版本**: v2.5
 >
-> **更新日期**: 2026-07-24
+> **更新日期**: 2026-07-29
 >
 > **适用范围**: 前后端对接、二次开发、集成接入
 
@@ -13,6 +13,8 @@ AniGraph 提供三层接口：
 | HTTP API | 前端/第三方系统集成 | `server.py` (FastAPI) |
 | Python API | 程序化调用、二次开发 | `main.py` (`run` / `run_stream`) |
 | 交互式终端 | 人工调试、演示 | `main.py` / `chat.py` |
+
+> v2.5 变更：`main.py` 与 `chat.py` 共用 `agents/session_store.py` 的 `SessionStore`，同一 `thread_id` 的 `MemorySaver` 与已编译的图实例复用；检索层拆到 `agents/retrieval.py`，Simple Fact 与全流程共享 `agents/metadata_fallbacks.py`（新增按"制作公司 × 年份""标题"直接命中 Metadata Index 的兜底）。
 
 ---
 

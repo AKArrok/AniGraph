@@ -65,10 +65,69 @@ _VALID_CHINESE_COUNT_RE = re.compile(
 _EXPLICIT_TITLE_RE = re.compile(r"《([^》]{1,40})》")
 
 
+# 指代残留标记：正则全部失败后，若追问里还带这些词，就交给 LLM 改写。
+_UNRESOLVED_REF_RE = re.compile(r"(它|他|她|这个|那个|这部|那部|这两部|那两部|前面那|评分最高的那|那一部)")
+
+# 向成熟项目看齐（LangChain history-aware retriever / LlamaIndex CondenseQuestion）：
+# 把历史 + 追问交给轻量 LLM 改写成一句可独立检索的问题。
+_CONDENSE_SYSTEM = """把用户的追问改写成一句能独立检索的完整问题。
+
+规则:
+- 只做指代消解与补全：把“它/那部/这个/评分最高的那部”等替换成候选作品里最可能指向的那一部具体作品名。
+- 不要新增用户没问的信息，不要改变问题本身的诉求。
+- 若无法判断指向哪部，就保持原句不动，原样输出。
+- 只输出改写后的问题，不要解释、不要引号、不要多余文字。"""
+
+
+async def _llm_condense_reference(query: str, history: list, entities: list[dict]) -> str | None:
+    """正则解析全部失败时的 LLM 兑底。
+
+    成功返回改写后的独立问题；无法判断、无变化或任何异常（包括无网络）返回 None，
+    由调用方退回正则结果。因此离线环境不会因重试而挂住。
+    """
+    names = [e["name"] for e in entities if e.get("name")]
+    if not names and not history:
+        return None
+    try:
+        from llms import get_simple_llm, llm_ainvoke_with_retry
+        from langchain_core.messages import SystemMessage, HumanMessage
+
+        lines = []
+        for r in history[-3:]:
+            if r.get("user"):
+                lines.append(f"用户: {r['user']}")
+            if r.get("assistant"):
+                lines.append(f"助手: {r['assistant'][:150]}")
+        history_block = chr(10).join(lines) if lines else "(无)"
+        candidates = "、".join(names) if names else "(无)"
+        user = (
+            f"最近对话:\n{history_block}\n\n"
+            f"候选作品(按相关度排序): {candidates}\n"
+            f"当前追问: {query}\n改写结果:"
+        )
+        resp = await llm_ainvoke_with_retry(
+            get_simple_llm(),
+            [SystemMessage(content=_CONDENSE_SYSTEM), HumanMessage(content=user)],
+            max_retries=2,
+        )
+        rewritten = (resp.content or "").strip().strip("\"'「」“”")
+        if not rewritten or rewritten == query:
+            return None
+        # 守住边界：改写结果必须确实消掉指代标记，否则视为无效。
+        if _UNRESOLVED_REF_RE.search(rewritten):
+            return None
+        return rewritten
+    except Exception:
+        return None
+
+
 def _detect_followup(query: str) -> bool:
     if any(p.match(query) for p in _FOLLOWUP_PATTERNS):
         return True
-    return bool(_FOLLOWUP_HINTS_RE.search(query))
+    if _FOLLOWUP_HINTS_RE.search(query):
+        return True
+    # 句中带指代标记（如“评分最高的那部”）也属追问，交给下游解指代。
+    return bool(_UNRESOLVED_REF_RE.search(query))
 
 
 # ── 约束识别（支持继承与撤销）──
@@ -119,21 +178,31 @@ def _topic_tags(topic_title: str) -> list[str]:
         return []
 
 
-def _resolve_reference(query: str, entities: list[dict]) -> str:
+def _resolve_reference(query: str, entities: list[dict], *, ordinal_only: bool = False) -> str:
     """解析指代
 
     示例:
       "它的评分" + [{name:"JOJO"}] → "JOJO的评分"
       "第二部的评分" + [{name:"A"}, {name:"B"}] → "B的评分"
+
+    ordinal_only=True 时只解析序号指代（按 entities 顺序），代词指代交给调用方
+    用正确的锚点顺序（topic_entity 优先）二次处理，避免序号阶段用错锚点。
     """
     for word, idx in _ORDINAL_MAP:
         if word in query and idx < len(entities):
             return query.replace(word, entities[idx]["name"])
 
+    if ordinal_only:
+        return query
+
     for p in _PRNOUN_CANDIDATES:
         if query.startswith(p) and entities:
             rest = query[len(p):]
-            return entities[0]["name"] + rest
+            # 仅当代词后紧跟属性/助词/结尾时才算真命中；
+            # 后面接描述词（如“那部搜笑的”）是假命中，交给 LLM condense。
+            if re.match(r"(的|是|有|在|和|跟|与|气质|风格|剧情|评分|主角|声优|怎么样|呢|吗|$)", rest):
+                return entities[0]["name"] + rest
+            break
 
     # 追问中的指代不一定出现在句首，例如“再推荐两部和它气质相近的动画”。
     if entities:
@@ -148,7 +217,7 @@ def _resolve_reference(query: str, entities: list[dict]) -> str:
 
     if query.startswith("那") and entities and len(query) > 1:
         second_char = query[1]
-        if second_char in "他她它个部件些有没有好是":
+        if second_char in "他她它件些有没有好是":  # 那部/那个交给带守卫的双字代词分支
             return entities[0]["name"] + query[1:]
     if query in ("那", "那呢", "那吗") and entities:
         return entities[0]["name"] + query[1:]
@@ -222,7 +291,8 @@ async def context_builder_node(state: AgentState) -> dict:
     recent_entities = state.get("recent_entities", [])
     if is_followup:
         # 1. 序数指代优先按推荐列表顺序解析（第一个/第二部 → recent_entities[0]/[1]）
-        resolved = _resolve_reference(query, recent_entities)
+        #    只解析序号，代词留给步骤 2 用 topic_entity 优先的锚点顺序处理
+        resolved = _resolve_reference(query, recent_entities, ordinal_only=True)
         # 2. 代词指代（它/这个/那部）用 topic_entity + recent_entities
         if resolved == query:
             entities = []
@@ -257,6 +327,19 @@ async def context_builder_node(state: AgentState) -> dict:
                 if name and (cleaned == name or cleaned.startswith(name)):
                     resolved = name
                     matched_recent_entity = topic_entity
+        # 5. 正则四步都没命中（resolved==query）时，交给轻量 LLM 做 query condensation。
+        #    模仿 LangChain history-aware retriever / LlamaIndex CondenseQuestion，失败退回原句。
+        if resolved == query:
+            entities = []
+            if topic_entity.get("name"):
+                entities.append(topic_entity)
+            entities.extend(
+                e for e in recent_entities
+                if e.get("name") != topic_entity.get("name")
+            )
+            rewritten = await _llm_condense_reference(query, history, entities)
+            if rewritten:
+                resolved = rewritten
 
     # 推断当前话题
     current_topic = _infer_topic(query)

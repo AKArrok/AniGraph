@@ -1,4 +1,5 @@
 """Query Processor — 查询优化节点，从 graph.py 拆出。"""
+import config
 from agents.state import AgentState
 
 
@@ -6,6 +7,8 @@ async def query_processing_node(state: AgentState) -> dict:
     """查询处理节点: 根据 plan.rewrite_strategy 执行 Rewrite/HyDE/Decompose/Direct"""
     plan = state.get("plan", {})
     strategy = plan.get("rewrite_strategy", "rewrite")
+    if getattr(config, "ABLATION_NO_QUERY_REWRITE", False):
+        strategy = "direct"
     query = state.get("resolved_query", "") or state.get("original_query", "")
 
     from tools.registry import tool_registry

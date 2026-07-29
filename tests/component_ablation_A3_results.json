@@ -1,0 +1,372 @@
+{
+  "summary": {
+    "n": 17,
+    "strict_accuracy": 0.8235294117647058,
+    "avg_latency": 28.925,
+    "by_type": {
+      "metadata_cross": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "longtail_fact": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "similar_recommendation": {
+        "n": 4,
+        "correct": 1,
+        "acc": 0.25
+      },
+      "bangumi_tags": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "bangumi_score_precise": {
+        "n": 3,
+        "correct": 3,
+        "acc": 1.0
+      },
+      "kb_boundary": {
+        "n": 1,
+        "correct": 1,
+        "acc": 1.0
+      }
+    }
+  },
+  "details": [
+    {
+      "id": "M001",
+      "type": "metadata_cross",
+      "query": "ufotable 在 2019 年制作了哪些动画？",
+      "answer": "- 剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly（2019-01-12）\n- 鬼灭之刃（2019-04-06）\n- 鬼灭之刃 兄妹的羁绊（2019-03-29）",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+          "鬼灭之刃",
+          "鬼灭之刃 兄妹的羁绊"
+        ],
+        "misses": []
+      },
+      "latency": 33.736,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "M002",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+      "answer": "京都アニメーション在2007年制作了《CLANNAD》（10月4日播出）和《幸运星》（4月8日播出）两部动画。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "幸运星",
+          "CLANNAD"
+        ],
+        "misses": []
+      },
+      "latency": 14.187,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "M003",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2021 年制作了哪些动画？",
+      "answer": "京都アニメーション在2021年制作了两部动画：《小林家的龙女仆S》和《迷你龙小剧场》。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "小林家的龙女仆S",
+          "迷你龙小剧场"
+        ],
+        "misses": []
+      },
+      "latency": 14.13,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "L014643",
+      "type": "longtail_fact",
+      "query": "《阴阳大战记》的评分是多少？上映年份是哪一年？",
+      "answer": "评分6.9，上映年份2004年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 6.738,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "L036484",
+      "type": "longtail_fact",
+      "query": "《兽兵卫忍风帖 龙宝玉篇》的评分是多少？上映年份是哪一年？",
+      "answer": "评分5.7，上映年份2003年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 7.357,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "L038965",
+      "type": "longtail_fact",
+      "query": "《袖珍女侍小梅》的评分是多少？上映年份是哪一年？",
+      "answer": "评分5.9，上映年份是2000年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 7.163,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "R000298",
+      "type": "similar_recommendation",
+      "query": "有没有跟《天空之城》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "既然你喜欢《天空之城》，那吉卜力内部还有几部能联动的作品可以聊聊。\n\n《风之谷》这部你看过没？要我说，它在精神内核上跟《天空之城》简直是双子星。都是宫崎骏亲自操刀，探讨的都是人类文明与自然的冲突，那种在废墟之上寻找希望的劲儿一脉相承。不过《风之谷》的世界观更严酷，腐海森林的设定比拉普达的无人寂静要沉重得多，娜乌西卡背负的东西也比希达更沉，宫崎骏在里面注入了更直接的生态反思。这片子虽然比《天空之城》早两年，但那股史诗感放到现在看依然震撼。\n\n《幽灵公主》你可以看作《天空之城》的升级加料版，Bangumi 上拿了 8.4 分，标签里直接标着“神作”“经典”。它把《天空之城》里人与自然的拉锯推到了极致——一边是炼铁城的女当家幻姬，一边是狼养大的幽灵公主，两边都有立场，谁也不是纯粹的反派。尤其那句“所谓‘正确’真的会毁灭珍贵的森林”，这种无力感比拉普达毁灭时更扎心。全片格局更大，场面也更血腥直接，如果《天空之城》的结尾让你意犹未尽，《幽灵公主》那种撕扯感和最后的苍凉会让你陷得更深。\n\n要是你偏爱的是《天空之城》里飞行器和奇幻设定的魅力，《哈尔的移动城堡》这片子估计能对上你的电波。同样是宫崎骏编剧，天上飞的战舰、地上跑的蒸汽城堡，那股维多利亚时代混搭魔法的味道很足。但它的气质和《天空之城》是两个路子——哈尔更像个耍帅又脆弱的魔法师，整部片子更像一则成年人的爱情童话，带着反战的底色，没有拉普达那么纯粹的冒险感。如果你想看点更浪漫、更华丽的飞行故事，这部比上面两部轻松。\n\n《魔女宅急便》就比较特别了。导演是高畑勋，宫崎骏负责剧本，从制作班底看跟《天空之城》是换了个视角。这片子没有大冲突，也没反派，就是一个会飞的小魔女去海边城市修行，经历挫败然后重新起飞的故事。它保留了《天空之城》里最轻盈的飞行体验，但把所有宏大叙事都换成了少女成长的日常，很治愈，很适合你只想安安静静感受“飞在天空”这个动作本身的时候看。\n\n最后《侧耳倾听》提一嘴吧，吉卜力出品，宫崎骏编剧。但它跟《天空之城》的相似点在哪儿呢——几乎没什么直接关联。它是一部纯现实向的青春片，没有飞行、没有幻想世界，甚至最像拉普达的那个空中浮岛画面，也只是女主角写小说时的脑内插图。所以除非你是想顺着吉卜力和宫崎骏的脉络全收一遍，否则冲着《天空之城》找它就绕了点路。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "风之谷",
+          "幽灵公主",
+          "哈尔的移动城堡",
+          "侧耳倾听"
+        ],
+        "n_hits": 4,
+        "anchor_tag": "经典",
+        "expanded_pool_size": 147,
+        "note": "rescored with widened pool"
+      },
+      "latency": 81.064,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "R000793",
+      "type": "similar_recommendation",
+      "query": "有没有跟《Code Geass 反叛的鲁路修》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "要我说，真跟《反叛的鲁路修》骨子里最像的，是同一家爹妈生出来的另一部作品——《星际牛仔》。别看它俩画风、年代差挺远，但都是 Sunrise 手底下的叛逆孩子。鲁路修是披着校园皮的世界革命，这部是裹着爵士乐的宇宙流浪，骨子里都是“一群不合群的人在被巨大势力操弄的命运里挣扎”。而且 Bangumi 上杀到 9.1 分，常年盘踞前几十的神作位，菅野洋子的配乐直接封神，光是听原声就能颅内高潮。虽然不玩智斗反转那套，但你看完 Spike 最后那个手势，那种苦涩的自由感，和鲁路修零之镇魂曲砸在心口的力道是同款的。\n\n再补一部《攻壳机动队 STAND ALONE COMPLEX》和它的第二季 2nd GIG，这俩评分高得离谱，一个 9.1 一个 9.2。它不是 Sunrise 出的，是 Production I.G，但要说“高智商主角靠谋略和身份扮演搅动政治阴谋”，鲁路修见了素子也得叫前辈。里面“Stand Alone Complex”这个概念本身就是对集体无意识和社会操纵的深度拆解，第二季里难民问题、国家博弈的刻画比鲁路修还冷硬。有位老粉评论说得准：“看鲁路修是看少年如何骗过世界，看攻壳是看世界本身怎么骗过你。”这部我私心很推，就是信息密度大得有点累，不像鲁路修每一集结尾都给你甩一个钩子。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0,
+        "anchor_tag": "剧情",
+        "expanded_pool_size": 235,
+        "note": "rescored with widened pool"
+      },
+      "latency": 67.211,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "R000822",
+      "type": "similar_recommendation",
+      "query": "有没有跟《FLCL》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "你要的这种电波感、青春期那股无处发泄的躁动，还有那种不跟你讲道理、直接拿视觉和音乐往你脸上砸的劲儿，最对味的确实是从这帮创作者的关系网里找。\n\n私下最推的是 **《宇宙巡警露露子》**。这片子看着是每集十来分钟的泡面番，但内里那股狂野和不讲章法，完全就是《FLCL》的精神续作。制作公司 TRIGGER，它的核心班底本来就是从做《FLCL》的 GAINAX 分出来的，导演雨宮哲更是今石洋之那一脉的亲传弟子。所以你能看到满屏飞溅的亮色、突破天际的脑洞，还有那种用最胡闹的方式讲最真挚感情的做派。Bangumi 上不少看过的人都觉得，这就是把青春的恋爱喜剧拍成了宇宙尺度的星际大爆炸，跟《FLCL》一样，核心讲的是少女的成长，只是外壳变成了狂野的太空冒险，看得人又哭又笑。\n\n至于《FLCL》的后续作品，**《FLCL Alternative》** 和 **《FLCL: Shoegaze》**，它们是挂着同一个名字，但味道其实差了不少。《Alternative》换了导演，整体更偏向少女们的日常与友情，那股躁动的荷尔蒙变成了更平缓的青春物语，制作上也没那么实验了。《Shoegaze》的话就有点可惜，评分只有 4.4，看得出大家对它的接受度不高，很多人觉得它想延续那种意识流但故事没撑起来。\n\n如果你是想通过 Production I.G 这条线来找，那它们家的 **《攻壳机动队 STAND ALONE COMPLEX》** 是个经典，评分高达 9.1，菅野洋子的配乐也是神级。但要注意，《攻壳》的“烧脑”是赛博朋克式的哲学思辨，风格冷峻严肃，和《FLCL》那种荷尔蒙驱动的、像摇滚乐现场一样的混乱与亢奋，完全不是一回事。这部我手上信息不多，但我感觉它无法给你《FLCL》那种“虽然看不懂但爽到不行”的体验。\n\n所以，如果只能挑一部，直奔《宇宙巡警露露子》就行。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0,
+        "anchor_tag": "神配乐",
+        "expanded_pool_size": 14,
+        "note": "rescored with widened pool"
+      },
+      "latency": 128.487,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "T000247",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《银魂》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "银魂的标签有：科幻, TV, 日本, 漫画改, 战斗, 漫改, 搞笑, 2006, SUNRISE, 热血, 冒险, 杉田智和, JUMP, 喜剧, 银他妈, 吐槽, 银魂, 恶搞, 銀魂~搞笑才是人生~, GINTAMA, 天然卷发, 銀魂, kuso, 钉宫, 2006年4月, 高松信司, 灵魂支柱, 人生的意义, 假发, 土银, S田。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "S田",
+          "假发",
+          "冒险",
+          "吐槽",
+          "喜剧"
+        ],
+        "misses": []
+      },
+      "latency": 9.511,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "T000440",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《校园迷糊大王》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "校园迷糊大王的标签有：TV, 日本, 漫画改, 2004, 漫改, 校园, 日常, 青春, 搞笑, 恋爱, TVA, 2004年, 半年番, 喜剧, 恶搞, 高松信司, 爆笑, 恋爱喜剧, 能登麻美子, 堀江由衣, 小清水亚美, 校园迷糊大王, 小林尽, 2004年10月, StudioComet, 大小姐, SchoolRumble。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "喜剧",
+          "恋爱",
+          "恶搞",
+          "搞笑",
+          "日常"
+        ],
+        "misses": []
+      },
+      "latency": 9.146,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "T001453",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《少女革命》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "《少女革命》TV版在 Bangumi 上的标签有：TV、日本、战斗、神作、经典、校园、百合、原创、90年代、1990s、奇幻、意识流、1997、1997年、内涵、童年、J.C.STAFF、幾原邦彥、少女革命、几原邦彦、榎户洋司、细田守、榎戸洋司、五十岚卓哉、象徵手法、少女革命ウテナ、1997年4月、川上ともこ。如果指的是剧场版《思春期默示录》则另有不同。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "内涵",
+          "奇幻",
+          "战斗",
+          "校园",
+          "百合"
+        ],
+        "misses": []
+      },
+      "latency": 10.392,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "S000310",
+      "type": "bangumi_score_precise",
+      "query": "《幽灵公主》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《幽灵公主》在 Bangumi 上的评分是 8.4。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.4"
+      },
+      "latency": 7.141,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "S001608",
+      "type": "bangumi_score_precise",
+      "query": "《灌篮高手》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《灌篮高手》TV版在 Bangumi 上的评分是 8.6。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.6"
+      },
+      "latency": 7.441,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "S072941",
+      "type": "bangumi_score_precise",
+      "query": "《斩服少女》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "8.1。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.1"
+      },
+      "latency": 6.847,
+      "web_used": false,
+      "termination_reason": ""
+    },
+    {
+      "id": "R105969",
+      "type": "similar_recommendation",
+      "query": "有没有跟《幸腹涂鸦》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "要说跟《幸腹涂鸦》最对味的，那肯定是《向阳素描》了。SHAFT 那套用细腻又有点奇妙的构图把女孩子凑在一起做饭、打闹、发呆的劲儿，从《向阳素描》一路延续下来，新房昭之式的空间感和生活感简直是一个模子刻出来的，潮月一也、宮西多麻子这帮人也是两边都待过。而且《向阳素描》和续篇《向阳素描×☆☆☆》你都看的话，那种“住同一栋公寓互相喂饭”的日常感只会更上头。论缺点的话，这系列节奏比《幸腹涂鸦》还缓，几乎零剧情推进，要是你偏爱美食特写的话这里讲吃饭的镜头没到那么让人肚子叫的程度，看你自己口味了。\n\n《漫画少女》也能聊一句，是動画工房做的，跟 SHAFT 路子不完全一样，但日常节奏和漫画创作背景味儿挺近。这部我手上信息不多，只停留在一群女生画漫画、互相戳笑点的印象上。没那么多吃的，更多是赶稿地狱里的温情。\n\n另外几个标的，像《元气囝仔》《学园奶爸》《天真与闪电》《幸运星》，都是温馨日常向，但从标签和制作阵来看，《幸腹涂鸦》那种贴着肌肤的温度感不是它最直接的血缘亲戚。《天真与闪电》是带娃做饭，《元气囝仔》是乡下治愈，但制作公司完全不是一个体系，导演和系构也都岔开了。所以这些要算相似作的话，只能说是同一片暖色大区里的不同街道，不是那种一脉相承的同班底产物。要说的话《天真与闪电》父女搭档做饭的部分倒是能嗅到一点饭桌前的柔软，但也仅此而已了。\n\n候选里剩下那部《攻壳机动队 S.A.C. 2nd GIG》就彻底串台了，不提也罢。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0,
+        "anchor_tag": "轻百",
+        "expanded_pool_size": 119,
+        "note": "rescored with widened pool"
+      },
+      "latency": 74.279,
+      "web_used": false,
+      "termination_reason": "quality_pass"
+    },
+    {
+      "id": "B001",
+      "type": "kb_boundary",
+      "query": "《Z/X IGNITION》原声带的作曲家是谁？请只根据知识库回答。",
+      "answer": "这个我没有确切信息。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "refusal_hit": "没有确切信息",
+        "possibly_fabricated_names": []
+      },
+      "latency": 6.899,
+      "web_used": false,
+      "termination_reason": ""
+    }
+  ]
+}

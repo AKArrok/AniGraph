@@ -3,6 +3,11 @@ import re
 import time
 import logging
 import config
+from agents.metadata_fallbacks import (
+    filter_metadata_by_query,
+    fetch_by_studio_year,
+    fetch_by_title,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,9 +51,43 @@ def retrieve_metadata(query, plan, search_queries, existing, errors=None):
     results = list(existing)
     try:
         from agents.metadata_index import index
+
+        # ── Structured fallback #1: full-title alias lookup ──
+        # Full pipeline used to rely purely on keyword substring hits,
+        # which failed on longtail_fact / bangumi_tags / bangumi_score_precise
+        # (fast path had this via get_by_alias/fuzzy_lookup; full path did not).
+        title_hits = fetch_by_title(query, plan.get("search_keywords") or [])
+        if title_hits:
+            seen_ids = {str(r.get("id", "")) for r in results}
+            for r in title_hits:
+                rid = str(r.get("id", ""))
+                if rid and rid not in seen_ids:
+                    results.append(r)
+                    seen_ids.add(rid)
+
+        # ── Structured fallback #2: studio × year direct search ──
+        # Same rule the fast path uses for "studio X in year Y" queries.
+        sy_hits = fetch_by_studio_year(query)
+        if sy_hits:
+            seen_ids = {str(r.get("id", "")) for r in results}
+            for r in sy_hits:
+                rid = str(r.get("id", ""))
+                if rid and rid not in seen_ids:
+                    results.append(r)
+                    seen_ids.add(rid)
+
         filters = _extract_metadata_filters(query, plan)
         if filters:
-            results = index.search(**filters)
+            # 关键修复：filter 结果只能**追加**到 existing 之后，不能覆盖 existing。
+            # 真实回归案例：query 是「校园迷糊大王」，keyword 已命中 440 号；
+            # 若直接覆盖成 index.search(tag="校园")，440 会被 50 条同 tag 作品挤掉。
+            filter_results = index.search(**filters)
+            seen_ids = {str(r.get('id', '')) for r in results}
+            for r in filter_results:
+                rid = str(r.get('id', ''))
+                if rid not in seen_ids:
+                    results.append(r)
+                    seen_ids.add(rid)
         else:
             for q in search_queries[:2]:
                 md = index.search_by_name(q)
@@ -62,6 +101,14 @@ def retrieve_metadata(query, plan, search_queries, existing, errors=None):
                     for r in tag_results:
                         if str(r.get('id', '')) not in seen_ids:
                             results.append(r)
+
+        # ── Structured fallback #3: post-filter by year/studio/director ──
+        # Only keep entries matching hints found in the raw query. Falls back
+        # to the full list if no hint applies, so recommendation-style
+        # queries stay unaffected.
+        narrowed = filter_metadata_by_query(results, query)
+        if narrowed:
+            results = narrowed
     except Exception as e:
         msg = f'Metadata Index 查询失败: {e}'
         logger.warning(msg)

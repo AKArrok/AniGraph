@@ -1,0 +1,1600 @@
+[
+  {
+    "id": "M001",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "ufotable 在 2019 年制作了哪些动画？",
+    "gold_entities": [
+      "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+      "鬼灭之刃",
+      "鬼灭之刃 兄妹的羁绊"
+    ],
+    "gold_answer_keywords": [
+      "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+      "鬼灭之刃",
+      "鬼灭之刃 兄妹的羁绊"
+    ],
+    "gold_evidence": {
+      "studio": "ufotable",
+      "year": "2019",
+      "titles": [
+        "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+        "鬼灭之刃",
+        "鬼灭之刃 兄妹的羁绊"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "must_include_titles": [
+        "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+        "鬼灭之刃",
+        "鬼灭之刃 兄妹的羁绊"
+      ],
+      "rule": "answer must mention ALL gold titles (partial substring match ok)"
+    }
+  },
+  {
+    "id": "M002",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+    "gold_entities": [
+      "幸运星",
+      "CLANNAD"
+    ],
+    "gold_answer_keywords": [
+      "幸运星",
+      "CLANNAD"
+    ],
+    "gold_evidence": {
+      "studio": "京都アニメーション",
+      "year": "2007",
+      "titles": [
+        "幸运星",
+        "CLANNAD"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "must_include_titles": [
+        "幸运星",
+        "CLANNAD"
+      ],
+      "rule": "answer must mention ALL gold titles (partial substring match ok)"
+    }
+  },
+  {
+    "id": "M003",
+    "type": "metadata_cross",
+    "difficulty": "medium",
+    "query": "京都アニメーション 在 2021 年制作了哪些动画？",
+    "gold_entities": [
+      "小林家的龙女仆S",
+      "迷你龙小剧场"
+    ],
+    "gold_answer_keywords": [
+      "小林家的龙女仆S",
+      "迷你龙小剧场"
+    ],
+    "gold_evidence": {
+      "studio": "京都アニメーション",
+      "year": "2021",
+      "titles": [
+        "小林家的龙女仆S",
+        "迷你龙小剧场"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "must_include_titles": [
+        "小林家的龙女仆S",
+        "迷你龙小剧场"
+      ],
+      "rule": "answer must mention ALL gold titles (partial substring match ok)"
+    }
+  },
+  {
+    "id": "L014643",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《阴阳大战记》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "阴阳大战记"
+    ],
+    "gold_answer_keywords": [
+      "6.9",
+      "2004"
+    ],
+    "gold_evidence": {
+      "anime_id": 14643,
+      "score": 6.9,
+      "score_count": 190,
+      "release_date": "2004-09-30",
+      "production": [
+        "サンライズ"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.9",
+      "year_exact": "2004",
+      "rule": "answer must contain BOTH the exact score (one decimal) AND the year"
+    }
+  },
+  {
+    "id": "L036484",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《兽兵卫忍风帖 龙宝玉篇》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "兽兵卫忍风帖 龙宝玉篇"
+    ],
+    "gold_answer_keywords": [
+      "5.7",
+      "2003"
+    ],
+    "gold_evidence": {
+      "anime_id": 36484,
+      "score": 5.7,
+      "score_count": 74,
+      "release_date": "2003-04-14",
+      "production": [
+        "MADHOUSE"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "5.7",
+      "year_exact": "2003",
+      "rule": "answer must contain BOTH the exact score (one decimal) AND the year"
+    }
+  },
+  {
+    "id": "L038965",
+    "type": "longtail_fact",
+    "difficulty": "hard",
+    "query": "《袖珍女侍小梅》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "袖珍女侍小梅"
+    ],
+    "gold_answer_keywords": [
+      "5.9",
+      "2000"
+    ],
+    "gold_evidence": {
+      "anime_id": 38965,
+      "score": 5.9,
+      "score_count": 106,
+      "release_date": "2000-07-26"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "5.9",
+      "year_exact": "2000",
+      "rule": "answer must contain BOTH the exact score AND the year"
+    }
+  },
+  {
+    "id": "R000298",
+    "type": "similar_recommendation",
+    "difficulty": "medium",
+    "query": "有没有跟《天空之城》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+    "gold_entities": [
+      "天空之城"
+    ],
+    "gold_answer_keywords": [
+      "攻壳机动队 S.A.C. 2nd GIG",
+      "星际牛仔",
+      "攻壳机动队 STAND ALONE COMPLEX",
+      "浪客剑心 追忆篇",
+      "新世纪福音战士剧场版 Air/真心为你",
+      "攻壳机动队",
+      "机动警察剧场版2 和平保卫战",
+      "钢之炼金术师 FULLMETAL ALCHEMIST"
+    ],
+    "gold_evidence": {
+      "seed_anime_id": 298,
+      "seed_title": "天空之城",
+      "anchor_tag": "经典",
+      "candidate_similar_titles": [
+        "攻壳机动队 S.A.C. 2nd GIG",
+        "星际牛仔",
+        "攻壳机动队 STAND ALONE COMPLEX",
+        "浪客剑心 追忆篇",
+        "新世纪福音战士剧场版 Air/真心为你",
+        "攻壳机动队",
+        "机动警察剧场版2 和平保卫战",
+        "钢之炼金术师 FULLMETAL ALCHEMIST",
+        "攻壳机动队2 无罪",
+        "新世纪福音战士",
+        "蓝色恐惧",
+        "千年女优"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "min_recommendations": 2,
+      "match_from_candidates_gte": 2,
+      "rule": "answer must recommend >=2 anime titles that appear in candidate_similar_titles"
+    }
+  },
+  {
+    "id": "R000793",
+    "type": "similar_recommendation",
+    "difficulty": "medium",
+    "query": "有没有跟《Code Geass 反叛的鲁路修》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+    "gold_entities": [
+      "Code Geass 反叛的鲁路修"
+    ],
+    "gold_answer_keywords": [
+      "钢之炼金术师 FULLMETAL ALCHEMIST",
+      "命运石之门",
+      "蓝色恐惧",
+      "千年女优",
+      "进击的巨人 第三季 Part.2",
+      "魔法少女小圆",
+      "新世纪福音战士剧场版 DEATH(TRUE)2/Air/真心为你",
+      "奇巧计程车"
+    ],
+    "gold_evidence": {
+      "seed_anime_id": 793,
+      "seed_title": "Code Geass 反叛的鲁路修",
+      "anchor_tag": "剧情",
+      "candidate_similar_titles": [
+        "钢之炼金术师 FULLMETAL ALCHEMIST",
+        "命运石之门",
+        "蓝色恐惧",
+        "千年女优",
+        "进击的巨人 第三季 Part.2",
+        "魔法少女小圆",
+        "新世纪福音战士剧场版 DEATH(TRUE)2/Air/真心为你",
+        "奇巧计程车",
+        "死亡笔记",
+        "福音战士新剧场版：破",
+        "新・福音战士剧场版：终",
+        "东京教父"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "min_recommendations": 2,
+      "match_from_candidates_gte": 2,
+      "rule": "answer must recommend >=2 anime titles that appear in candidate_similar_titles"
+    }
+  },
+  {
+    "id": "R000822",
+    "type": "similar_recommendation",
+    "difficulty": "medium",
+    "query": "有没有跟《FLCL》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+    "gold_entities": [
+      "FLCL"
+    ],
+    "gold_answer_keywords": [
+      "星际牛仔",
+      "虫师 续章 第2部分",
+      "混沌武士",
+      "天空之城",
+      "幽灵公主",
+      "蜂蜜与四叶草",
+      "龙猫",
+      "NOMAD MEGALO BOX 2"
+    ],
+    "gold_evidence": {
+      "seed_anime_id": 822,
+      "seed_title": "FLCL",
+      "anchor_tag": "神配乐",
+      "candidate_similar_titles": [
+        "星际牛仔",
+        "虫师 续章 第2部分",
+        "混沌武士",
+        "天空之城",
+        "幽灵公主",
+        "蜂蜜与四叶草",
+        "龙猫",
+        "NOMAD MEGALO BOX 2"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "min_recommendations": 2,
+      "match_from_candidates_gte": 2,
+      "rule": "answer must recommend >=2 anime titles that appear in candidate_similar_titles"
+    }
+  },
+  {
+    "id": "T000247",
+    "type": "bangumi_tags",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上，《银魂》被观众/编辑打上了哪些标签？请列出主要标签。",
+    "gold_entities": [
+      "银魂"
+    ],
+    "gold_answer_keywords": [
+      "S田",
+      "假发",
+      "冒险",
+      "吐槽",
+      "喜剧"
+    ],
+    "gold_evidence": {
+      "anime_id": 247,
+      "all_tags": [
+        "科幻",
+        "TV",
+        "日本",
+        "漫画改",
+        "战斗",
+        "漫改",
+        "搞笑",
+        "2006",
+        "SUNRISE",
+        "热血",
+        "冒险",
+        "杉田智和",
+        "JUMP",
+        "喜剧",
+        "银他妈",
+        "吐槽",
+        "银魂",
+        "恶搞",
+        "銀魂~搞笑才是人生~",
+        "GINTAMA",
+        "天然卷发",
+        "銀魂",
+        "kuso",
+        "钉宫",
+        "2006年4月",
+        "高松信司",
+        "灵魂支柱",
+        "人生的意义",
+        "假发",
+        "土银",
+        "S田"
+      ],
+      "picked_gold_tags": [
+        "S田",
+        "假发",
+        "冒险",
+        "吐槽",
+        "喜剧"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "match_ratio_gte": 0.6,
+      "rule": "answer must mention >=60% (>=3/5) of picked gold tags",
+      "gold_tags": [
+        "S田",
+        "假发",
+        "冒险",
+        "吐槽",
+        "喜剧"
+      ]
+    }
+  },
+  {
+    "id": "T000440",
+    "type": "bangumi_tags",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上，《校园迷糊大王》被观众/编辑打上了哪些标签？请列出主要标签。",
+    "gold_entities": [
+      "校园迷糊大王"
+    ],
+    "gold_answer_keywords": [
+      "喜剧",
+      "恋爱",
+      "恶搞",
+      "搞笑",
+      "日常"
+    ],
+    "gold_evidence": {
+      "anime_id": 440,
+      "all_tags": [
+        "TV",
+        "日本",
+        "漫画改",
+        "2004",
+        "漫改",
+        "校园",
+        "日常",
+        "青春",
+        "搞笑",
+        "恋爱",
+        "TVA",
+        "2004年",
+        "半年番",
+        "喜剧",
+        "恶搞",
+        "高松信司",
+        "爆笑",
+        "恋爱喜剧",
+        "能登麻美子",
+        "堀江由衣",
+        "小清水亚美",
+        "校园迷糊大王",
+        "小林尽",
+        "2004年10月",
+        "StudioComet",
+        "大小姐",
+        "SchoolRumble"
+      ],
+      "picked_gold_tags": [
+        "喜剧",
+        "恋爱",
+        "恶搞",
+        "搞笑",
+        "日常"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "match_ratio_gte": 0.6,
+      "rule": "answer must mention >=60% (>=3/5) of picked gold tags",
+      "gold_tags": [
+        "喜剧",
+        "恋爱",
+        "恶搞",
+        "搞笑",
+        "日常"
+      ]
+    }
+  },
+  {
+    "id": "T001453",
+    "type": "bangumi_tags",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上，《少女革命》被观众/编辑打上了哪些标签？请列出主要标签。",
+    "gold_entities": [
+      "少女革命"
+    ],
+    "gold_answer_keywords": [
+      "内涵",
+      "奇幻",
+      "战斗",
+      "校园",
+      "百合"
+    ],
+    "gold_evidence": {
+      "anime_id": 1453,
+      "all_tags": [
+        "TV",
+        "日本",
+        "战斗",
+        "神作",
+        "经典",
+        "校园",
+        "百合",
+        "原创",
+        "90年代",
+        "1990s",
+        "奇幻",
+        "意识流",
+        "1997",
+        "1997年",
+        "内涵",
+        "童年",
+        "J.C.STAFF",
+        "幾原邦彥",
+        "少女革命",
+        "几原邦彦",
+        "榎户洋司",
+        "幾原邦彦",
+        "细田守",
+        "榎戸洋司",
+        "五十岚卓哉",
+        "象徵手法",
+        "少女革命ウテナ",
+        "1997年4月",
+        "川上ともこ"
+      ],
+      "picked_gold_tags": [
+        "内涵",
+        "奇幻",
+        "战斗",
+        "校园",
+        "百合"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "match_ratio_gte": 0.6,
+      "rule": "answer must mention >=60% (>=3/5) of picked gold tags",
+      "gold_tags": [
+        "内涵",
+        "奇幻",
+        "战斗",
+        "校园",
+        "百合"
+      ]
+    }
+  },
+  {
+    "id": "S000310",
+    "type": "bangumi_score_precise",
+    "difficulty": "medium",
+    "query": "《幽灵公主》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+    "gold_entities": [
+      "幽灵公主"
+    ],
+    "gold_answer_keywords": [
+      "8.4"
+    ],
+    "gold_evidence": {
+      "anime_id": 310,
+      "score": 8.4,
+      "score_str": "8.4",
+      "score_count": 12370
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "8.4",
+      "rule": "answer must contain the exact one-decimal score"
+    }
+  },
+  {
+    "id": "S001608",
+    "type": "bangumi_score_precise",
+    "difficulty": "medium",
+    "query": "《灌篮高手》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+    "gold_entities": [
+      "灌篮高手"
+    ],
+    "gold_answer_keywords": [
+      "8.6"
+    ],
+    "gold_evidence": {
+      "anime_id": 1608,
+      "score": 8.6,
+      "score_str": "8.6",
+      "score_count": 9346
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "8.6",
+      "rule": "answer must contain the exact one-decimal score"
+    }
+  },
+  {
+    "id": "S072941",
+    "type": "bangumi_score_precise",
+    "difficulty": "medium",
+    "query": "《斩服少女》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+    "gold_entities": [
+      "斩服少女"
+    ],
+    "gold_answer_keywords": [
+      "8.1"
+    ],
+    "gold_evidence": {
+      "anime_id": 72941,
+      "score": 8.1,
+      "score_str": "8.1",
+      "score_count": 17747
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "8.1",
+      "rule": "answer must contain the exact one-decimal score"
+    }
+  },
+  {
+    "id": "R105969",
+    "type": "similar_recommendation",
+    "difficulty": "medium",
+    "query": "有没有跟《幸腹涂鸦》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+    "gold_entities": [
+      "幸腹涂鸦"
+    ],
+    "gold_answer_keywords": [
+      "赛马娘 Pretty Derby 第二季",
+      "孤独摇滚！",
+      "摇曳露营△ 第二季",
+      "摇曳露营△",
+      "悠哉日常大王 Nonstop",
+      "少女终末旅行",
+      "向山进发 Next Summit",
+      "琉璃的宝石"
+    ],
+    "gold_evidence": {
+      "seed_anime_id": 105969,
+      "seed_title": "幸腹涂鸦",
+      "anchor_tag": "轻百",
+      "candidate_similar_titles": [
+        "赛马娘 Pretty Derby 第二季",
+        "孤独摇滚！",
+        "摇曳露营△ 第二季",
+        "摇曳露营△",
+        "悠哉日常大王 Nonstop",
+        "少女终末旅行",
+        "向山进发 Next Summit",
+        "琉璃的宝石",
+        "悠哉日常大王",
+        "BanG Dream! It's MyGO!!!!!",
+        "街角魔族 2丁目",
+        "摇曳百合"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "min_recommendations": 2,
+      "match_from_candidates_gte": 2,
+      "rule": "answer must recommend >=2 anime titles that appear in candidate_similar_titles"
+    }
+  },
+  {
+    "id": "B001",
+    "type": "kb_boundary",
+    "difficulty": "hard",
+    "query": "《Z/X IGNITION》原声带的作曲家是谁？请只根据知识库回答。",
+    "gold_entities": [
+      "Z/X IGNITION"
+    ],
+    "gold_answer_keywords": [
+      "未提供",
+      "未记录",
+      "没有相关信息",
+      "无法确认",
+      "不清楚",
+      "查不到",
+      "无相关",
+      "无法从",
+      "不在",
+      "not available",
+      "no data",
+      "无该信息"
+    ],
+    "gold_evidence": {
+      "note": "DB does not store OST composer",
+      "correct_behavior": "acknowledge missing info; do not invent a composer name",
+      "target_anime": "Z/X IGNITION",
+      "anime_id": 59035
+    },
+    "expects_rag": false,
+    "expects_refusal": true,
+    "scoring": {
+      "must_contain_refusal": true,
+      "must_not_contain_specific_name": true,
+      "rule": "answer must admit missing info; MUST NOT invent a composer name"
+    }
+  },
+  {
+    "id": "CS001638",
+    "type": "cold_score_precise",
+    "difficulty": "medium",
+    "query": "《雨月》在 Bangumi 上的评分是多少？精确到小数点后一位。",
+    "gold_entities": [
+      "雨月"
+    ],
+    "gold_answer_keywords": [
+      "6.4"
+    ],
+    "gold_evidence": {
+      "anime_id": 1638,
+      "score": 6.4,
+      "score_count": 377,
+      "release_date": "2008-04-04"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.4",
+      "rule": "answer must contain the exact one-decimal Bangumi score"
+    }
+  },
+  {
+    "id": "CS004282",
+    "type": "cold_score_precise",
+    "difficulty": "medium",
+    "query": "《书家》在 Bangumi 上的评分是多少？精确到小数点后一位。",
+    "gold_entities": [
+      "书家"
+    ],
+    "gold_answer_keywords": [
+      "6.8"
+    ],
+    "gold_evidence": {
+      "anime_id": 4282,
+      "score": 6.8,
+      "score_count": 291,
+      "release_date": "2010-03-27"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.8",
+      "rule": "answer must contain the exact one-decimal Bangumi score"
+    }
+  },
+  {
+    "id": "CS005910",
+    "type": "cold_score_precise",
+    "difficulty": "medium",
+    "query": "《初瓣》在 Bangumi 上的评分是多少？精确到小数点后一位。",
+    "gold_entities": [
+      "初瓣"
+    ],
+    "gold_answer_keywords": [
+      "6.6"
+    ],
+    "gold_evidence": {
+      "anime_id": 5910,
+      "score": 6.6,
+      "score_count": 179,
+      "release_date": "2007-03-28"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.6",
+      "rule": "answer must contain the exact one-decimal Bangumi score"
+    }
+  },
+  {
+    "id": "CS095679",
+    "type": "cold_score_precise",
+    "difficulty": "medium",
+    "query": "《每度！浦安铁筋家族》在 Bangumi 上的评分是多少？精确到小数点后一位。",
+    "gold_entities": [
+      "每度！浦安铁筋家族"
+    ],
+    "gold_answer_keywords": [
+      "6.2"
+    ],
+    "gold_evidence": {
+      "anime_id": 95679,
+      "score": 6.2,
+      "score_count": 261,
+      "release_date": "2014-07-06"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.2",
+      "rule": "answer must contain the exact one-decimal Bangumi score"
+    }
+  },
+  {
+    "id": "CL036974",
+    "type": "cold_longtail_fact",
+    "difficulty": "hard",
+    "query": "《火箭少女》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "火箭少女"
+    ],
+    "gold_answer_keywords": [
+      "6.3",
+      "2007"
+    ],
+    "gold_evidence": {
+      "anime_id": 36974,
+      "score": 6.3,
+      "score_count": 65,
+      "release_date": "2007-02-21"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.3",
+      "year_exact": "2007",
+      "rule": "answer must contain BOTH the exact one-decimal score AND the year"
+    }
+  },
+  {
+    "id": "CL084997",
+    "type": "cold_longtail_fact",
+    "difficulty": "hard",
+    "query": "《鲁邦三世 雾之谜》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "鲁邦三世 雾之谜"
+    ],
+    "gold_answer_keywords": [
+      "6.3",
+      "2007"
+    ],
+    "gold_evidence": {
+      "anime_id": 84997,
+      "score": 6.3,
+      "score_count": 94,
+      "release_date": "2007-07-27"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.3",
+      "year_exact": "2007",
+      "rule": "answer must contain BOTH the exact one-decimal score AND the year"
+    }
+  },
+  {
+    "id": "CL006375",
+    "type": "cold_longtail_fact",
+    "difficulty": "hard",
+    "query": "《梦幻妖子》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "梦幻妖子"
+    ],
+    "gold_answer_keywords": [
+      "6.2",
+      "2000"
+    ],
+    "gold_evidence": {
+      "anime_id": 6375,
+      "score": 6.2,
+      "score_count": 105,
+      "release_date": "2000-04-20"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.2",
+      "year_exact": "2000",
+      "rule": "answer must contain BOTH the exact one-decimal score AND the year"
+    }
+  },
+  {
+    "id": "CL066405",
+    "type": "cold_longtail_fact",
+    "difficulty": "hard",
+    "query": "《纸箱战机Wars》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "纸箱战机Wars"
+    ],
+    "gold_answer_keywords": [
+      "6.7",
+      "2013"
+    ],
+    "gold_evidence": {
+      "anime_id": 66405,
+      "score": 6.7,
+      "score_count": 68,
+      "release_date": "2013-04-03"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.7",
+      "year_exact": "2013",
+      "rule": "answer must contain BOTH the exact one-decimal score AND the year"
+    }
+  },
+  {
+    "id": "CL012436",
+    "type": "cold_longtail_fact",
+    "difficulty": "hard",
+    "query": "《川之光》的评分是多少？上映年份是哪一年？",
+    "gold_entities": [
+      "川之光"
+    ],
+    "gold_answer_keywords": [
+      "6.8",
+      "2009"
+    ],
+    "gold_evidence": {
+      "anime_id": 12436,
+      "score": 6.8,
+      "score_count": 110,
+      "release_date": "2009-06-20"
+    },
+    "expects_rag": true,
+    "scoring": {
+      "score_exact": "6.8",
+      "year_exact": "2009",
+      "rule": "answer must contain BOTH the exact one-decimal score AND the year"
+    }
+  },
+  {
+    "id": "D105278",
+    "type": "release_date_precise",
+    "difficulty": "medium",
+    "query": "《玉响～more aggressive～ OVA》的首播日期精确到年月是哪一个月？",
+    "gold_entities": [
+      "玉响～more aggressive～ OVA"
+    ],
+    "gold_answer_keywords": [
+      "2014-06",
+      "2014年6月"
+    ],
+    "gold_evidence": {
+      "anime_id": 105278,
+      "release_date": "2014-06-07",
+      "score_count": 543
+    },
+    "expects_rag": true,
+    "scoring": {
+      "year": "2014",
+      "month": "06",
+      "rule": "answer must contain BOTH the exact year AND month"
+    }
+  },
+  {
+    "id": "D196053",
+    "type": "release_date_precise",
+    "difficulty": "medium",
+    "query": "《光之美少女 食尚甜心》的首播日期精确到年月是哪一个月？",
+    "gold_entities": [
+      "光之美少女 食尚甜心"
+    ],
+    "gold_answer_keywords": [
+      "2017-02",
+      "2017年2月"
+    ],
+    "gold_evidence": {
+      "anime_id": 196053,
+      "release_date": "2017-02-05",
+      "score_count": 288
+    },
+    "expects_rag": true,
+    "scoring": {
+      "year": "2017",
+      "month": "02",
+      "rule": "answer must contain BOTH the exact year AND month"
+    }
+  },
+  {
+    "id": "D007106",
+    "type": "release_date_precise",
+    "difficulty": "medium",
+    "query": "《机神咆吼Demonbane》的首播日期精确到年月是哪一个月？",
+    "gold_entities": [
+      "机神咆吼Demonbane"
+    ],
+    "gold_answer_keywords": [
+      "2006-05",
+      "2006年5月"
+    ],
+    "gold_evidence": {
+      "anime_id": 7106,
+      "release_date": "2006-05-18",
+      "score_count": 298
+    },
+    "expects_rag": true,
+    "scoring": {
+      "year": "2006",
+      "month": "05",
+      "rule": "answer must contain BOTH the exact year AND month"
+    }
+  },
+  {
+    "id": "D056118",
+    "type": "release_date_precise",
+    "difficulty": "medium",
+    "query": "《天使的水果糖》的首播日期精确到年月是哪一个月？",
+    "gold_entities": [
+      "天使的水果糖"
+    ],
+    "gold_answer_keywords": [
+      "2013-05",
+      "2013年5月"
+    ],
+    "gold_evidence": {
+      "anime_id": 56118,
+      "release_date": "2013-05-12",
+      "score_count": 578
+    },
+    "expects_rag": true,
+    "scoring": {
+      "year": "2013",
+      "month": "05",
+      "rule": "answer must contain BOTH the exact year AND month"
+    }
+  },
+  {
+    "id": "D231888",
+    "type": "release_date_precise",
+    "difficulty": "medium",
+    "query": "《Fate/Grand Order×冰室之天地～最强伟人7人篇～》的首播日期精确到年月是哪一个月？",
+    "gold_entities": [
+      "Fate/Grand Order×冰室之天地～最强伟人7人篇～"
+    ],
+    "gold_answer_keywords": [
+      "2017-12",
+      "2017年12月"
+    ],
+    "gold_evidence": {
+      "anime_id": 231888,
+      "release_date": "2017-12-31",
+      "score_count": 545
+    },
+    "expects_rag": true,
+    "scoring": {
+      "year": "2017",
+      "month": "12",
+      "rule": "answer must contain BOTH the exact year AND month"
+    }
+  },
+  {
+    "id": "CY_HalFilmMaker_2001",
+    "type": "cold_studio_year",
+    "difficulty": "medium",
+    "query": "Hal Film Maker 在 2001 年制作了哪些动画？",
+    "gold_entities": [
+      "新白雪姬传说",
+      "剧场版 秀逗魔导士PREMIUM"
+    ],
+    "gold_answer_keywords": [
+      "新白雪姬传说",
+      "剧场版 秀逗魔导士PREMIUM"
+    ],
+    "gold_evidence": {
+      "studio": "Hal Film Maker",
+      "year": "2001",
+      "titles": [
+        "新白雪姬传说",
+        "剧场版 秀逗魔导士PREMIUM"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "titles": [
+        "新白雪姬传说",
+        "剧场版 秀逗魔导士PREMIUM"
+      ],
+      "rule": "answer must mention ALL gold titles"
+    }
+  },
+  {
+    "id": "CY_アクタス_2007",
+    "type": "cold_studio_year",
+    "difficulty": "medium",
+    "query": "アクタス 在 2007 年制作了哪些动画？",
+    "gold_entities": [
+      "萌单",
+      "钢铁神吉克"
+    ],
+    "gold_answer_keywords": [
+      "萌单",
+      "钢铁神吉克"
+    ],
+    "gold_evidence": {
+      "studio": "アクタス",
+      "year": "2007",
+      "titles": [
+        "萌单",
+        "钢铁神吉克"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "titles": [
+        "萌单",
+        "钢铁神吉克"
+      ],
+      "rule": "answer must mention ALL gold titles"
+    }
+  },
+  {
+    "id": "CY_童夢_2004",
+    "type": "cold_studio_year",
+    "difficulty": "medium",
+    "query": "童夢 在 2004 年制作了哪些动画？",
+    "gold_entities": [
+      "一击杀虫!! 小惠惠",
+      "亲爱一族",
+      "花右京女仆队 第二季"
+    ],
+    "gold_answer_keywords": [
+      "一击杀虫!! 小惠惠",
+      "亲爱一族",
+      "花右京女仆队 第二季"
+    ],
+    "gold_evidence": {
+      "studio": "童夢",
+      "year": "2004",
+      "titles": [
+        "一击杀虫!! 小惠惠",
+        "亲爱一族",
+        "花右京女仆队 第二季"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "titles": [
+        "一击杀虫!! 小惠惠",
+        "亲爱一族",
+        "花右京女仆队 第二季"
+      ],
+      "rule": "answer must mention ALL gold titles"
+    }
+  },
+  {
+    "id": "TAG_浪客剑心",
+    "type": "tag_top_score",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上被打了「浪客剑心」标签的动画里，评分最高的是哪一部？",
+    "gold_entities": [
+      "浪客剑心 追忆篇"
+    ],
+    "gold_answer_keywords": [
+      "浪客剑心 追忆篇"
+    ],
+    "gold_evidence": {
+      "tag": "浪客剑心",
+      "gold_title": "浪客剑心 追忆篇",
+      "distractor_titles": [
+        "浪客剑心"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_title": "浪客剑心 追忆篇",
+      "distractor_titles": [
+        "浪客剑心"
+      ],
+      "rule": "answer must name the top-scored anime carrying this tag"
+    }
+  },
+  {
+    "id": "TAG_机动警察",
+    "type": "tag_top_score",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上被打了「机动警察」标签的动画里，评分最高的是哪一部？",
+    "gold_entities": [
+      "机动警察剧场版2 和平保卫战"
+    ],
+    "gold_answer_keywords": [
+      "机动警察剧场版2 和平保卫战"
+    ],
+    "gold_evidence": {
+      "tag": "机动警察",
+      "gold_title": "机动警察剧场版2 和平保卫战",
+      "distractor_titles": [
+        "机动警察 NEW OVA"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_title": "机动警察剧场版2 和平保卫战",
+      "distractor_titles": [
+        "机动警察 NEW OVA"
+      ],
+      "rule": "answer must name the top-scored anime carrying this tag"
+    }
+  },
+  {
+    "id": "TAG_摇滚",
+    "type": "tag_top_score",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上被打了「摇滚」标签的动画里，评分最高的是哪一部？",
+    "gold_entities": [
+      "孤独摇滚！"
+    ],
+    "gold_answer_keywords": [
+      "孤独摇滚！"
+    ],
+    "gold_evidence": {
+      "tag": "摇滚",
+      "gold_title": "孤独摇滚！",
+      "distractor_titles": [
+        "摇滚新乐团"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_title": "孤独摇滚！",
+      "distractor_titles": [
+        "摇滚新乐团"
+      ],
+      "rule": "answer must name the top-scored anime carrying this tag"
+    }
+  },
+  {
+    "id": "TAG_中二病",
+    "type": "tag_top_score",
+    "difficulty": "medium",
+    "query": "在 Bangumi 上被打了「中二病」标签的动画里，评分最高的是哪一部？",
+    "gold_entities": [
+      "命运石之门"
+    ],
+    "gold_answer_keywords": [
+      "命运石之门"
+    ],
+    "gold_evidence": {
+      "tag": "中二病",
+      "gold_title": "命运石之门",
+      "distractor_titles": [
+        "命运石之门 0"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_title": "命运石之门",
+      "distractor_titles": [
+        "命运石之门 0"
+      ],
+      "rule": "answer must name the top-scored anime carrying this tag"
+    }
+  },
+  {
+    "id": "CMP_2006_百变之星 不_苍之瞳的少女",
+    "type": "numeric_comparison",
+    "difficulty": "medium",
+    "query": "《百变之星 不死鸟传说 ～蕾拉・汉密尔顿物语～》和《苍之瞳的少女》相比，哪一部在 Bangumi 上的评分更高？",
+    "gold_entities": [
+      "百变之星 不死鸟传说 ～蕾拉・汉密尔顿物语～",
+      "苍之瞳的少女"
+    ],
+    "gold_answer_keywords": [
+      "百变之星 不死鸟传说 ～蕾拉・汉密尔顿物语～"
+    ],
+    "gold_evidence": {
+      "higher_title": "百变之星 不死鸟传说 ～蕾拉・汉密尔顿物语～",
+      "higher_score": 8.1,
+      "lower_title": "苍之瞳的少女",
+      "lower_score": 6.6,
+      "year": "2006",
+      "score_gap": 1.5
+    },
+    "expects_rag": true,
+    "scoring": {
+      "higher_title": "百变之星 不死鸟传说 ～蕾拉・汉密尔顿物语～",
+      "lower_title": "苍之瞳的少女",
+      "rule": "answer must identify the higher-scored title as the winner"
+    }
+  },
+  {
+    "id": "CMP_2012_嘟嘟猫观察日_希望宅邸 3",
+    "type": "numeric_comparison",
+    "difficulty": "medium",
+    "query": "《嘟嘟猫观察日记》和《希望宅邸 3D》相比，哪一部在 Bangumi 上的评分更高？",
+    "gold_entities": [
+      "嘟嘟猫观察日记",
+      "希望宅邸 3D"
+    ],
+    "gold_answer_keywords": [
+      "嘟嘟猫观察日记"
+    ],
+    "gold_evidence": {
+      "higher_title": "嘟嘟猫观察日记",
+      "higher_score": 7.5,
+      "lower_title": "希望宅邸 3D",
+      "lower_score": 6.5,
+      "year": "2012",
+      "score_gap": 1.0
+    },
+    "expects_rag": true,
+    "scoring": {
+      "higher_title": "嘟嘟猫观察日记",
+      "lower_title": "希望宅邸 3D",
+      "rule": "answer must identify the higher-scored title as the winner"
+    }
+  },
+  {
+    "id": "CMP_2005_植木的法则_ToHear",
+    "type": "numeric_comparison",
+    "difficulty": "medium",
+    "query": "《植木的法则》和《ToHeart2》相比，哪一部在 Bangumi 上的评分更高？",
+    "gold_entities": [
+      "植木的法则",
+      "ToHeart2"
+    ],
+    "gold_answer_keywords": [
+      "植木的法则"
+    ],
+    "gold_evidence": {
+      "higher_title": "植木的法则",
+      "higher_score": 6.9,
+      "lower_title": "ToHeart2",
+      "lower_score": 6.2,
+      "year": "2005",
+      "score_gap": 0.7
+    },
+    "expects_rag": true,
+    "scoring": {
+      "higher_title": "植木的法则",
+      "lower_title": "ToHeart2",
+      "rule": "answer must identify the higher-scored title as the winner"
+    }
+  },
+  {
+    "id": "CMP_2018_拥抱！光之美_鹿枫堂",
+    "type": "numeric_comparison",
+    "difficulty": "medium",
+    "query": "《拥抱！光之美少女》和《鹿枫堂》相比，哪一部在 Bangumi 上的评分更高？",
+    "gold_entities": [
+      "拥抱！光之美少女",
+      "鹿枫堂"
+    ],
+    "gold_answer_keywords": [
+      "拥抱！光之美少女"
+    ],
+    "gold_evidence": {
+      "higher_title": "拥抱！光之美少女",
+      "higher_score": 7.7,
+      "lower_title": "鹿枫堂",
+      "lower_score": 6.8,
+      "year": "2018",
+      "score_gap": 0.9
+    },
+    "expects_rag": true,
+    "scoring": {
+      "higher_title": "拥抱！光之美少女",
+      "lower_title": "鹿枫堂",
+      "rule": "answer must identify the higher-scored title as the winner"
+    }
+  },
+  {
+    "id": "SY_礒部花凜",
+    "type": "seiyuu_cold_works",
+    "difficulty": "hard",
+    "query": "声优 礒部花凜 在 Bangumi 记录里参与配音过哪些动画？",
+    "gold_entities": [
+      "Just Because!",
+      "不道德公会",
+      "歌愈少女"
+    ],
+    "gold_answer_keywords": [
+      "Just Because!",
+      "不道德公会",
+      "歌愈少女"
+    ],
+    "gold_evidence": {
+      "seiyuu_name": "礒部花凜",
+      "titles": [
+        "Just Because!",
+        "不道德公会",
+        "歌愈少女"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_titles": [
+        "Just Because!",
+        "不道德公会",
+        "歌愈少女"
+      ],
+      "match_ratio_gte": 0.5,
+      "rule": "answer must mention >=50% of the 3 works"
+    }
+  },
+  {
+    "id": "SY_戸田めぐみ",
+    "type": "seiyuu_cold_works",
+    "difficulty": "hard",
+    "query": "声优 戸田めぐみ 在 Bangumi 记录里参与配音过哪些动画？",
+    "gold_entities": [
+      "NEW GAME!",
+      "NEW GAME!!",
+      "异世界迷宫黑心企业",
+      "sin 七大罪",
+      "最游记 RELOAD -ZEROIN-"
+    ],
+    "gold_answer_keywords": [
+      "NEW GAME!",
+      "NEW GAME!!",
+      "异世界迷宫黑心企业",
+      "sin 七大罪",
+      "最游记 RELOAD -ZEROIN-"
+    ],
+    "gold_evidence": {
+      "seiyuu_name": "戸田めぐみ",
+      "titles": [
+        "NEW GAME!",
+        "NEW GAME!!",
+        "异世界迷宫黑心企业",
+        "sin 七大罪",
+        "最游记 RELOAD -ZEROIN-"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_titles": [
+        "NEW GAME!",
+        "NEW GAME!!",
+        "异世界迷宫黑心企业",
+        "sin 七大罪",
+        "最游记 RELOAD -ZEROIN-"
+      ],
+      "match_ratio_gte": 0.5,
+      "rule": "answer must mention >=50% of the 5 works"
+    }
+  },
+  {
+    "id": "SY_谷井あすか",
+    "type": "seiyuu_cold_works",
+    "difficulty": "hard",
+    "query": "声优 谷井あすか 在 Bangumi 记录里参与配音过哪些动画？",
+    "gold_entities": [
+      "再见绝望先生",
+      "俗・再见绝望先生",
+      "忏・再见绝望先生",
+      "狱・再见绝望先生",
+      "女装正太 PICO～我的夏季小物语"
+    ],
+    "gold_answer_keywords": [
+      "再见绝望先生",
+      "俗・再见绝望先生",
+      "忏・再见绝望先生",
+      "狱・再见绝望先生",
+      "女装正太 PICO～我的夏季小物语"
+    ],
+    "gold_evidence": {
+      "seiyuu_name": "谷井あすか",
+      "titles": [
+        "再见绝望先生",
+        "俗・再见绝望先生",
+        "忏・再见绝望先生",
+        "狱・再见绝望先生",
+        "女装正太 PICO～我的夏季小物语"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_titles": [
+        "再见绝望先生",
+        "俗・再见绝望先生",
+        "忏・再见绝望先生",
+        "狱・再见绝望先生",
+        "女装正太 PICO～我的夏季小物语"
+      ],
+      "match_ratio_gte": 0.5,
+      "rule": "answer must mention >=50% of the 5 works"
+    }
+  },
+  {
+    "id": "SY_山田美鈴",
+    "type": "seiyuu_cold_works",
+    "difficulty": "hard",
+    "query": "声优 山田美鈴 在 Bangumi 记录里参与配音过哪些动画？",
+    "gold_entities": [
+      "琉璃的宝石",
+      "女神宿舍的宿管君。",
+      "七魔剑支配天下",
+      "英雄教室"
+    ],
+    "gold_answer_keywords": [
+      "琉璃的宝石",
+      "女神宿舍的宿管君。",
+      "七魔剑支配天下",
+      "英雄教室"
+    ],
+    "gold_evidence": {
+      "seiyuu_name": "山田美鈴",
+      "titles": [
+        "琉璃的宝石",
+        "女神宿舍的宿管君。",
+        "七魔剑支配天下",
+        "英雄教室"
+      ]
+    },
+    "expects_rag": true,
+    "scoring": {
+      "gold_titles": [
+        "琉璃的宝石",
+        "女神宿舍的宿管君。",
+        "七魔剑支配天下",
+        "英雄教室"
+      ],
+      "match_ratio_gte": 0.5,
+      "rule": "answer must mention >=50% of the 4 works"
+    }
+  },
+  {
+    "id": "FAKE_1",
+    "type": "refusal_fabricated",
+    "difficulty": "hard",
+    "query": "《星海残响 Requiem》这部动画的评分和播出年份分别是多少？请只根据知识库回答。",
+    "gold_entities": [
+      "星海残响 Requiem"
+    ],
+    "gold_answer_keywords": [
+      "没有",
+      "查不到",
+      "无法确认",
+      "找不到",
+      "无相关",
+      "未记录",
+      "不清楚",
+      "手上",
+      "手头",
+      "资料里",
+      "知识库",
+      "no such",
+      "not found"
+    ],
+    "gold_evidence": {
+      "note": "Anime 不存在于数据库，正确行为是拒答/说未记录。",
+      "correct_behavior": "acknowledge absence; do not fabricate score/year"
+    },
+    "expects_rag": true,
+    "expects_refusal": true,
+    "scoring": {
+      "must_contain_refusal": true,
+      "rule": "answer must admit missing info; MUST NOT invent score/year"
+    }
+  },
+  {
+    "id": "FAKE_2",
+    "type": "refusal_fabricated",
+    "difficulty": "hard",
+    "query": "《魔女的午后咖啡馆 第二季》这部动画的评分和播出年份分别是多少？请只根据知识库回答。",
+    "gold_entities": [
+      "魔女的午后咖啡馆 第二季"
+    ],
+    "gold_answer_keywords": [
+      "没有",
+      "查不到",
+      "无法确认",
+      "找不到",
+      "无相关",
+      "未记录",
+      "不清楚",
+      "手上",
+      "手头",
+      "资料里",
+      "知识库",
+      "no such",
+      "not found"
+    ],
+    "gold_evidence": {
+      "note": "Anime 不存在于数据库，正确行为是拒答/说未记录。",
+      "correct_behavior": "acknowledge absence; do not fabricate score/year"
+    },
+    "expects_rag": true,
+    "expects_refusal": true,
+    "scoring": {
+      "must_contain_refusal": true,
+      "rule": "answer must admit missing info; MUST NOT invent score/year"
+    }
+  },
+  {
+    "id": "FAKE_3",
+    "type": "refusal_fabricated",
+    "difficulty": "hard",
+    "query": "《银河列车 EX》这部动画的评分和播出年份分别是多少？请只根据知识库回答。",
+    "gold_entities": [
+      "银河列车 EX"
+    ],
+    "gold_answer_keywords": [
+      "没有",
+      "查不到",
+      "无法确认",
+      "找不到",
+      "无相关",
+      "未记录",
+      "不清楚",
+      "手上",
+      "手头",
+      "资料里",
+      "知识库",
+      "no such",
+      "not found"
+    ],
+    "gold_evidence": {
+      "note": "Anime 不存在于数据库，正确行为是拒答/说未记录。",
+      "correct_behavior": "acknowledge absence; do not fabricate score/year"
+    },
+    "expects_rag": true,
+    "expects_refusal": true,
+    "scoring": {
+      "must_contain_refusal": true,
+      "rule": "answer must admit missing info; MUST NOT invent score/year"
+    }
+  },
+  {
+    "id": "FAKE_4",
+    "type": "refusal_fabricated",
+    "difficulty": "hard",
+    "query": "《苍穹之翼：无名之战》这部动画的评分和播出年份分别是多少？请只根据知识库回答。",
+    "gold_entities": [
+      "苍穹之翼：无名之战"
+    ],
+    "gold_answer_keywords": [
+      "没有",
+      "查不到",
+      "无法确认",
+      "找不到",
+      "无相关",
+      "未记录",
+      "不清楚",
+      "手上",
+      "手头",
+      "资料里",
+      "知识库",
+      "no such",
+      "not found"
+    ],
+    "gold_evidence": {
+      "note": "Anime 不存在于数据库，正确行为是拒答/说未记录。",
+      "correct_behavior": "acknowledge absence; do not fabricate score/year"
+    },
+    "expects_rag": true,
+    "expects_refusal": true,
+    "scoring": {
+      "must_contain_refusal": true,
+      "rule": "answer must admit missing info; MUST NOT invent score/year"
+    }
+  }
+]

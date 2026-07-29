@@ -1,0 +1,1258 @@
+{
+  "summary": {
+    "details_h0": {
+      "name": "H0",
+      "n": 17,
+      "strict_accuracy": 0.058823529411764705,
+      "partial_score": 0.2901764705882353,
+      "avg_latency": 2.9684117647058823,
+      "p95_latency": 9.102,
+      "avg_tokens": 162,
+      "by_type": {
+        "metadata_cross": {
+          "n": 3,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "longtail_fact": {
+          "n": 3,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "similar_recommendation": {
+          "n": 4,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "bangumi_tags": {
+          "n": 3,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "bangumi_score_precise": {
+          "n": 3,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "kb_boundary": {
+          "n": 1,
+          "correct": 1,
+          "acc": 1.0
+        }
+      }
+    },
+    "details_h1": {
+      "name": "H1",
+      "n": 17,
+      "strict_accuracy": 0.6470588235294118,
+      "partial_score": 0.6470588235294118,
+      "avg_latency": 5.663117647058823,
+      "p95_latency": 9.736,
+      "avg_tokens": 1346,
+      "by_type": {
+        "metadata_cross": {
+          "n": 3,
+          "correct": 2,
+          "acc": 0.667
+        },
+        "longtail_fact": {
+          "n": 3,
+          "correct": 3,
+          "acc": 1.0
+        },
+        "similar_recommendation": {
+          "n": 4,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "bangumi_tags": {
+          "n": 3,
+          "correct": 2,
+          "acc": 0.667
+        },
+        "bangumi_score_precise": {
+          "n": 3,
+          "correct": 3,
+          "acc": 1.0
+        },
+        "kb_boundary": {
+          "n": 1,
+          "correct": 1,
+          "acc": 1.0
+        }
+      }
+    },
+    "details_h2": {
+      "name": "H2",
+      "n": 17,
+      "strict_accuracy": 0.35294117647058826,
+      "partial_score": 0.38235294117647056,
+      "avg_latency": 2.5829411764705883,
+      "p95_latency": 5.783,
+      "avg_tokens": 302,
+      "by_type": {
+        "metadata_cross": {
+          "n": 3,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "longtail_fact": {
+          "n": 3,
+          "correct": 2,
+          "acc": 0.667
+        },
+        "similar_recommendation": {
+          "n": 4,
+          "correct": 0,
+          "acc": 0.0
+        },
+        "bangumi_tags": {
+          "n": 3,
+          "correct": 1,
+          "acc": 0.333
+        },
+        "bangumi_score_precise": {
+          "n": 3,
+          "correct": 2,
+          "acc": 0.667
+        },
+        "kb_boundary": {
+          "n": 1,
+          "correct": 1,
+          "acc": 1.0
+        }
+      }
+    }
+  },
+  "cases_meta": [
+    {
+      "id": "M001",
+      "type": "metadata_cross"
+    },
+    {
+      "id": "M002",
+      "type": "metadata_cross"
+    },
+    {
+      "id": "M003",
+      "type": "metadata_cross"
+    },
+    {
+      "id": "L014643",
+      "type": "longtail_fact"
+    },
+    {
+      "id": "L036484",
+      "type": "longtail_fact"
+    },
+    {
+      "id": "L038965",
+      "type": "longtail_fact"
+    },
+    {
+      "id": "R000298",
+      "type": "similar_recommendation"
+    },
+    {
+      "id": "R000793",
+      "type": "similar_recommendation"
+    },
+    {
+      "id": "R000822",
+      "type": "similar_recommendation"
+    },
+    {
+      "id": "T000247",
+      "type": "bangumi_tags"
+    },
+    {
+      "id": "T000440",
+      "type": "bangumi_tags"
+    },
+    {
+      "id": "T001453",
+      "type": "bangumi_tags"
+    },
+    {
+      "id": "S000310",
+      "type": "bangumi_score_precise"
+    },
+    {
+      "id": "S001608",
+      "type": "bangumi_score_precise"
+    },
+    {
+      "id": "S072941",
+      "type": "bangumi_score_precise"
+    },
+    {
+      "id": "R105969",
+      "type": "similar_recommendation"
+    },
+    {
+      "id": "B001",
+      "type": "kb_boundary"
+    }
+  ],
+  "details_h0": [
+    {
+      "id": "M001",
+      "type": "metadata_cross",
+      "query": "ufotable 在 2019 年制作了哪些动画？",
+      "answer": "ufotable 在 2019 年制作的动画有《鬼灭之刃》和《活击/刀剑乱舞》剧场版。",
+      "correct": false,
+      "partial_score": 0.333,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.333,
+        "hits": [
+          "鬼灭之刃"
+        ],
+        "misses": [
+          "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+          "鬼灭之刃 兄妹的羁绊"
+        ]
+      },
+      "latency": 1.998,
+      "retrieve_latency": 0.0,
+      "tokens": 79,
+      "completion_tokens": 32,
+      "num_docs": 0
+    },
+    {
+      "id": "M002",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+      "answer": "京都动画在2007年制作的动画包括：\n\n- 《幸运☆星》\n- 《CLANNAD》",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "hits": [
+          "CLANNAD"
+        ],
+        "misses": [
+          "幸运星"
+        ]
+      },
+      "latency": 1.019,
+      "retrieve_latency": 0.0,
+      "tokens": 72,
+      "completion_tokens": 23,
+      "num_docs": 0
+    },
+    {
+      "id": "M003",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2021 年制作了哪些动画？",
+      "answer": "京都动画在2021年制作的动画作品包括：\n\n- 《小林家的龙女仆S》（小林さんちのメイドラゴンS）",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "hits": [
+          "小林家的龙女仆S"
+        ],
+        "misses": [
+          "迷你龙小剧场"
+        ]
+      },
+      "latency": 1.208,
+      "retrieve_latency": 0.0,
+      "tokens": 80,
+      "completion_tokens": 31,
+      "num_docs": 0
+    },
+    {
+      "id": "L014643",
+      "type": "longtail_fact",
+      "query": "《阴阳大战记》的评分是多少？上映年份是哪一年？",
+      "answer": "《阴阳大战记》在豆瓣的评分是8.8分，上映年份是2004年。",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "has_score": false,
+        "has_year": true
+      },
+      "latency": 1.09,
+      "retrieve_latency": 0.0,
+      "tokens": 68,
+      "completion_tokens": 22,
+      "num_docs": 0
+    },
+    {
+      "id": "L036484",
+      "type": "longtail_fact",
+      "query": "《兽兵卫忍风帖 龙宝玉篇》的评分是多少？上映年份是哪一年？",
+      "answer": "《兽兵卫忍风帖 龙宝玉篇》在豆瓣的评分是7.6分，上映年份是2003年。",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "has_score": false,
+        "has_year": true
+      },
+      "latency": 1.115,
+      "retrieve_latency": 0.0,
+      "tokens": 82,
+      "completion_tokens": 29,
+      "num_docs": 0
+    },
+    {
+      "id": "L038965",
+      "type": "longtail_fact",
+      "query": "《袖珍女侍小梅》的评分是多少？上映年份是哪一年？",
+      "answer": "《袖珍女侍小梅》在豆瓣的评分是 **7.6分**（满分10分）。  \n上映年份是 **2000年**。",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "has_score": false,
+        "has_year": true
+      },
+      "latency": 1.113,
+      "retrieve_latency": 0.0,
+      "tokens": 83,
+      "completion_tokens": 34,
+      "num_docs": 0
+    },
+    {
+      "id": "R000298",
+      "type": "similar_recommendation",
+      "query": "有没有跟《天空之城》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于《天空之城》的特点，从不同角度为你推荐几部相似的动画：\n\n**一、同导演（宫崎骏）作品**\n- **《风之谷》**：同样有飞行元素、宏大世界观和环保主题\n- **《幽灵公主》**：探讨人与自然冲突的史诗级作品\n- **《哈尔的移动城堡》**：奇幻冒险，有飞行城堡的设定\n\n**二、同制作公司（吉卜力工作室）**\n- **《千与千寻》**：奇幻世界冒险，少女成长主题\n- **《猫的报恩》**：轻松奇幻风格，异世界冒险\n\n**三、标签相似（冒险/飞行/蒸汽朋克）**\n- **《蒸汽男孩》**（大友克洋）：蒸汽朋克风格，少年冒险\n- **《最终流放》**：飞行战舰、蒸汽朋克世界观\n- **《来自虞美人之坡》**：虽无奇幻元素，但同为吉卜力出品，有怀旧冒险感\n\n**四、主题相似（失落文明/天空冒险）**\n- **《哆啦A梦：大雄的云之王国》**：云上王国、天空冒险\n- **《翠星之加尔刚蒂亚》**：未知世界探索，文明碰撞\n\n最推荐从《风之谷》和《幽灵公主》开始补，它们与《天空之城》在主题深度和视觉风格上最为接近。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 6.252,
+      "retrieve_latency": 0.0,
+      "tokens": 361,
+      "completion_tokens": 304,
+      "num_docs": 0
+    },
+    {
+      "id": "R000793",
+      "type": "similar_recommendation",
+      "query": "有没有跟《Code Geass 反叛的鲁路修》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于《Code Geass 反叛的鲁路修》的特点，从不同角度为你推荐以下动画：\n\n**1. 基于标签相似（智斗、机甲、校园、腹黑主角）**\n- **《死亡笔记》**：高智商对决 + 试图改变世界的男主，智斗浓度极高，没有机甲但策略博弈感极强。\n- **《ALDNOAH.ZERO》**：机甲战争 + 智谋型男主，主角靠战术头脑对抗强大敌人，剧情反转多。\n\n**2. 基于导演相似（谷口悟朗）**\n- **《无限的未知》**：谷口悟朗早期代表作，群像剧 + 密闭空间下的社会缩影，探讨人性与秩序。\n- **《枪心剑刃》**：谷口悟朗执导的复仇机甲片，风格更西部硬汉，但同样有深刻的角色塑造。\n\n**3. 基于制作公司相似（SUNRISE）**\n- **《革命机Valvrave》**：SUNRISE出品，校园 + 机甲 + 建国 + 学生革命，剧情暴走程度和《鲁路修》有一拼。\n- **《机动战士高达00》**：SUNRISE高达系列，以武力根除战争的组织，主角团理念与鲁路修的“结果正义”有共鸣。\n\n**4. 基于编剧相似（大河内一楼）**\n- **《罪恶王冠》**：大河内一楼编剧，少年获得王之力，校园反抗组织，音乐和画面顶级，剧情争议大但气质接近。\n- **《Princess Principal》**：大河内一楼编剧，间谍题材，主角团各怀秘密，智斗和反转风格类似。\n\n这些推荐中，《死亡笔记》和《高达00》在核心气质上最接近《鲁路修》的体验。",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "hits": [
+          "死亡笔记"
+        ],
+        "n_hits": 1
+      },
+      "latency": 9.102,
+      "retrieve_latency": 0.0,
+      "tokens": 450,
+      "completion_tokens": 385,
+      "num_docs": 0
+    },
+    {
+      "id": "R000822",
+      "type": "similar_recommendation",
+      "query": "有没有跟《FLCL》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于《FLCL》的特点，从不同角度为你推荐以下动画：\n\n**同导演/核心主创**\n- **《特别的她 Progressive》《特别的她 Alternative》**：FLCL的正统续作，鹤卷和哉参与，精神内核一脉相承。\n- **《飞跃巅峰2》**：鹤卷和哉导演，同样充满狂放想象力和宅文化解构。\n- **《EVA 新剧场版》系列**：庵野秀明监修，鹤卷和哉任副导演，视觉冲击力和心理描写有共通之处。\n\n**同制作公司（GAINAX/TRIGGER系）**\n- **《斩服少女》**：今石洋之作品，TRIGGER制作，同样狂野奔放、节奏极快、不讲道理的热血。\n- **《吊带袜天使》**：GAINAX制作，美式画风+日式无厘头，同样充满音乐驱动的暴走感。\n- **《天元突破 红莲螺岩》**：GAINAX代表作，从地底打到宇宙的成长爆发，精神内核高度相似。\n\n**风格/标签相似**\n- **《太空丹迪》**：渡边信一郎作品，每集风格迥异，随性洒脱的宇宙冒险，同样“不在乎逻辑只在乎感觉”。\n- **《物语系列》**：新房昭之的视觉实验，快速剪辑、文字闪回、超现实演出，信息量轰炸感类似。\n- **《回转企鹅罐》**：几原邦彦作品，象征主义满载，看似胡闹的剧情下埋着深刻主题。\n\n如果你最喜欢FLCL的“青春期躁动+摇滚乐驱动”这个核心，最推荐先看《斩服少女》和《天元突破》。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 9.081,
+      "retrieve_latency": 0.0,
+      "tokens": 432,
+      "completion_tokens": 375,
+      "num_docs": 0
+    },
+    {
+      "id": "T000247",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《银魂》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "《银魂》在 Bangumi 上的主要标签包括：  \n- 搞笑  \n- 吐槽  \n- JUMP  \n- 热血  \n- 杉田智和  \n- 空知英秋  \n- 恶搞  \n- 漫画改  \n- 日常  \n- 战斗  \n- 治愈  \n- 人生  \n- 长篇  \n- 经典  \n- 节操丧失",
+      "correct": false,
+      "partial_score": 0.2,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.2,
+        "hits": [
+          "吐槽"
+        ],
+        "misses": [
+          "S田",
+          "假发",
+          "冒险",
+          "喜剧"
+        ]
+      },
+      "latency": 2.011,
+      "retrieve_latency": 0.0,
+      "tokens": 138,
+      "completion_tokens": 83,
+      "num_docs": 0
+    },
+    {
+      "id": "T000440",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《校园迷糊大王》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "校园迷糊大王 二学期  \n校园迷糊大王 三学期  \n校园迷糊大王 一学期  \n校园迷糊大王",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "喜剧",
+          "恋爱",
+          "恶搞",
+          "搞笑",
+          "日常"
+        ]
+      },
+      "latency": 1.202,
+      "retrieve_latency": 0.0,
+      "tokens": 80,
+      "completion_tokens": 24,
+      "num_docs": 0
+    },
+    {
+      "id": "T001453",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《少女革命》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "《少女革命》在 Bangumi 上的主要标签包括：  \n- 几原邦彦  \n- 百合  \n- 原创  \n- 意识流  \n- 神作  \n- 内涵  \n- 女性主义  \n- 舞台剧  \n- 象征主义  \n- 1997",
+      "correct": false,
+      "partial_score": 0.4,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.4,
+        "hits": [
+          "内涵",
+          "百合"
+        ],
+        "misses": [
+          "奇幻",
+          "战斗",
+          "校园"
+        ]
+      },
+      "latency": 1.646,
+      "retrieve_latency": 0.0,
+      "tokens": 117,
+      "completion_tokens": 62,
+      "num_docs": 0
+    },
+    {
+      "id": "S000310",
+      "type": "bangumi_score_precise",
+      "query": "《幽灵公主》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《幽灵公主》在 Bangumi 上的评分是 8.8。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "score_str": "8.4"
+      },
+      "latency": 0.923,
+      "retrieve_latency": 0.0,
+      "tokens": 67,
+      "completion_tokens": 16,
+      "num_docs": 0
+    },
+    {
+      "id": "S001608",
+      "type": "bangumi_score_precise",
+      "query": "《灌篮高手》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《灌篮高手》在 Bangumi 上的评分是 8.7 分。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "score_str": "8.6"
+      },
+      "latency": 1.225,
+      "retrieve_latency": 0.0,
+      "tokens": 71,
+      "completion_tokens": 19,
+      "num_docs": 0
+    },
+    {
+      "id": "S072941",
+      "type": "bangumi_score_precise",
+      "query": "《斩服少女》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《斩服少女》在 Bangumi 上的评分是 7.9。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "score_str": "8.1"
+      },
+      "latency": 1.183,
+      "retrieve_latency": 0.0,
+      "tokens": 69,
+      "completion_tokens": 17,
+      "num_docs": 0
+    },
+    {
+      "id": "R105969",
+      "type": "similar_recommendation",
+      "query": "有没有跟《幸腹涂鸦》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于《幸腹涂鸦》的特点，从以下几个角度为你推荐相似动画：\n\n**1. 同导演作品（新房昭之总监督/龙轮直征系列导演）**\n- **《向阳素描》**：最接近的选择。同为SHAFT制作，讲述美术科少女们的温馨日常，同样有大量美食场景和独特的新房式演出风格。\n\n**2. 同制作公司（SHAFT）的温馨日常作**\n- **《魔法少女小圆》**：虽然题材不同，但苍树梅的人设原案与《幸腹涂鸦》同源，角色画风非常相似。\n- **《三月的狮子》**：同样由SHAFT制作，细腻描绘孤独少年通过美食与人际关系获得治愈的故事，温情氛围浓厚。\n\n**3. 标签相似（美食+治愈+日常）**\n- **《卫宫家今天的饭》**：纯粹的美食治愈番，每集围绕一道料理展开，画风柔和，氛围温暖，没有战斗。\n- **《摇曳露营》**：虽非主打美食，但露营中的料理场景同样精致诱人，整体氛围极度治愈放松。\n- **《请问您今天要来点兔子吗？》**：萌系日常+咖啡店美食，角色可爱，氛围轻松愉快。\n\n**4. 核心设定相似（独居少女通过美食获得陪伴）**\n- **《异世界食堂》**：美食连接人心的主题高度一致，每道料理背后都有温暖的小故事。\n- **《鹿枫堂四色日和》**：和风餐馆中四位青年用料理治愈客人的故事，美食作画精美，氛围温馨。\n\n最推荐从**《向阳素描》**和**《卫宫家今天的饭》**开始补起，前者在制作风格上最接近，后者在美食治愈主题上最契合。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 9.215,
+      "retrieve_latency": 0.0,
+      "tokens": 442,
+      "completion_tokens": 383,
+      "num_docs": 0
+    },
+    {
+      "id": "B001",
+      "type": "kb_boundary",
+      "query": "《Z/X IGNITION》原声带的作曲家是谁？请只根据知识库回答。",
+      "answer": "根据现有记录，未记录《Z/X IGNITION》原声带的作曲家信息。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "refusal_hit": "未记录",
+        "possibly_fabricated_names": [
+          "信息"
+        ]
+      },
+      "latency": 1.08,
+      "retrieve_latency": 0.0,
+      "tokens": 71,
+      "completion_tokens": 19,
+      "num_docs": 0
+    }
+  ],
+  "details_h1": [
+    {
+      "id": "M001",
+      "type": "metadata_cross",
+      "query": "ufotable 在 2019 年制作了哪些动画？",
+      "answer": "根据搜索结果，ufotable 在 2019 年制作的动画有：\n\n*   剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly\n*   鬼灭之刃\n*   鬼灭之刃 兄妹的羁绊",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+          "鬼灭之刃",
+          "鬼灭之刃 兄妹的羁绊"
+        ],
+        "misses": []
+      },
+      "latency": 3.339,
+      "retrieve_latency": 1.909,
+      "tokens": 1359,
+      "completion_tokens": 54,
+      "num_docs": 20
+    },
+    {
+      "id": "M002",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+      "answer": "2007年京都动画制作的动画有：  \n- Kanon  \n- 凉宫春日的忧郁  \n- 幸运星  \n- CLANNAD 〜AFTER STORY〜",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "幸运星",
+          "CLANNAD"
+        ],
+        "misses": []
+      },
+      "latency": 2.091,
+      "retrieve_latency": 0.338,
+      "tokens": 872,
+      "completion_tokens": 39,
+      "num_docs": 20
+    },
+    {
+      "id": "M003",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2021 年制作了哪些动画？",
+      "answer": "根据搜索结果，京都アニメーション在2021年制作的动画有：\n\n*   **紫罗兰永恒花园 特别编集版**（播出日期：2021-10-29）",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "小林家的龙女仆S",
+          "迷你龙小剧场"
+        ]
+      },
+      "latency": 1.793,
+      "retrieve_latency": 0.591,
+      "tokens": 1217,
+      "completion_tokens": 40,
+      "num_docs": 20
+    },
+    {
+      "id": "L014643",
+      "type": "longtail_fact",
+      "query": "《阴阳大战记》的评分是多少？上映年份是哪一年？",
+      "answer": "《阴阳大战记》的评分是6.9分，上映年份是2004年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 1.559,
+      "retrieve_latency": 0.617,
+      "tokens": 1788,
+      "completion_tokens": 20,
+      "num_docs": 20
+    },
+    {
+      "id": "L036484",
+      "type": "longtail_fact",
+      "query": "《兽兵卫忍风帖 龙宝玉篇》的评分是多少？上映年份是哪一年？",
+      "answer": "《兽兵卫忍风帖 龙宝玉篇》的评分是5.7分，上映年份是2003年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 1.969,
+      "retrieve_latency": 0.673,
+      "tokens": 1564,
+      "completion_tokens": 27,
+      "num_docs": 20
+    },
+    {
+      "id": "L038965",
+      "type": "longtail_fact",
+      "query": "《袖珍女侍小梅》的评分是多少？上映年份是哪一年？",
+      "answer": "《袖珍女侍小梅》的评分是 5.9 分，上映年份是 2000 年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 1.892,
+      "retrieve_latency": 0.867,
+      "tokens": 1265,
+      "completion_tokens": 27,
+      "num_docs": 20
+    },
+    {
+      "id": "R000298",
+      "type": "similar_recommendation",
+      "query": "有没有跟《天空之城》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于搜索结果的标签、导演和制作公司相似性，为您推荐以下几部与《天空之城》相似的动画：\n\n1.  **风之谷**\n    *   **相似角度**：与《天空之城》同为吉卜力工作室（スタジオジブリ）制作，且标签高度重合，都包含“科幻”、“奇幻”、“冒险”、“治愈”、“经典”、“宮崎駿”、“久石让”、“环保系”等。\n    *   **基本信息**：评分 8.3，播出日期 1984-03-11。\n\n2.  **幽灵公主**\n    *   **相似角度**：同为吉卜力工作室制作，编剧/系列构成均为宫崎骏，标签也包含“奇幻”等经典元素。\n    *   **基本信息**：制作公司为スタジオジブリ，导演伊藤裕之，编剧宮崎駿。\n\n3.  **哈尔的移动城堡**\n    *   **相似角度**：同为吉卜力工作室制作，编剧/系列构成为宫崎骏，同样属于奇幻冒险题材。\n    *   **基本信息**：制作公司为スタジオジブリ，编剧宮崎駿。\n\n4.  **魔女宅急便**\n    *   **相似角度**：同为吉卜力工作室制作，编剧/系列构成为宫崎骏，带有奇幻和治愈标签。\n    *   **基本信息**：制作公司为スタジオジブリ，导演高畑勲，编剧宮崎駿。\n\n5.  **起风了**\n    *   **相似角度**：同为吉卜力工作室制作，编剧/系列构成为宫崎骏。\n    *   **基本信息**：制作公司为スタジオジブリ，导演清川良介，编剧宮崎駿。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 10.279,
+      "retrieve_latency": 5.053,
+      "tokens": 1755,
+      "completion_tokens": 378,
+      "num_docs": 20
+    },
+    {
+      "id": "R000793",
+      "type": "similar_recommendation",
+      "query": "有没有跟《Code Geass 反叛的鲁路修》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "根据搜索结果，没有直接提供与《Code Geass 反叛的鲁路修》相似的动画推荐信息。搜索结果主要包含该系列自身的制作公司（サンライズ）、导演、编剧、标签（如科幻、战斗、机战、智斗等）以及观众评论，但未列出其他相似作品。\n\n未记录",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 7.141,
+      "retrieve_latency": 5.08,
+      "tokens": 1767,
+      "completion_tokens": 69,
+      "num_docs": 20
+    },
+    {
+      "id": "R000822",
+      "type": "similar_recommendation",
+      "query": "有没有跟《FLCL》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于提供的搜索结果，可以从制作公司和导演的角度，为你推荐以下与《FLCL》相似的动画：\n\n1.  **《宇宙巡警露露子》**\n    *   **相似角度**：制作公司关联。\n    *   **说明**：该动画的制作公司是 **TRIGGER**。TRIGGER是由从《FLCL》的制作公司 **GAINAX** 独立出来的成员创立的，继承了其独特的风格和血脉。\n\n2.  **《心灵游戏》** 和 **《海马》**\n    *   **相似角度**：标签/风格关联。\n    *   **说明**：虽然搜索结果中未直接说明其与《FLCL》的制作或导演关联，但这两部作品常与《FLCL》一同被归类为风格独特、带有“**意识流**”和“**奇幻**”标签的动画，可能符合你寻找的相似体验。\n\n搜索结果中未记录其他基于导演（如鹤卷和哉）角度的直接推荐。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 9.487,
+      "retrieve_latency": 5.06,
+      "tokens": 1355,
+      "completion_tokens": 209,
+      "num_docs": 20
+    },
+    {
+      "id": "T000247",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《银魂》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "在 Bangumi 上，《银魂》系列被观众/编辑打上的主要标签包括：科幻、TV、日本、漫画改、战斗、漫改、搞笑、SUNRISE、热血、冒险、杉田智和、JUMP、喜剧、银他妈、吐槽、银魂、恶搞、GINTAMA、天然卷发、kuso、钉宫、高松信司、灵魂支柱、人生的意义、假发、土银、S田、神作、日常、人生、钉宫理惠、吐糟、必看、天然卷、少年系、猩猩、JUSTWE。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "S田",
+          "假发",
+          "冒险",
+          "吐槽",
+          "喜剧"
+        ],
+        "misses": []
+      },
+      "latency": 7.292,
+      "retrieve_latency": 4.836,
+      "tokens": 953,
+      "completion_tokens": 131,
+      "num_docs": 20
+    },
+    {
+      "id": "T000440",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《校园迷糊大王》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "根据搜索结果，未记录到 Bangumi 上《校园迷糊大王》被观众或编辑打上的具体标签信息。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "喜剧",
+          "恋爱",
+          "恶搞",
+          "搞笑",
+          "日常"
+        ]
+      },
+      "latency": 6.045,
+      "retrieve_latency": 4.989,
+      "tokens": 754,
+      "completion_tokens": 25,
+      "num_docs": 20
+    },
+    {
+      "id": "T001453",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《少女革命》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "在 Bangumi 上，《少女革命》的主要标签包括：TV、日本、战斗、神作、经典、校园、百合、原创、90年代、1990s、奇幻、意识流、1997、1997年、内涵、童年、J.C.STAFF、幾原邦彥、少女革命、几原邦彦、榎户洋司、细田守、五十岚卓哉、象徵手法、少女革命ウテナ、1997年4月、川上ともこ。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "内涵",
+          "奇幻",
+          "战斗",
+          "校园",
+          "百合"
+        ],
+        "misses": []
+      },
+      "latency": 7.331,
+      "retrieve_latency": 5.261,
+      "tokens": 1772,
+      "completion_tokens": 108,
+      "num_docs": 20
+    },
+    {
+      "id": "S000310",
+      "type": "bangumi_score_precise",
+      "query": "《幽灵公主》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《幽灵公主》在 Bangumi 上的评分是 8.4。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.4"
+      },
+      "latency": 5.94,
+      "retrieve_latency": 4.903,
+      "tokens": 1538,
+      "completion_tokens": 16,
+      "num_docs": 20
+    },
+    {
+      "id": "S001608",
+      "type": "bangumi_score_precise",
+      "query": "《灌篮高手》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《灌篮高手》在 Bangumi 上有多个版本，评分如下：\n- TV版（1993年）：8.6分\n- 2022年剧场版：7.7分\n- 1994年剧场版：7.3分",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.6"
+      },
+      "latency": 8.538,
+      "retrieve_latency": 6.384,
+      "tokens": 1215,
+      "completion_tokens": 54,
+      "num_docs": 20
+    },
+    {
+      "id": "S072941",
+      "type": "bangumi_score_precise",
+      "query": "《斩服少女》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《斩服少女》在 Bangumi 上的评分是 8.1。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.1"
+      },
+      "latency": 6.108,
+      "retrieve_latency": 5.069,
+      "tokens": 1474,
+      "completion_tokens": 17,
+      "num_docs": 20
+    },
+    {
+      "id": "R105969",
+      "type": "similar_recommendation",
+      "query": "有没有跟《幸腹涂鸦》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "根据搜索结果，可以从以下角度为你推荐与《幸腹涂鸦》相似的动画：\n\n**1. 基于制作公司与导演风格**\n《幸腹涂鸦》由**SHAFT**制作、**新房昭之**执导。同公司且风格相近的作品有：\n*   **《向阳素描》**：搜索结果中观众评论直接称《幸腹涂鸦》为“向阳素描的模仿作”或“低配精神续作”。两者同为SHAFT制作，标签都包含“日常”、“萌”、“治愈”、“百合”，且《向阳素描》的导演团队也来自SHAFT。\n\n**2. 基于标签与题材**\n《幸腹涂鸦》的核心标签是**日常、美食、百合、治愈**。虽然搜索结果中没有直接推荐其他具体番剧，但你可以根据这些标签组合去寻找类似作品。\n\n**注意**：搜索结果中提到的《漫画少女》、《萌菌物语》、《元气囝仔》、《学园奶爸》、《幸运星》等，虽然可能在某些标签上有重叠，但并未被直接提及为与《幸腹涂鸦》相似，因此不作推荐。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 9.736,
+      "retrieve_latency": 4.904,
+      "tokens": 1283,
+      "completion_tokens": 229,
+      "num_docs": 20
+    },
+    {
+      "id": "B001",
+      "type": "kb_boundary",
+      "query": "《Z/X IGNITION》原声带的作曲家是谁？请只根据知识库回答。",
+      "answer": "未记录",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "refusal_hit": "未记录",
+        "possibly_fabricated_names": []
+      },
+      "latency": 5.733,
+      "retrieve_latency": 4.955,
+      "tokens": 953,
+      "completion_tokens": 2,
+      "num_docs": 20
+    }
+  ],
+  "details_h2": [
+    {
+      "id": "M001",
+      "type": "metadata_cross",
+      "query": "ufotable 在 2019 年制作了哪些动画？",
+      "answer": "未记录",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "剧场版 Fate/stay night [Heaven's Feel] II.lost butterfly",
+          "鬼灭之刃",
+          "鬼灭之刃 兄妹的羁绊"
+        ]
+      },
+      "latency": 1.195,
+      "retrieve_latency": 0.303,
+      "tokens": 190,
+      "completion_tokens": 2,
+      "num_docs": 3
+    },
+    {
+      "id": "M002",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2007 年制作了哪些动画？",
+      "answer": "根据搜索结果，未记录京都アニメーション在2007年制作的动画。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "幸运星",
+          "CLANNAD"
+        ]
+      },
+      "latency": 2.123,
+      "retrieve_latency": 0.924,
+      "tokens": 172,
+      "completion_tokens": 17,
+      "num_docs": 3
+    },
+    {
+      "id": "M003",
+      "type": "metadata_cross",
+      "query": "京都アニメーション 在 2021 年制作了哪些动画？",
+      "answer": "未记录",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "小林家的龙女仆S",
+          "迷你龙小剧场"
+        ]
+      },
+      "latency": 1.198,
+      "retrieve_latency": 0.303,
+      "tokens": 148,
+      "completion_tokens": 2,
+      "num_docs": 3
+    },
+    {
+      "id": "L014643",
+      "type": "longtail_fact",
+      "query": "《阴阳大战记》的评分是多少？上映年份是哪一年？",
+      "answer": "《阴阳大战记》的评分是6.9分，上映年份是2004年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 1.486,
+      "retrieve_latency": 0.366,
+      "tokens": 294,
+      "completion_tokens": 20,
+      "num_docs": 3
+    },
+    {
+      "id": "L036484",
+      "type": "longtail_fact",
+      "query": "《兽兵卫忍风帖 龙宝玉篇》的评分是多少？上映年份是哪一年？",
+      "answer": "未记录",
+      "correct": false,
+      "partial_score": 0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0,
+        "has_score": false,
+        "has_year": false
+      },
+      "latency": 1.545,
+      "retrieve_latency": 0.723,
+      "tokens": 168,
+      "completion_tokens": 2,
+      "num_docs": 3
+    },
+    {
+      "id": "L038965",
+      "type": "longtail_fact",
+      "query": "《袖珍女侍小梅》的评分是多少？上映年份是哪一年？",
+      "answer": "《袖珍女侍小梅》的评分是5.9分，上映年份是2000年。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "has_score": true,
+        "has_year": true
+      },
+      "latency": 1.321,
+      "retrieve_latency": 0.402,
+      "tokens": 259,
+      "completion_tokens": 23,
+      "num_docs": 3
+    },
+    {
+      "id": "R000298",
+      "type": "similar_recommendation",
+      "query": "有没有跟《天空之城》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于搜索结果的标签、导演和制作公司信息，可以推荐以下相似动画：\n\n1.  **基于制作公司与导演**：《天空之城》的制作公司是**スタジオジブリ（吉卜力工作室）**，导演是**宫崎骏**。因此，吉卜力工作室的其他作品，尤其是宫崎骏执导的动画，风格最为接近。例如《龙猫》、《千与千寻》、《哈尔的移动城堡》等，都具备相似的奇幻、治愈与经典气质。\n2.  **基于标签风格**：《天空之城》的标签包含**科幻、奇幻、冒险、治愈、神作**等。可以寻找同样融合了这些元素的经典剧场版动画，例如《风之谷》（同为宫崎骏作品，包含科幻与自然主义）或《幽灵公主》（奇幻、冒险、自然主义）。\n\n由于搜索结果未提供除《天空之城》和《天空色的种子》外的具体推荐列表，以上是基于现有标签和制作信息的合理推断。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 5.196,
+      "retrieve_latency": 0.363,
+      "tokens": 467,
+      "completion_tokens": 205,
+      "num_docs": 3
+    },
+    {
+      "id": "R000793",
+      "type": "similar_recommendation",
+      "query": "有没有跟《Code Geass 反叛的鲁路修》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于提供的搜索结果，无法直接推荐与《Code Geass 反叛的鲁路修》相似的动画，因为搜索结果中未包含其他番剧的标签、导演或制作公司信息用于对比。\n\n不过，从搜索结果中可提取以下信息供你参考：\n*   **制作公司**：该系列由**サンライズ**制作。\n*   **编剧/系列构成**：主要涉及**大河内一楼**和**吉野弘幸**。\n\n你可以根据这些信息，自行搜索由**サンライズ**制作，或由**大河内一楼**、**吉野弘幸**担任编剧的其他作品，这些作品在风格上可能具有相似性。",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 3.665,
+      "retrieve_latency": 0.393,
+      "tokens": 426,
+      "completion_tokens": 142,
+      "num_docs": 3
+    },
+    {
+      "id": "R000822",
+      "type": "similar_recommendation",
+      "query": "有没有跟《FLCL》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于搜索结果的标签和制作信息，可以为你推荐以下相似动画：\n\n1.  **基于制作公司与核心主创（GAINAX / Production I.G、鹤卷和哉、贞本义行、庵野秀明）**：\n    *   **《飞跃巅峰》**：同为GAINAX制作，庵野秀明监督的经典OVA，包含了科幻、战斗与神配乐。\n    *   **《天元突破 红莲螺岩》**：GAINAX制作，今石洋之（本作导演之一）的代表作，同样具有热血、战斗和意识流表现。\n    *   **《新世纪福音战士》**：GAINAX制作，庵野秀明、贞本义行、鹤卷和哉核心团队作品，在意识流、青春期心理描写和科幻设定上与《FLCL》有极深的渊源。\n\n2.  **基于标签与风格（意识流、青春、科幻、神配乐）**：\n    *   **《特别的她 Progressive》**：作为《FLCL》的直接续作，由Production I.G制作，延续了原作的风格。\n    *   **《特别的她 Alternative》**：同为《FLCL》系列续作，由Production I.G等制作，本広克行执导，继承了青春与科幻元素。\n\n（注：搜索结果未记录其他非《FLCL》系列的直接推荐列表，以上推荐基于主创关联和标签重合度分析。）",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "n_hits": 0
+      },
+      "latency": 7.7,
+      "retrieve_latency": 0.388,
+      "tokens": 621,
+      "completion_tokens": 305,
+      "num_docs": 3
+    },
+    {
+      "id": "T000247",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《银魂》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "未记录",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "S田",
+          "假发",
+          "冒险",
+          "吐槽",
+          "喜剧"
+        ]
+      },
+      "latency": 1.1,
+      "retrieve_latency": 0.315,
+      "tokens": 152,
+      "completion_tokens": 2,
+      "num_docs": 3
+    },
+    {
+      "id": "T000440",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《校园迷糊大王》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "未记录",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "hits": [],
+        "misses": [
+          "喜剧",
+          "恋爱",
+          "恶搞",
+          "搞笑",
+          "日常"
+        ]
+      },
+      "latency": 1.783,
+      "retrieve_latency": 0.327,
+      "tokens": 145,
+      "completion_tokens": 2,
+      "num_docs": 3
+    },
+    {
+      "id": "T001453",
+      "type": "bangumi_tags",
+      "query": "在 Bangumi 上，《少女革命》被观众/编辑打上了哪些标签？请列出主要标签。",
+      "answer": "在 Bangumi 上，《少女革命》的主要标签包括：TV、日本、战斗、神作、经典、校园、百合、原创、90年代、1990s、奇幻、意识流、内涵、童年、J.C.STAFF、幾原邦彥、少女革命、几原邦彦、榎户洋司、榎戸洋司、细田守、五十岚卓哉、象徵手法、少女革命ウテナ、1997年4月、川上ともこ。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "hits": [
+          "内涵",
+          "奇幻",
+          "战斗",
+          "校园",
+          "百合"
+        ],
+        "misses": []
+      },
+      "latency": 2.623,
+      "retrieve_latency": 0.331,
+      "tokens": 507,
+      "completion_tokens": 107,
+      "num_docs": 3
+    },
+    {
+      "id": "S000310",
+      "type": "bangumi_score_precise",
+      "query": "《幽灵公主》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "未记录",
+      "correct": false,
+      "partial_score": 0.0,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.0,
+        "score_str": "8.4"
+      },
+      "latency": 1.18,
+      "retrieve_latency": 0.397,
+      "tokens": 139,
+      "completion_tokens": 2,
+      "num_docs": 3
+    },
+    {
+      "id": "S001608",
+      "type": "bangumi_score_precise",
+      "query": "《灌篮高手》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《灌篮高手》在 Bangumi 上有两个版本的评分：1993年TV版评分为8.6分，2022年剧场版评分为7.7分。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.6"
+      },
+      "latency": 2.062,
+      "retrieve_latency": 0.299,
+      "tokens": 408,
+      "completion_tokens": 38,
+      "num_docs": 3
+    },
+    {
+      "id": "S072941",
+      "type": "bangumi_score_precise",
+      "query": "《斩服少女》在 Bangumi 上的评分是多少（精确到小数点后一位）？",
+      "answer": "《斩服少女》在 Bangumi 上的评分是 8.1 分。",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "score_str": "8.1"
+      },
+      "latency": 2.084,
+      "retrieve_latency": 0.297,
+      "tokens": 283,
+      "completion_tokens": 19,
+      "num_docs": 3
+    },
+    {
+      "id": "R105969",
+      "type": "similar_recommendation",
+      "query": "有没有跟《幸腹涂鸦》相似的动画推荐？可以基于标签、导演或制作公司相似的角度来推荐几部。",
+      "answer": "基于搜索结果的标签、导演和制作公司，为你推荐以下几部与《幸腹涂鸦》相似的动画：\n\n**1. 基于制作公司（SHAFT）和导演（新房昭之）相似：**\n*   **《向阳素描》系列**：同样由**SHAFT**制作，**新房昭之**执导。标签同样包含**芳文社**、**日常**、**治愈**、**萌**、**轻百合**，与《幸腹涂鸦》的核心风格高度一致。\n\n**2. 基于标签（芳文社、日常、治愈、轻百合）相似：**\n*   **《请问您今天要来点兔子吗？》**：标签高度重合，包含**芳文社**、**日常**、**萌**、**治愈**、**轻百合**，是这类温馨日常作品的代表作。\n*   **《摇曳露营△》**：标签包含**芳文社**、**日常**、**治愈**、**轻百合**，同样以舒缓的节奏和温馨的氛围著称，虽然主题是露营，但治愈感与《幸腹涂鸦》的美食日常相通。\n\n这些推荐都基于搜索结果中《幸腹涂鸦》的标签（芳文社、日常、治愈、萌、轻百合）以及核心制作人员（新房昭之、SHAFT）的相似性。",
+      "correct": false,
+      "partial_score": 0.5,
+      "score_detail": {
+        "correct": false,
+        "partial_score": 0.5,
+        "hits": [
+          "摇曳露营△"
+        ],
+        "n_hits": 1
+      },
+      "latency": 5.783,
+      "retrieve_latency": 0.286,
+      "tokens": 585,
+      "completion_tokens": 283,
+      "num_docs": 3
+    },
+    {
+      "id": "B001",
+      "type": "kb_boundary",
+      "query": "《Z/X IGNITION》原声带的作曲家是谁？请只根据知识库回答。",
+      "answer": "未记录",
+      "correct": true,
+      "partial_score": 1.0,
+      "score_detail": {
+        "correct": true,
+        "partial_score": 1.0,
+        "refusal_hit": "未记录",
+        "possibly_fabricated_names": []
+      },
+      "latency": 1.866,
+      "retrieve_latency": 0.299,
+      "tokens": 173,
+      "completion_tokens": 2,
+      "num_docs": 3
+    }
+  ]
+}

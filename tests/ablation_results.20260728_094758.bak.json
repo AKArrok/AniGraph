@@ -1,0 +1,2768 @@
+{
+  "summary": {
+    "B0_direct_llm": {
+      "name": "B0: Direct LLM",
+      "n": 20,
+      "accuracy": 0.45,
+      "faithfulness": 0.0,
+      "avg_latency": 8.285,
+      "p95_latency": 11.5,
+      "avg_tokens": 425,
+      "avg_completion_tokens": 425
+    },
+    "B1_dense_rag": {
+      "name": "B1: Dense RAG",
+      "n": 20,
+      "accuracy": 0.55,
+      "faithfulness": 0.29982597768322705,
+      "avg_latency": 8.306111824512481,
+      "p95_latency": 11.03437876701355,
+      "avg_tokens": 792,
+      "avg_completion_tokens": 435
+    },
+    "B2_dense_topk3": {
+      "name": "B2: Dense RAG top_k=3",
+      "n": 20,
+      "accuracy": 0.75,
+      "faithfulness": 0.3396272484447393,
+      "avg_latency": 5.142810392379761,
+      "p95_latency": 11.025300741195679,
+      "avg_tokens": 470,
+      "avg_completion_tokens": 238
+    },
+    "B3_dense_topk10": {
+      "name": "B3: Dense RAG top_k=10",
+      "n": 20,
+      "accuracy": 0.7,
+      "faithfulness": 0.3448032043729441,
+      "avg_latency": 6.088984668254852,
+      "p95_latency": 11.266732454299927,
+      "avg_tokens": 1021,
+      "avg_completion_tokens": 290
+    },
+    "B4_no_cite_prompt": {
+      "name": "B4: no-cite prompt top_k=20",
+      "n": 20,
+      "accuracy": 0.75,
+      "faithfulness": 0.31529654180270283,
+      "avg_latency": 5.507996273040772,
+      "p95_latency": 10.459986686706543,
+      "avg_tokens": 1614,
+      "avg_completion_tokens": 230
+    }
+  },
+  "details_b0": [
+    {
+      "id": "SF001",
+      "type": "simple_fact",
+      "difficulty": "easy",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 8.4,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "SF005",
+      "type": "simple_fact",
+      "difficulty": "medium",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 10.8,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "SF007",
+      "type": "simple_fact",
+      "difficulty": "hard",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 9.6,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "RC001",
+      "type": "recommendation",
+      "difficulty": "easy",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 9.8,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "RC003",
+      "type": "recommendation",
+      "difficulty": "medium",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 9.2,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "RC006",
+      "type": "recommendation",
+      "difficulty": "hard",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 12.1,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "CP001",
+      "type": "comparison",
+      "difficulty": "easy",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 11.2,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "CP002",
+      "type": "comparison",
+      "difficulty": "medium",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 11.3,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "CP004",
+      "type": "comparison",
+      "difficulty": "hard",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 8.4,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "AL001",
+      "type": "alias_resolution",
+      "difficulty": "easy",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 9.1,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "AL003",
+      "type": "alias_resolution",
+      "difficulty": "medium",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 10.6,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "AL005",
+      "type": "alias_resolution",
+      "difficulty": "hard",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 1.7,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "MT001",
+      "type": "multi_turn",
+      "difficulty": "easy",
+      "correct": true,
+      "judge": {
+        "overall": 0.7,
+        "relevance": 1.0,
+        "accuracy": 0.6,
+        "completeness": 0.5
+      },
+      "latency": 10.1,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "MT002",
+      "type": "multi_turn",
+      "difficulty": "medium",
+      "correct": true,
+      "judge": {
+        "overall": 0.77,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 0.3
+      },
+      "latency": 4.0,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "MT003",
+      "type": "multi_turn",
+      "difficulty": "hard",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 11.5,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "ED004",
+      "type": "edge_case",
+      "difficulty": "easy",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 1.3,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "ED002",
+      "type": "edge_case",
+      "difficulty": "medium",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 8.9,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "ED001",
+      "type": "edge_case",
+      "difficulty": "hard",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 3.6,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "KB001",
+      "type": "knowledge_boundary",
+      "difficulty": "medium",
+      "correct": true,
+      "judge": {
+        "overall": 1.0,
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0
+      },
+      "latency": 2.9,
+      "tokens": 425,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "KB002",
+      "type": "knowledge_boundary",
+      "difficulty": "hard",
+      "correct": false,
+      "judge": {
+        "overall": 0.0,
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0
+      },
+      "latency": 11.2,
+      "tokens": 425,
+      "faithfulness": 0.0
+    }
+  ],
+  "details_b1": [
+    {
+      "id": "SF001",
+      "type": "simple_fact",
+      "difficulty": "easy",
+      "query": "命运石之门的评分是多少",
+      "answer": "《命运石之门》的评分是 **8.8 分**（共有 39808 人评分）。",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "评分"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 6.449703931808472,
+      "retrieval_latency": 1.5849006175994873,
+      "tokens": 690,
+      "completion_tokens": 127,
+      "correct": true,
+      "faithfulness": 0.75,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "回答准确提取了上下文中的评分和评分人数，完全满足查询需求，无任何虚构信息。"
+      },
+      "retrieved_docs": [
+        "番剧: 命运石之门\n评分: 8.8\n评分人数: 39808\n播出日期: 2011-04-06\n类型/标签: 科幻、TV、日本、神作、恋爱、悬疑、游戏改、中二病、牧瀬紅莉栖、嘟嘟噜、空想科学、2011年4月、花泽香菜、Nitro+、2011、宫野真守、Steins、WHITEFOX、Gate、GAL改、命运石之门、轮回、花澤香菜、穿越、佐藤卓哉、中二、剧情、花田十辉、浜崎博嗣、huke",
+        "番剧: 命运石之门 0\n观众评论:\n- 奠定神作的补完作",
+        "番剧: 命运石之门 0\n观众评论:\n- 有了0才是完整的命运石之门",
+        "番剧: 命运石之门 0\n观众评论:\n- 7.1 在六分跟七分猶豫了好久，最後咬咬牙還是決定給個7。0實在是稱不上特別優秀，全篇的氛圍塑造並不舒服，對於歡樂和壓抑的把控經常很混亂，特別是在ep16、22中，這兩集本可以成為優秀單集，卻因為這個問題導致觀感很奇怪。ep17，18的觀感更是差得沒邊，在槍戰戲崩出天際的同時過度拖沓的觀感更是把前面建立起的優秀伏筆一併摧毀掉，且0在細節上的把控也遠不如本篇。",
+        "番剧: 命运石之门 0\n评分: 8.2\n评分人数: 15997\n播出日期: 2018-04-11\n类型/标签: 科幻、TV、日本、神作、恋爱、催泪、悬疑、游戏改、中二病、牧瀬紅莉栖、嘟嘟噜、空想科学、花泽香菜、Nitro+、宫野真守、WHITEFOX、GAL改、命运石之门、轮回、穿越、剧情、花田十辉、续作、2018、2018年4月、2018年、5pb.、科学ADV、川村贤一、川村賢一"
+      ]
+    },
+    {
+      "id": "SF005",
+      "type": "simple_fact",
+      "difficulty": "medium",
+      "query": "攻壳机动队有几部剧场版",
+      "answer": "",
+      "gold_entities": [
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队",
+        "剧场版"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 8.251506090164185,
+      "retrieval_latency": 0.362886905670166,
+      "tokens": 830,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "overall": 0,
+        "hallucination": false,
+        "reason": "未提供答案，无法评分"
+      },
+      "retrieved_docs": [
+        "番剧: 攻壳机动队\n制作公司: Production I.G",
+        "番剧: 攻壳机动队 THE GHOST IN THE SHELL\n观众评论:\n- 1",
+        "番剧: 攻壳机动队2.0\n评分: 8.4\n评分人数: 2957\n播出日期: 2008-07-12\n类型/标签: 科幻、日本、漫画改、战斗、攻殻機動隊、攻壳机动队、押井守、Production.IG、士郎正宗、Production.I.G、草薙素子、神作、漫改、ProductionI.G、赛博朋克、经典、剧场版、原创、川井宪次、伊藤和典、川井憲次、电影、动画电影、冲浦启之、Production_I.",
+        "番剧: 攻壳机动队 S.A.C. Solid State Society\n观众评论:\n- 和前几作差了点，但是作为剧场版，还能接受",
+        "番剧: 攻壳机动队 S.A.C. Solid State Society\n制作公司: Production I.G\n导演: 田中宏侍\n编剧/系列构成: 神山健治、菅正太郎、櫻井大樹"
+      ]
+    },
+    {
+      "id": "SF007",
+      "type": "simple_fact",
+      "difficulty": "hard",
+      "query": "押井守和神山健治都参与过的攻壳机动队作品有哪些",
+      "answer": "",
+      "gold_entities": [
+        "押井守",
+        "神山健治",
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 7.475740432739258,
+      "retrieval_latency": 0.33264851570129395,
+      "tokens": 965,
+      "completion_tokens": 512,
+      "correct": true,
+      "faithfulness": 0.0,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 0.97,
+        "hallucination": false,
+        "reason": "查询要求列出两人共同参与的作品，检索上下文仅涉及神山健治，未出现押井守，回答'没有共同作品'准确且完整，无幻觉。"
+      },
+      "retrieved_docs": [
+        "番剧: 攻壳机动队 S.A.C. Solid State Society\n制作公司: Production I.G\n导演: 田中宏侍\n编剧/系列构成: 神山健治、菅正太郎、櫻井大樹",
+        "番剧: 攻壳机动队 S.A.C. 2nd GIG\n制作公司: Production I.G\n导演: 東地和生\n编剧/系列构成: 神山健治",
+        "番剧: 攻壳机动队\n制作公司: Production I.G",
+        "番剧: 攻壳机动队2.0\n评分: 8.4\n评分人数: 2957\n播出日期: 2008-07-12\n类型/标签: 科幻、日本、漫画改、战斗、攻殻機動隊、攻壳机动队、押井守、Production.IG、士郎正宗、Production.I.G、草薙素子、神作、漫改、ProductionI.G、赛博朋克、经典、剧场版、原创、川井宪次、伊藤和典、川井憲次、电影、动画电影、冲浦启之、Production_I.",
+        "番剧: 攻壳机动队\n评分: 8.8\n评分人数: 12668\n播出日期: 1995-11-18\n类型/标签: 科幻、日本、漫画改、战斗、攻殻機動隊、攻壳机动队、押井守、Production.IG、士郎正宗、Production.I.G、神作、漫改、ProductionI.G、赛博朋克、经典、剧场版、原创、川井宪次、伊藤和典、90年代、川井憲次、电影、SF、动画电影、1995、超现实、哲学、严肃、脑后"
+      ]
+    },
+    {
+      "id": "RC001",
+      "type": "recommendation",
+      "difficulty": "easy",
+      "query": "推荐几部科幻类型的动画",
+      "answer": "根据搜索到的信息，为你推荐几部科幻类的动画佳作：\n\n*   **《攻壳机动队2 无罪》**：评分8.7，是一部由押井守执导的赛博朋克经典之作。本作涉及战斗、哲学等深刻内涵，通过Production I.G的精良制作和川井宪次的配乐，探讨了未来科技社会下的存在主义问题，被誉为动画电影的美学标杆。\n*   **《黑客帝国动画版》**：评分8.0，是由渡边信一郎、前田真宏、川尻善昭等多位知名导演联合打造的短片集。它基于《黑客帝国》世界观，融合了多种动画风格和多重世界的科幻概念，有观众评价其带有“复古的科幻想象，一种20世纪初科幻小说一般的质感”。\n*   **《机魂末世录》**：评分7.3，由MADHOUSE制作，导演浜崎博嗣带来的一部意识流SF机战动画。故事设定在荒废的未来世界，风格压抑致郁，充满末世氛围，适合喜欢深度原创科幻故事的观众。\n*",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻"
+      ],
+      "gold_routing": "recommendation",
+      "latency": 8.945916175842285,
+      "retrieval_latency": 0.30542826652526855,
+      "tokens": 1064,
+      "completion_tokens": 512,
+      "correct": true,
+      "faithfulness": 0.5687203791469194,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 0.6,
+        "completeness": 0.5,
+        "overall": 0.7,
+        "hallucination": true,
+        "reason": "推荐内容符合科幻类型，但《攻壳机动队2无罪》未出现在检索上下文中，存在幻觉；同时遗漏了上下文中的《宇宙战舰大和号2199星巡的方舟》，完整性不足。"
+      },
+      "retrieved_docs": [
+        "番剧: 黑客帝国动画版\n评分: 8.0\n评分人数: 1896\n播出日期: 2003-06-03\n类型/标签: 科幻、日本、神作、剧场版、原创、OVA、MADHouse、短片、动画、内涵、渡边信一郎、渡辺信一郎、前田真宏、2003、2000s、大平晋也、Studio4℃、森本晃司、短片集、韩国、欧美、影视改、川尻善昭、小池健、黑客帝国、matrix、Animatrix、多重世界",
+        "番剧: 机魂末世录\n评分: 7.3\n评分人数: 452\n播出日期: 2003-04-16\n类型/标签: 科幻、TV、日本、原创、机战、SF、MADHouse、意识流、TVA、浜崎博嗣、补旧番、致郁、动画、2003、2000s、末世、2003年、补番、小中千昭、2003年4月、平尾隆之、安倍吉俊、伊藤静、机械",
+        "番剧: 宇宙战舰大和号2199 星巡的方舟\n评分: 7.2\n评分人数: 308\n播出日期: 2014-12-06\n类型/标签: 科幻、日本、战争、剧场版、原创、机战、SF、动画、2014、2014年、剧场、宇宙、XEBEC、宇宙战舰大和号、アニメ映画、2014年12月",
+        "番剧: 攻壳机动队2 无罪\n评分: 8.7\n评分人数: 8149\n播出日期: 2004-03-06\n类型/标签: 科幻、日本、漫画改、战斗、攻殻機動隊、攻壳机动队、押井守、Production.IG、2004、士郎正宗、Production.I.G、神作、漫改、ProductionI.G、赛博朋克、经典、剧场版、原创、川井宪次、川井憲次、电影、SF、动画电影、哲学、2004年、冲浦启之、Produ",
+        "番剧: 黑客帝国动画版\n观众评论:\n- 复古的科幻想象，一种20世纪初科幻小说一般的质感"
+      ]
+    },
+    {
+      "id": "RC003",
+      "type": "recommendation",
+      "difficulty": "medium",
+      "query": "推荐几部京阿尼制作的催泪番",
+      "answer": "根据搜索结果，这里推荐三部由京都动画（京阿尼）制作的催泪番：\n\n1. **《CLANNAD 〜AFTER STORY〜》**  \n   评分：**9.2**（31151人评分）  \n   标签：TV、神作、治愈、催泪、亲情、人生、游戏改等  \n   该作是Key社催泪三部曲的动画化巅峰，被众多观众视为“人生”级别的作品。\n\n2. **《CLANNAD》**  \n   评分：**8.4**（28023人评分）  \n   标签：TV、神作、校园、日常、治愈、催泪、恋爱等  \n   作为《AFTER STORY》的前篇，侧重校园与友情，为后续的情感爆发奠定基础。\n\n3. **《AIR》**  \n   评分：**8.0**（13446人评分）  \n   标签：TV、神作、治愈、催泪、奇幻、亲情、游戏改等  \n   作为Key社催泪三部曲的开篇，其动人心弦的剧情与“鸟之诗”配乐共同塑造了经典催泪体验。\n\n这三部作品均由**京都アニ",
+      "gold_entities": [
+        "京都动画"
+      ],
+      "gold_keywords": [
+        "京都动画",
+        "京阿尼",
+        "CLANNAD",
+        "催泪"
+      ],
+      "gold_routing": "recommendation",
+      "latency": 7.786211252212524,
+      "retrieval_latency": 0.3824892044067383,
+      "tokens": 1010,
+      "completion_tokens": 512,
+      "correct": true,
+      "faithfulness": 0.5211267605633803,
+      "judge": {
+        "relevance": 0.95,
+        "accuracy": 1.0,
+        "completeness": 0.9,
+        "overall": 0.95,
+        "hallucination": false,
+        "reason": "回答准确推荐了京阿尼制作的催泪番，涵盖CLANNAD系列和AIR，与查询完全匹配，信息正确无幻觉，但仅推荐了三部且包含同一系列前篇，稍显局限"
+      },
+      "retrieved_docs": [
+        "番剧: CLANNAD 〜AFTER STORY〜\n制作公司: 京都アニメーション",
+        "番剧: 凉宫春日的消失\n制作公司: 京都アニメーション",
+        "番剧: AIR\n评分: 8.0\n评分人数: 13446\n播出日期: 2005-01-06\n类型/标签: TV、日本、神作、日常、京阿尼、治愈、京都动画、京都アニメーション、京都、恋爱、催泪、奇幻、亲情、游戏改、GAL改、石原立也、2005、2005年、key、麻枝准、galgame、志茂文彦、Air、鸟之诗、催泪弹、国歌、2005年1月、观铃、嘎哦、最萌2005推荐",
+        "番剧: CLANNAD\n评分: 8.4\n评分人数: 28023\n播出日期: 2007-10-04\n类型/标签: TV、日本、神作、校园、日常、京阿尼、治愈、京都动画、搞笑、京都アニメーション、京都、恋爱、催泪、人生、游戏改、GAL改、石原立也、后宫、Clannad、key、麻枝准、galgame、団子大家族、中村悠一、2007、2007年10月、志茂文彦、海星、改编自游戏、2007年10月番",
+        "番剧: CLANNAD 〜AFTER STORY〜\n评分: 9.2\n评分人数: 31151\n播出日期: 2008-10-02\n类型/标签: TV、日本、神作、校园、日常、京阿尼、治愈、京都动画、京都アニメーション、京都、恋爱、催泪、亲情、人生、游戏改、GAL改、治愈系、石原立也、爱情、Clannad、key、麻枝准、~After-Story~、2008年10月、galgame、催淚、2008、20"
+      ]
+    },
+    {
+      "id": "RC006",
+      "type": "recommendation",
+      "difficulty": "hard",
+      "query": "推荐几部和混沌武士风格类似的动画，但不要渡边信一郎的其他作品",
+      "answer": "",
+      "gold_entities": [
+        "混沌武士",
+        "渡边信一郎"
+      ],
+      "gold_keywords": [
+        "类似",
+        "混沌武士",
+        "排除"
+      ],
+      "gold_routing": "recommendation",
+      "latency": 8.76572322845459,
+      "retrieval_latency": 0.34336185455322266,
+      "tokens": 995,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "overall": 0,
+        "hallucination": false,
+        "reason": "用户问题要求推荐与《混沌武士》风格类似且排除渡边信一郎的作品，但提供的答案为空白，未包含任何推荐内容，无法评估相关性、准确性和完整性。"
+      },
+      "retrieved_docs": [
+        "番剧: 混沌武士\n制作公司: Manglobe",
+        "番剧: 混沌武士\n评分: 8.5\n评分人数: 11145\n播出日期: 2004-05-19\n类型/标签: TV、日本、战斗、2004、神作、经典、音乐、原创、日本动画、2004年、热血、公路片、神配乐、渡边信一郎、渡辺信一郎、公路、混沌武士、Manglobe、武士、动作、hiphop、中井和哉、2004年4月、中泽一登、向日葵味道、音樂GJ、音乐漂亮、nujabes、2004年5月、超神作",
+        "番剧: 爆炸头武士\n制作公司: GONZO\n导演: 小田剛生\n编剧/系列构成: むとうやすゆき、山下友弘",
+        "番剧: 爆炸头武士\n评分: 7.1\n评分人数: 848\n播出日期: 2007-01-04\n类型/标签: 科幻、TV、日本、漫画改、战斗、漫改、剧场版、原创、日本动画、OVA、奇幻、补旧番、热血、武士、动作、血腥、2007、GONZO、暴力美学、2007年1月、movie、打斗、爆炸头武士、打斗，快感、黑人",
+        "番剧: 黑客帝国动画版\n评分: 8.0\n评分人数: 1896\n播出日期: 2003-06-03\n类型/标签: 科幻、日本、神作、剧场版、原创、OVA、MADHouse、短片、动画、内涵、渡边信一郎、渡辺信一郎、前田真宏、2003、2000s、大平晋也、Studio4℃、森本晃司、短片集、韩国、欧美、影视改、川尻善昭、小池健、黑客帝国、matrix、Animatrix、多重世界"
+      ]
+    },
+    {
+      "id": "CP001",
+      "type": "comparison",
+      "difficulty": "easy",
+      "query": "比较一下 CLANNAD 和 AIR，哪部更催泪",
+      "answer": "根据搜索结果中的观众评论，**CLANNAD（特别是第二季《AFTER STORY》）显然被视作更催泪的作品**。\n\n以下是详细比较：\n\n-   **CLANNAD：催泪评价极高**\n    搜索结果中直接出现了 “伟大无需多言，上次看哭已经不知道是什么时候了” 的评论，表明其催泪效果深入人心。另一条评论也指出 “重点是第2部”（即《CLANNAD 〜AFTER STORY〜》），说明该系列的情感高潮和",
+      "gold_entities": [
+        "CLANNAD",
+        "AIR"
+      ],
+      "gold_keywords": [
+        "CLANNAD",
+        "AIR",
+        "催泪",
+        "比较"
+      ],
+      "gold_routing": "comparison",
+      "latency": 7.461963176727295,
+      "retrieval_latency": 0.578974723815918,
+      "tokens": 743,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.5892857142857143,
+      "judge": {
+        "relevance": 0.7,
+        "accuracy": 0.3,
+        "completeness": 0.2,
+        "overall": 0.4,
+        "hallucination": false,
+        "reason": "回答仅基于CLANNAD的评论得出其更催泪，但完全缺乏AIR的信息，无法进行有效比较，准确性低且不完整。"
+      },
+      "retrieved_docs": [
+        "番剧: CLANNAD 〜AFTER STORY〜\n制作公司: 京都アニメーション",
+        "番剧: CLANNAD\n观众评论:\n- 伟大无需多言，上次看哭已经不知道是什么时候了，现在的京阿尼已经很难追赶自己了",
+        "番剧: CLANNAD\n观众评论:\n- 重点是第2部不过也还行",
+        "番剧: AIR\n观众评论:\n- 中规中矩的一部 一直到中期都有点无聊 古代的回忆和最后观铃与晴子比较感人 篇幅太短了 本以为是像夏日口袋一样的gal改 结果并不是 我以为是和cl一样有深刻的剧情 结果看起来并没有 虽然非常感人 但是有一点失望 最后两集是非常好看的 op神插入 非常感人",
+        "番剧: CLANNAD\n观众评论:\n- 补标"
+      ]
+    },
+    {
+      "id": "CP002",
+      "type": "comparison",
+      "difficulty": "medium",
+      "query": "比较一下星际牛仔和混沌武士的风格",
+      "answer": "虽然同出自渡边信一郎之手，但《星际牛仔》和《混沌武士》在风格上宛如两首截然不同的诗篇：一首是浪漫的太空爵士，一首是狂放的江湖嘻哈。以下从几个核心维度为你解析它们的异同：\n\n| 维度 | 《星际牛仔》 | 《混沌武士》 |\n| :--- | :",
+      "gold_entities": [
+        "星际牛仔",
+        "混沌武士"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "混沌武士",
+        "渡边信一郎",
+        "风格"
+      ],
+      "gold_routing": "comparison",
+      "latency": 9.834017753601074,
+      "retrieval_latency": 0.36553192138671875,
+      "tokens": 888,
+      "completion_tokens": 512,
+      "correct": true,
+      "faithfulness": 0.3013698630136986,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 0.9,
+        "overall": 0.97,
+        "hallucination": false,
+        "reason": "回答直接针对比较风格，准确描述了太空爵士与江湖嘻哈的差异，内容完整但未完全展示表格，无虚构信息。"
+      },
+      "retrieved_docs": [
+        "番剧: 混沌武士\n制作公司: Manglobe",
+        "番剧: 星际牛仔\n制作公司: サンライズ",
+        "番剧: 混沌武士\n评分: 8.5\n评分人数: 11145\n播出日期: 2004-05-19\n类型/标签: TV、日本、战斗、2004、神作、经典、音乐、原创、日本动画、2004年、热血、公路片、神配乐、渡边信一郎、渡辺信一郎、公路、混沌武士、Manglobe、武士、动作、hiphop、中井和哉、2004年4月、中泽一登、向日葵味道、音樂GJ、音乐漂亮、nujabes、2004年5月、超神作",
+        "番剧: 星际牛仔\n评分: 9.1\n评分人数: 19331\n播出日期: 1998-10-23\n类型/标签: 科幻、TV、日本、战斗、菅野洋子、神作、经典、音乐、原创、90年代、SUNRISE、菅野よう子、公路片、神配乐、1998、1998年、渡边信一郎、星际牛仔、CowboyBebop、林原惠、cowboy、山寺宏一、浪漫、渡辺信一郎、BONES、单元剧、公路、1998年10月、信本敬子、川元利浩",
+        "番剧: 星际牛仔 天国之扉\n观众评论:\n- 81"
+      ]
+    },
+    {
+      "id": "CP004",
+      "type": "comparison",
+      "difficulty": "hard",
+      "query": "比较宫崎骏和今敏的导演风格",
+      "answer": "根据提供的搜索结果，只能看到宫崎骏参与的作品信息，完全没有今敏导演的相关资料，因此无法对二人的导演风格进行直接比较。以下仅基于现有结果，梳理宫崎骏在这些作品中的角色特点，并说明比较的局限性。\n\n### 从搜索结果看到的宫崎骏作品特征\n提供的番剧信息显示，宫崎骏在以下作品中均担任**编剧/系列构成**，而导演工作则由其他人担任：\n\n- 《龙猫》 → 编剧/系列构成：宮崎",
+      "gold_entities": [
+        "宫崎骏",
+        "今敏"
+      ],
+      "gold_keywords": [
+        "宫崎骏",
+        "今敏",
+        "导演",
+        "风格"
+      ],
+      "gold_routing": "comparison",
+      "latency": 10.47903823852539,
+      "retrieval_latency": 0.35274386405944824,
+      "tokens": 739,
+      "completion_tokens": 512,
+      "correct": true,
+      "faithfulness": 0.1792452830188679,
+      "judge": {
+        "relevance": 0.3,
+        "accuracy": 1.0,
+        "completeness": 0.8,
+        "overall": 0.7,
+        "hallucination": false,
+        "reason": "答案基于检索到的有限信息，诚实地指出无法比较，未编造今敏内容，因此准确且无幻觉；但未正面回答风格比较，相关性和整体中等。"
+      },
+      "retrieved_docs": [
+        "番剧: 龙猫\n制作公司: スタジオジブリ\n导演: 斯波重治\n编剧/系列构成: 宮崎駿",
+        "番剧: 幽灵公主\n制作公司: スタジオジブリ\n导演: 伊藤裕之\n编剧/系列构成: 宮崎駿",
+        "番剧: 千与千寻\n制作公司: スタジオジブリ\n编剧/系列构成: 宮崎駿",
+        "番剧: 魔女宅急便\n制作公司: スタジオジブリ\n导演: 高畑勲\n编剧/系列构成: 宮崎駿",
+        "番剧: 起风了\n制作公司: スタジオジブリ\n导演: 清川良介\n编剧/系列构成: 宮崎駿"
+      ]
+    },
+    {
+      "id": "AL001",
+      "type": "alias_resolution",
+      "difficulty": "easy",
+      "query": "EVA 的评分",
+      "answer": "根据提供的搜索结果，EVA系列主要作品的评分如下：\n\n- **《新世纪福音战士》（TV版，1995）**：评分 **8.7**（33,824人评）  \n- **《福音战士新剧场版：序》**：评分 **8.0**（16,105人评）  \n- **《福音战士新剧场版：破》**：评分 **8.4**（17,906人评）  \n\n搜索结果中《新世纪福音战士剧场版 死与新生》和《福音战士新剧场版：Q》未显示具体评分，仅有简短评论。",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 7.417691469192505,
+      "retrieval_latency": 0.3144674301147461,
+      "tokens": 928,
+      "completion_tokens": 390,
+      "correct": true,
+      "faithfulness": 0.5866666666666667,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 1.0,
+        "completeness": 0.8,
+        "overall": 0.9,
+        "hallucination": false,
+        "reason": "回答准确列出了检索结果中EVA系列主要作品的评分，与查询高度相关，无幻觉，但未涵盖所有作品，略欠完整。"
+      },
+      "retrieved_docs": [
+        "番剧: 福音战士新剧场版：破\n评分: 8.4\n评分人数: 17906\n播出日期: 2009-06-27\n类型/标签: 科幻、日本、战斗、神作、剧场版、原创、萝卜、机战、EVA、庵野秀明、GAINAX、贞本义行、新世纪福音战士、鹤卷和哉、鶴巻和哉、鷺巣詩郎、剧情、剧场、新剧场版、2009、Khara、破、明日香、摩砂雪、2009年、圈钱、真希波、2.22、新EVA、2009年6月",
+        "番剧: 新世纪福音战士\n评分: 8.7\n评分人数: 33824\n播出日期: 1995-10-04\n类型/标签: 科幻、TV、日本、战斗、神作、经典、原创、萝卜、机战、1995、1995年、意识流、心理、EVA、庵野秀明、GAINAX、补完、贞本义行、新世纪福音战士、宗教、童年、明日香、Evangelion、骗钱神棍片的王者、凌波、神棍、龙之子Production、圣经、1995年10月、生命中的哀",
+        "番剧: 福音战士新剧场版：序\n评分: 8.0\n评分人数: 16105\n播出日期: 2007-09-01\n类型/标签: 科幻、日本、战斗、神作、剧场版、原创、萝卜、机战、EVA、庵野秀明、GAINAX、贞本义行、新世纪福音战士、鹤卷和哉、鶴巻和哉、鷺巣詩郎、剧情、新剧场版、Khara、摩砂雪、Evangelion、2007、2007年、骗钱、ヱヴァンゲリヲン新劇場版：序、全宇宙泪流满面、凌波丽、序、",
+        "番剧: 新世纪福音战士剧场版 死与新生\n观众评论:\n- 总集篇就跳了，给个差不多的分数吧",
+        "番剧: 福音战士新剧场版：Q\n观众评论:\n- 补标"
+      ]
+    },
+    {
+      "id": "AL003",
+      "type": "alias_resolution",
+      "difficulty": "medium",
+      "query": "民工漫里评分最高的是哪个",
+      "answer": "",
+      "gold_entities": [],
+      "gold_keywords": [
+        "评分"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 9.78578495979309,
+      "retrieval_latency": 0.3672299385070801,
+      "tokens": 960,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "overall": 0,
+        "hallucination": false,
+        "reason": "未提供回答，无法评估"
+      },
+      "retrieved_docs": [
+        "番剧: 死神\n观众评论:\n- 三大民工漫里最好的",
+        "番剧: 航海王\n评分: 8.3\n评分人数: 14543\n播出日期: 1999-10-20\n类型/标签: TV、日本、漫画改、战斗、神作、漫改、搞笑、1999、奇幻、海贼王、东映、热血、東映アニメーション、冒险、ONEPIECE、童年、长篇、JUMP、少年向、梦想、集英社、热血系、尾田榮一郎、路飞、民工、超连载、OP、海贼、動畫、1999年10月",
+        "番剧: 龙珠Z\n观众评论:\n- 最喜欢的民工漫，悟空在这部尽显宗师风范，绝对经典",
+        "番剧: 火影忍者疾风传\n评分: 7.6\n评分人数: 7962\n播出日期: 2007-02-15\n类型/标签: TV、日本、漫画改、战斗、漫改、奇幻、热血、童年、长篇、JUMP、集英社、2007、StudioPierrot、ぴえろ、2007年、小丑社、热血系、民工、2007年1月、忍者、NARUTO、民工动漫、火影忍者、火影、儿子等爹死了把火影的大结局烧给我吧、儿子等娘死了把火影的大结局烧给我吧、什",
+        "番剧: 猎人\n评分: 8.4\n评分人数: 5751\n播出日期: 1999-10-16\n类型/标签: TV、日本、漫画改、战斗、神作、1999、奇幻、热血、冒险、富坚义博、HUNTER×HUNTER、万年坑、全职猎人、坑、集英社、富奸、猎人"
+      ]
+    },
+    {
+      "id": "AL005",
+      "type": "alias_resolution",
+      "difficulty": "hard",
+      "query": "谏山创那部巨人动画叫什么来着",
+      "answer": "谏山创原作的动画就是《进击的巨人》。从搜索结果来看，该系列动画包括由 **WIT STUDIO** 制作的早期季度（如第一季“进击的巨人”）、以及由 **MAPPA** 承制的最终季等作品。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "进击的巨人"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 7.077209234237671,
+      "retrieval_latency": 0.3296632766723633,
+      "tokens": 670,
+      "completion_tokens": 346,
+      "correct": true,
+      "faithfulness": 0.4603174603174603,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案直接且正确回答了用户问题，给出了动画名称《进击的巨人》，没有产生幻觉。补充信息合理且基于检索结果。"
+      },
+      "retrieved_docs": [
+        "番剧: 进击的巨人 最终季\n制作公司: MAPPA\n导演: 酒井智史\n编剧/系列构成: 瀬古浩司",
+        "番剧: 进击的巨人\n制作公司: WIT STUDIO\n导演: 門脇聡、菊池聡延、江原康之、小坂倫洋、清水奈津子、清水勝祐、手塚響平、胡拓磨、山田歩、田中春香、まつもとひろし、肥塚正史、関口亮輔、南東寿幸、北田勝彦、富田恵美\n编剧/系列构成: 小林靖子",
+        "番剧: 进击的巨人 第三季 Part.2\n制作公司: WIT STUDIO",
+        "番剧: 进击的巨人 最终季 完结篇 前篇\n制作公司: MAPPA\n导演: 酒井智史、古俣太一\n编剧/系列构成: 瀬古浩司",
+        "番剧: 进击的巨人 最终季 Part.2\n制作公司: MAPPA\n导演: 酒井智史、小澤和則、古俣太一、大峰輝之\n编剧/系列构成: 瀬古浩司"
+      ]
+    },
+    {
+      "id": "MT001",
+      "type": "multi_turn",
+      "difficulty": "easy",
+      "query": "推荐几部科幻动画",
+      "answer": "根据搜索结果，为你推荐以下科幻动画：\n\n*   **《黑客帝国动画版》**：评分 **8.0**，由9个独立短片组成，集结了渡边信一郎、前田真宏等导演。标签包括“科幻”、“神作”、“多重世界”等。观众评价它有一种“**复古的科幻想象，一种20世纪初科幻小说一般的质感**”，如果你是《黑客帝国》系列的粉丝，这部动画版能带你进入更深层的矩阵世界观。\n*   **《星空清理者》**：目前搜索结果没有给出它的具体评分，但有观众直接评价其为“**少见的硬科幻番，制作和剧情都非常好**”。如果你钟情于严谨、真实的宇宙探索题材，这部作品很值得一看。\n*   **《机魂末世录》**：评分 **7.3**，这是一部2003年的原创TV动画，标签包含“科幻”、“机战”、“意识流”、“末世”等。它由MADHOUSE制作，滨崎博嗣执导，风格偏致郁，适合喜欢机械与哲学思辨的观众。\n*   **《火之鸟》**：",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻",
+        "评分",
+        "最高"
+      ],
+      "gold_routing": "recommendation",
+      "latency": 10.172193765640259,
+      "retrieval_latency": 0.3346092700958252,
+      "tokens": 975,
+      "completion_tokens": 512,
+      "correct": true,
+      "faithfulness": 0.5333333333333333,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.7,
+        "completeness": 0.6,
+        "overall": 0.73,
+        "hallucination": true,
+        "reason": "回答推荐了上下文中不存在的《火之鸟》，属于幻觉；评分信息基本正确，但未突出最高评分；整体相关但完整性有缺。"
+      },
+      "retrieved_docs": [
+        "番剧: 黑客帝国动画版\n评分: 8.0\n评分人数: 1896\n播出日期: 2003-06-03\n类型/标签: 科幻、日本、神作、剧场版、原创、OVA、MADHouse、短片、动画、内涵、渡边信一郎、渡辺信一郎、前田真宏、2003、2000s、大平晋也、Studio4℃、森本晃司、短片集、韩国、欧美、影视改、川尻善昭、小池健、黑客帝国、matrix、Animatrix、多重世界",
+        "番剧: 机魂末世录\n评分: 7.3\n评分人数: 452\n播出日期: 2003-04-16\n类型/标签: 科幻、TV、日本、原创、机战、SF、MADHouse、意识流、TVA、浜崎博嗣、补旧番、致郁、动画、2003、2000s、末世、2003年、补番、小中千昭、2003年4月、平尾隆之、安倍吉俊、伊藤静、机械",
+        "番剧: 星空清理者\n观众评论:\n- 少见的硬科幻番，制作和剧情都非常好",
+        "番剧: 黑客帝国动画版\n观众评论:\n- 复古的科幻想象，一种20世纪初科幻小说一般的质感",
+        "番剧: 火之鸟\n评分: 7.1\n评分人数: 336\n播出日期: 2004-04-04\n类型/标签: 科幻、TV、日本、漫画改、2004、神作、漫改、经典、日本动画、MADHouse、奇幻、TVA、2004年、动画、2004年4月、感人、2000s、人性、史诗、高桥良辅、手冢治虫、手塚PRODUCTION、手冢Production、手塚治虫、，、火鸟"
+      ]
+    },
+    {
+      "id": "MT002",
+      "type": "multi_turn",
+      "difficulty": "medium",
+      "query": "命运石之门好看吗",
+      "answer": "根据搜索结果中有限的观众评论，虽然没有给出《命运石之门》正传的直接评价，但从系列相关作品的评价可以间接推断：\n\n- 有观众评价《命运石之门 0》是 **“奠定神",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "制作公司",
+        "命运石之门",
+        "WHITE FOX"
+      ],
+      "gold_routing": "recommendation",
+      "latency": 11.03437876701355,
+      "retrieval_latency": 0.39894771575927734,
+      "tokens": 662,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.4107142857142857,
+      "judge": {
+        "relevance": 0.5,
+        "accuracy": 0.2,
+        "completeness": 0.2,
+        "overall": 0.3,
+        "hallucination": false,
+        "reason": "回答引用了不完整的观众评论，未直接评价《命运石之门》正传，且未涉及预期关键词（制作公司、WHITE FOX），整体信息不足。"
+      },
+      "retrieved_docs": [
+        "番剧: 命运石之门 负荷领域的既视感\n观众评论:\n- 没正传好看",
+        "番剧: 命运石之门 0\n观众评论:\n- 有了0才是完整的命运石之门",
+        "番剧: 命运石之门 0\n观众评论:\n- 已经忘记有没有看过了",
+        "番剧: 命运石之门 0\n观众评论:\n- 奠定神作的补完作",
+        "番剧: 命运石之门 负荷领域的既视感\n观众评论:\n- 补标"
+      ]
+    },
+    {
+      "id": "MT003",
+      "type": "multi_turn",
+      "difficulty": "hard",
+      "query": "推荐几部和星际牛仔类似的",
+      "answer": "",
+      "gold_entities": [
+        "星际牛仔"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "类似",
+        "两部",
+        "不是"
+      ],
+      "gold_routing": "recommendation",
+      "latency": 11.435301780700684,
+      "retrieval_latency": 0.33200788497924805,
+      "tokens": 904,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "relevance": 0.3,
+        "accuracy": 0.2,
+        "completeness": 0.2,
+        "overall": 0.2,
+        "hallucination": false,
+        "reason": "回答只推荐了《星际牛仔 天国之扉》，这是原作的剧场版，并非完全不同的类似作品，且未按预期推荐两部不同的非星际牛仔动漫，不符合用户要求。"
+      },
+      "retrieved_docs": [
+        "番剧: 星际牛仔\n制作公司: サンライズ",
+        "番剧: 星际牛仔\n评分: 9.1\n评分人数: 19331\n播出日期: 1998-10-23\n类型/标签: 科幻、TV、日本、战斗、菅野洋子、神作、经典、音乐、原创、90年代、SUNRISE、菅野よう子、公路片、神配乐、1998、1998年、渡边信一郎、星际牛仔、CowboyBebop、林原惠、cowboy、山寺宏一、浪漫、渡辺信一郎、BONES、单元剧、公路、1998年10月、信本敬子、川元利浩",
+        "番剧: 星际牛仔 天国之扉\n评分: 8.2\n评分人数: 7128\n播出日期: 2001-09-01\n类型/标签: 科幻、日本、战斗、菅野洋子、神作、经典、剧场版、原创、电影、林原めぐみ、映画、SUNRISE、菅野よう子、2001、2001年、渡边信一郎、星际牛仔、CowboyBebop、cowboy、山寺宏一、渡辺信一郎、BONES、信本敬子、动作、林原惠美、Cowboy_Bebop、天国之门",
+        "番剧: 星际牛仔 天国之扉\n观众评论:\n- 补标，再见了第二工作室",
+        "番剧: 星际牛仔 天国之扉\n观众评论:\n- 81"
+      ]
+    },
+    {
+      "id": "ED004",
+      "type": "edge_case",
+      "difficulty": "easy",
+      "query": "你好",
+      "answer": "根据搜索结果，以「你好」为开头的番剧有两部：一部是《你好 世界》（Hello World），另一部是《你好七叶 第二季》。  \n观众对《你好 世界》的评论比较多元，有人夸「结局厉害！」、「剧情不错，就是某些地方的3d演出比较出戏」，还有人提到「马戏不错」和「感觉一般」。  \n而《你好七叶 第二季》的评论仅为简单的「还行」。  \n\n如果您打算了解更详细的剧情或想看哪一部更合适，可以告诉我，我再帮您分析～",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "gold_routing": "chat",
+      "latency": 8.386475801467896,
+      "retrieval_latency": 0.7540514469146729,
+      "tokens": 557,
+      "completion_tokens": 430,
+      "correct": true,
+      "faithfulness": 0.42342342342342343,
+      "judge": {
+        "relevance": 0.7,
+        "accuracy": 0.5,
+        "completeness": 0.5,
+        "overall": 0.6,
+        "hallucination": true,
+        "reason": "回答介绍了与'你好'相关的番剧，但上下文仅包含《你好 世界》的评论，回答额外提及了《你好七叶 第二季》及其评论，属于幻觉；引用部分正确但引入了未检索到的信息。"
+      },
+      "retrieved_docs": [
+        "番剧: 你好 世界\n观众评论:\n- 马戏不错",
+        "番剧: 你好 世界\n观众评论:\n- 感觉一般",
+        "番剧: 你好 世界\n观众评论:\n- 结局厉害！",
+        "番剧: 你好七叶 第二季\n观众评论:\n- 还行",
+        "番剧: 你好 世界\n观众评论:\n- 剧情不错，就是某些地方的3d演出比较出戏"
+      ]
+    },
+    {
+      "id": "ED002",
+      "type": "edge_case",
+      "difficulty": "medium",
+      "query": "",
+      "correct": false,
+      "judge": {
+        "overall": 0,
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "reason": "Error code: 400 - {'error': {'code': 'InvalidParameter', 'message': 'The parameter `input` specified in the request are not valid: input could not be empty. Request id: 021785200101415a2bd608b559c0fd4"
+      },
+      "latency": 0,
+      "tokens": 0,
+      "faithfulness": 0.0
+    },
+    {
+      "id": "ED001",
+      "type": "edge_case",
+      "difficulty": "hard",
+      "query": "!@#",
+      "answer": "根据提供的搜索结果，您标记了几个番剧的观看记录，包括：\n\n- **GJ部@**：您多次标记为“补标”，其中一条提到“忘了什么时候看的了，补个标”。这表示您以前看过，现在补上标记。\n- **009-1**：标记为已看。\n- **HOME!**：标记于2024-03-03。\n\n这些记录应该来自您的个人番剧管理或评分系统，方便您追踪观看历史。如果您有其他问题，请明确说明，我会尽力解答。",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "gold_routing": "chat",
+      "latency": 7.0004661083221436,
+      "retrieval_latency": 0.31072115898132324,
+      "tokens": 454,
+      "completion_tokens": 336,
+      "correct": false,
+      "faithfulness": 0.3333333333333333,
+      "judge": {
+        "relevance": 0.1,
+        "accuracy": 0.5,
+        "completeness": 0.3,
+        "overall": 0.3,
+        "hallucination": true,
+        "reason": "查询为无意义符号，回答虽基于上下文但引入了未出现的'HOME!'，存在幻觉"
+      },
+      "retrieved_docs": [
+        "番剧: GJ部@\n观众评论:\n- 补标",
+        "番剧: GJ部@\n观众评论:\n- 补标",
+        "番剧: 009-1\n观众评论:\n- 标记",
+        "番剧: HOME!\n观众评论:\n- 2024-03-03",
+        "番剧: GJ部@\n观众评论:\n- 忘了什么时候看的了，补个标"
+      ]
+    },
+    {
+      "id": "KB001",
+      "type": "knowledge_boundary",
+      "difficulty": "medium",
+      "query": "进击的巨人动画改编自谁的原作",
+      "answer": "根据提供的搜索结果，进击的巨人各动画作品的制作公司、导演和系列构成等信息中，并未直接提及原作者。然而，作为常识性的动漫知识，**进击的巨人**动画改编自**谏山创**创作的同名漫画。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "谏山创"
+      ],
+      "gold_routing": "simple_fact",
+      "latency": 8.835997343063354,
+      "retrieval_latency": 0.3572680950164795,
+      "tokens": 761,
+      "completion_tokens": 422,
+      "correct": true,
+      "faithfulness": 0.3389830508474576,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案正确指出进击的巨人动画改编自谏山创的原作，且检索上下文虽未直接提及，但答案基于常识准确补充，无幻觉"
+      },
+      "retrieved_docs": [
+        "番剧: 进击的巨人\n制作公司: WIT STUDIO\n导演: 門脇聡、菊池聡延、江原康之、小坂倫洋、清水奈津子、清水勝祐、手塚響平、胡拓磨、山田歩、田中春香、まつもとひろし、肥塚正史、関口亮輔、南東寿幸、北田勝彦、富田恵美\n编剧/系列构成: 小林靖子",
+        "番剧: 进击的巨人 最终季\n制作公司: MAPPA\n导演: 酒井智史\n编剧/系列构成: 瀬古浩司",
+        "番剧: 进击的巨人 OAD\n制作公司: WIT STUDIO\n导演: 江原康之\n编剧/系列构成: 高木登、瀬古浩司",
+        "番剧: 进击的巨人 关西腔版\n制作公司: WIT STUDIO\n导演: 千葉崇明、菊池聡延、今井有文、江原康之、服部一郎\n编剧/系列构成: 小林靖子",
+        "番剧: 进击的巨人 无悔的选择 OAD\n制作公司: WIT STUDIO\n导演: 三間雅文\n编剧/系列构成: 小林靖子"
+      ]
+    },
+    {
+      "id": "KB002",
+      "type": "knowledge_boundary",
+      "difficulty": "hard",
+      "query": "EVA 的宗教隐喻有哪些",
+      "answer": "",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA",
+        "宗教",
+        "隐喻"
+      ],
+      "gold_routing": "comparison",
+      "latency": 9.526916980743408,
+      "retrieval_latency": 0.33827662467956543,
+      "tokens": 1050,
+      "completion_tokens": 512,
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0,
+        "overall": 0.0,
+        "hallucination": false,
+        "reason": "未提供答案，无法评分"
+      },
+      "retrieved_docs": [
+        "番剧: 福音战士新剧场版：Q\n观众评论:\n- 全员谜语人...剧里折磨真嗣，剧外折磨观众，大家都有相同的体验是吧",
+        "番剧: 新世纪福音战士剧场版 DEATH(TRUE)2/Air/真心为你\n评分: 8.5\n评分人数: 8613\n播出日期: 1998-03-07\n类型/标签: 科幻、日本、战斗、Production.I.G、神作、ProductionI.G、剧场版、原创、萝卜、机战、90年代、意识流、心理、EVA、庵野秀明、GAINAX、贞本义行、新世纪福音战士、宗教、剧情、劇場版、1998、1998年、摩砂雪、",
+        "番剧: 新世纪福音战士\n评分: 8.7\n评分人数: 33824\n播出日期: 1995-10-04\n类型/标签: 科幻、TV、日本、战斗、神作、经典、原创、萝卜、机战、1995、1995年、意识流、心理、EVA、庵野秀明、GAINAX、补完、贞本义行、新世纪福音战士、宗教、童年、明日香、Evangelion、骗钱神棍片的王者、凌波、神棍、龙之子Production、圣经、1995年10月、生命中的哀",
+        "番剧: 新世纪福音战士剧场版 Air/真心为你\n评分: 8.9\n评分人数: 21646\n播出日期: 1997-07-19\n类型/标签: 科幻、日本、战斗、Production.I.G、神作、ProductionI.G、经典、剧场版、原创、萝卜、机战、意识流、心理、EVA、庵野秀明、GAINAX、补完、1997、GANAIX、死光光、猎奇、贞本义行、新世纪福音战士、宗教、Otaku、鹤卷和哉、鶴巻和",
+        "番剧: 沉默的未知\n观众评论:\n- 确实像EVA吧，好多EVA的影子，大闷片..."
+      ]
+    }
+  ],
+  "details_b2": [
+    {
+      "id": "SF001",
+      "type": "simple_fact",
+      "difficulty": "easy",
+      "query": "命运石之门的评分是多少",
+      "answer": "根据搜索结果，番剧《命运石之门》的评分是 **8.8** 分，共有 39808 人参与评分[1]。",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "评分"
+      ],
+      "correct": true,
+      "faithfulness": 0.5555555555555556,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案完全匹配检索到的评分信息，准确回答了查询，无幻觉"
+      },
+      "latency": 3.2364423274993896,
+      "tokens": 272,
+      "completion_tokens": 32,
+      "retrieve_latency": 1.3447742462158203,
+      "num_docs": 3
+    },
+    {
+      "id": "SF005",
+      "type": "simple_fact",
+      "difficulty": "medium",
+      "query": "攻壳机动队有几部剧场版",
+      "answer": "根据搜索结果，这里提到的《攻壳机动队》剧场版信息如下：\n\n*   **《攻壳机动队2.0》**：这是一部于2008年7月12日播出的剧场版，由Production I.G制作，是1995年剧场版《攻壳机动队》的复刻版[3]。\n\n搜索结果中未列出《攻壳机动队》系列的全部剧场版数量，但提到了其中一部。",
+      "gold_entities": [
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队",
+        "剧场版"
+      ],
+      "correct": false,
+      "faithfulness": 0.5064935064935064,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.3,
+        "completeness": 0.2,
+        "overall": 0.37,
+        "hallucination": false,
+        "reason": "回答仅提及了《攻壳机动队2.0》这一部剧场版，但未完整列出系列所有剧场版（如1995年原版、2004年《无罪》等），且未明确回答‘有几部’的问题，相关性和完整性不足；但未出现虚构信息，无幻觉。"
+      },
+      "latency": 2.4593753814697266,
+      "tokens": 335,
+      "completion_tokens": 91,
+      "retrieve_latency": 0.2967648506164551,
+      "num_docs": 3
+    },
+    {
+      "id": "SF007",
+      "type": "simple_fact",
+      "difficulty": "hard",
+      "query": "押井守和神山健治都参与过的攻壳机动队作品有哪些",
+      "answer": "根据搜索结果，神山健治参与过的《攻壳机动队》作品有：\n*   **《攻壳机动队 S.A.C. Solid State Society》**：担任编剧/系列构成[1]。\n*   **《攻壳机动队 S.A.C. 2nd GIG》**：担任编剧/系列构成[2]。\n\n不过，提供的搜索结果中**没有提到押井守**参与过任何一部作品[1][2][3]。因此，基于现有信息，无法列出两人都参与过的作品。",
+      "gold_entities": [
+        "押井守",
+        "神山健治",
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队"
+      ],
+      "correct": false,
+      "faithfulness": 0.4470588235294118,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.5,
+        "completeness": 0.3,
+        "overall": 0.47,
+        "hallucination": false,
+        "reason": "回答正确指出了神山健治参与的作品，但未提及押井守参与的作品（如1995年电影版），且检索结果不完整，导致无法完整回答两人共同参与的作品，准确性和完整性不足。"
+      },
+      "latency": 2.3908514976501465,
+      "tokens": 283,
+      "completion_tokens": 111,
+      "retrieve_latency": 0.2853999137878418,
+      "num_docs": 3
+    },
+    {
+      "id": "RC001",
+      "type": "recommendation",
+      "difficulty": "easy",
+      "query": "推荐几部科幻类型的动画",
+      "answer": "根据搜索结果，为您推荐以下科幻类型的动画：\n\n*   **黑客帝国动画版**\n    *   **评分**：8.0分（1896人评分）\n    *   **播出日期**：2003-06-03\n    *   **类型/标签**：科幻、日本、神作、剧场版、原创、OVA、MADHouse、短片、动画、内涵、渡边信一郎、渡辺信一郎、前田真宏、2003、2000s、大平晋也、Studio4℃、森本晃司、短片集、韩国、欧美、影视改、川尻善昭、小池健、黑客帝国、matrix、Animatrix、多重世界\n    *   **简介**：这是一部由多位知名导演（如渡边信一郎、川尻善昭等）共同创作的短片集，是《黑客帝国》系列的动画版。它通过多个风格迥异的短片，极大地拓展了电影的世界观，被许多观众奉为“神作”。\n\n*   **机魂末世录**\n    *   **评分**：7.3分（452人评分）\n    *   **播出日期**：2003-04-16\n    *   **类型/标签**：科幻、TV、日本、原创、机战、SF、MADHouse、意识流、TVA、浜崎博嗣、补旧番、致郁、动画、2003、2000s、末世、2003年、补番、小中千昭、2003年4月、平尾隆之、安倍吉俊、伊藤静、机械\n    *   **简介**：这是一部风格独特的原创TV动画，由MADHOUSE制作。故事设定在末世背景下，融合了机战与意识流的叙事手法，氛围较为“致郁”，适合喜欢深度思考和独特视觉风格的观众。\n\n*   **宇宙战舰大和号2199 星巡的方舟**\n    *   **评分**：7.2分（308人评分）\n    *   **播出日期**：2014-12-06\n    *   **类型/标签**：科幻、日本、战争、剧场版、原创、机战、SF、动画、2014、2014年、剧场、宇宙、XEBEC、宇宙战舰大和号、アニメ映画、2014年12月\n    *   **简介",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻"
+      ],
+      "correct": true,
+      "faithfulness": 0.6431535269709544,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "回答完全基于检索到的科幻动画上下文，准确推荐了三部作品，信息完整且无虚构内容。"
+      },
+      "latency": 6.688227415084839,
+      "tokens": 911,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.3143620491027832,
+      "num_docs": 3
+    },
+    {
+      "id": "RC003",
+      "type": "recommendation",
+      "difficulty": "medium",
+      "query": "推荐几部京阿尼制作的催泪番",
+      "answer": "根据搜索结果，为您推荐以下由京都动画（京阿尼）制作的催泪番：\n\n1.  **《CLANNAD 〜AFTER STORY〜》**\n    这部作品是京阿尼催泪番的代表作，被无数观众誉为“人生之作”。它由京都动画制作[1]，讲述了主角冈崎朋也高中毕业后，与古河渚共同生活的感人故事，对亲情、爱情和友情的描绘极其深刻，催泪效果显著。\n\n2.  **《AIR》**\n    这部作品是Key社“催泪三部曲”之一，由京都动画制作[3]。故事围绕夏日小镇中一位旅人与一位身患怪病的少女展开，其主题曲《鸟之诗》被誉为“动漫界的国歌”。该作在搜索结果中被直接打上了“催泪”、“催泪弹”等标签[3]，评分8.0，有超过1.3万人评价[3]。\n\n这两部作品都是京阿尼改编自Key社游戏的经典催泪动画，情感渲染力极强。希望这份推荐能帮到您。",
+      "gold_entities": [
+        "京都动画"
+      ],
+      "gold_keywords": [
+        "京都动画",
+        "京阿尼",
+        "CLANNAD",
+        "催泪"
+      ],
+      "correct": true,
+      "faithfulness": 0.3333333333333333,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "回答完全符合查询要求，准确推荐了京阿尼制作的催泪番《CLANNAD 〜AFTER STORY〜》和《AIR》，并引用了检索上下文中的信息，无幻觉内容。"
+      },
+      "latency": 5.339512825012207,
+      "tokens": 460,
+      "completion_tokens": 227,
+      "retrieve_latency": 0.2862880229949951,
+      "num_docs": 3
+    },
+    {
+      "id": "RC006",
+      "type": "recommendation",
+      "difficulty": "hard",
+      "query": "推荐几部和混沌武士风格类似的动画，但不要渡边信一郎的其他作品",
+      "answer": "根据搜索结果，《混沌武士》是一部由Manglobe制作、渡边信一郎执导的经典动画，融合了武士、动作、公路片和hiphop音乐等元素，风格独特[1][2]。如果你想找风格类似但非渡边信一郎的作品，以下推荐几部：\n\n1. **《爆炸头武士》**  \n   - 制作公司：GONZO  \n   - 导演：小田剛生  \n   - 编剧：むとうやすゆき、山下友弘  \n   - 这部动画同样以武士为主题，结合了动作和独特的视觉风格，与《混沌武士》的武士动作元素有相似之处，但更偏向黑暗和暴力美学[3]。\n\n2. **《兽兵卫忍风帖》**  \n   - 虽然不是搜索结果直接提供，但这部经典动画以忍者为主角，融合了动作、冒险和独特的时代剧氛围，与《混沌武士》的公路片和战斗风格有异曲同工之妙。\n\n3. **《浪客剑心》**  \n   - 以明治维新为背景的武士题材动画，强调剑术战斗和人物成长，虽然音乐风格不同，但武士精神和动作场面与《混沌武士》有共鸣。\n\n这些推荐基于《混沌武士》的核心元素（如武士、动作、公路片风格），并排除了渡边信一郎的其他作品。如果你喜欢更具体的方面（如hiphop配乐），可以进一步探讨！",
+      "gold_entities": [
+        "混沌武士",
+        "渡边信一郎"
+      ],
+      "gold_keywords": [
+        "类似",
+        "混沌武士",
+        "排除"
+      ],
+      "correct": true,
+      "faithfulness": 0.3627450980392157,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.7,
+        "completeness": 0.6,
+        "overall": 0.7,
+        "hallucination": true,
+        "reason": "推荐了《爆炸头武士》等作品，但《兽兵卫忍风帖》和《浪客剑心》未在检索上下文中出现，属于幻觉；整体相关但部分推荐缺乏依据。"
+      },
+      "latency": 6.180750370025635,
+      "tokens": 560,
+      "completion_tokens": 305,
+      "retrieve_latency": 0.2769927978515625,
+      "num_docs": 3
+    },
+    {
+      "id": "CP001",
+      "type": "comparison",
+      "difficulty": "easy",
+      "query": "比较一下 CLANNAD 和 AIR，哪部更催泪",
+      "answer": "根据搜索结果，虽然直接信息有限，但可以基于两部作品的普遍评价进行对比。\n\n**CLANNAD** 的催泪效果被观众高度认可，尤其是其续作 **CLANNAD 〜AFTER STORY〜**。搜索结果中，观众评论直接提到“伟大无需多言，上次看哭已经不知道是什么时候了”[2]，并强调“重点是第2部”[3]，这明确指向了《CLANNAD》在情感渲染上的巅峰地位，其催泪核心在于对家庭、亲情与人生成长的深刻描绘。\n\n相比之下，搜索结果中**没有直接提及《AIR》** 的观众评价。但从动漫界的普遍共识来看，《AIR》同样是Key社著名的催泪作品，其催泪点更侧重于宿命般的悲剧、跨越千年的爱恋与牺牲，情感冲击强烈而凄美。\n\n**综合比较：**\n*   **《CLANNAD》**（特别是After Story）的催泪更像“温水煮青蛙”，用漫长的日常铺垫出最平凡却最深刻的亲情与责任，让观众在共鸣中潸然泪下，后劲极大。\n*   **《AIR》** 的催泪则更具“戏剧性”和“宿命感”，其悲剧美学和结局的释然，带来的是瞬间的情感爆发。\n\n哪部更催泪因人而异，取决于你更容易被**平凡生活的真相**所触动，还是被**凄美宿命的传说**所打动。但从大众口碑和历史地位来看，《CLANNAD ~AFTER STORY~》常被誉为“人生写作”，其催泪的广度和深度在动漫史上具有里程碑式的意义。",
+      "gold_entities": [
+        "CLANNAD",
+        "AIR"
+      ],
+      "gold_keywords": [
+        "CLANNAD",
+        "AIR",
+        "催泪",
+        "比较"
+      ],
+      "correct": true,
+      "faithfulness": 0.20717131474103587,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答准确对比了两部作品的催泪特点，引用了检索到的CLANNAD评论，但对AIR的描述缺乏检索支持，依赖普遍共识，完整性略有不足。"
+      },
+      "latency": 7.101496934890747,
+      "tokens": 488,
+      "completion_tokens": 345,
+      "retrieve_latency": 0.3260486125946045,
+      "num_docs": 3
+    },
+    {
+      "id": "CP002",
+      "type": "comparison",
+      "difficulty": "medium",
+      "query": "比较一下星际牛仔和混沌武士的风格",
+      "answer": "《星际牛仔》和《混沌武士》都是渡边信一郎执导的经典之作，常被放在一起比较。虽然它们共享一些核心DNA，但风格上却有着截然不同的表达。\n\n简单来说，**《星际牛仔》是浪漫的太空歌剧式黑色电影，而《混沌武士》则是狂放不羁的江户时代公路片。**\n\n下面从几个方面来详细比较它们的风格差异：\n\n### 核心基调与世界观\n\n-   **《星际牛仔》**\n    -   **基调**：弥漫着**忧郁、怀旧和宿命感**。故事的核心是“活在过去”的人，无法摆脱过去的阴影。整体氛围是成年人的无奈与浪漫。\n    -   **世界观**：**赛博朋克与西部片**的融合。2071年的太阳系，星际旅行成为日常，但场景却常是破败的殖民地、萧条的酒馆，充满了孤独与荒芜感。\n\n-   **《混沌武士》**\n    -   **基调**：**随性、洒脱、充满嘻哈精神**。故事的核心是“活在当下”的旅程，角色们不问过去，不惧未来，更享受旅途本身的奇遇。\n    -   **世界观**：**江户时代与现代嘻哈文化**的错位混搭。故事发生在日本江户末期，却充斥着涂鸦、说唱、街舞和打碟等现代元素，形成一种奇妙而有趣的错位感。\n\n### 音乐风格\n\n音乐是渡边信一郎作品的灵魂，也是两者风格差异最直观的体现。\n\n-   **《星际牛仔》**\n    -   **主导风格**：**爵士乐（Bebop）**。剧名本身就是一种爵士乐流派。菅野洋子创作的配乐以萨克斯、小号为基调，即兴、自由，又带着蓝调的忧愁，完美契合了太空的寂寥和角色的心境。\n-   **《混沌武士》**\n    -   **主导风格**：**嘻哈乐（Hip-Hop）**。配乐大量使用搓碟、采样和说唱节奏，由已故的日本传奇嘻哈制作人Nujabes等人操刀[3]。音乐充满律动感和街头气息，与武士刀剑交锋的动作场面产生了惊人的化学反应。\n\n### 动作设计\n\n-   **《星际牛仔》**\n    -   **风格**：融合了**港式功夫片、枪战和",
+      "gold_entities": [
+        "星际牛仔",
+        "混沌武士"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "混沌武士",
+        "渡边信一郎",
+        "风格"
+      ],
+      "correct": true,
+      "faithfulness": 0.16286644951140064,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.6,
+        "overall": 0.77,
+        "hallucination": false,
+        "reason": "回答准确比较了两部作品的风格，但未完全覆盖检索到的所有关键信息（如制作公司、评分等），且回答被截断，完整性不足。"
+      },
+      "latency": 10.018148422241211,
+      "tokens": 733,
+      "completion_tokens": 511,
+      "retrieve_latency": 0.28937721252441406,
+      "num_docs": 3
+    },
+    {
+      "id": "CP004",
+      "type": "comparison",
+      "difficulty": "hard",
+      "query": "比较宫崎骏和今敏的导演风格",
+      "answer": "根据搜索结果，这里提供了关于宫崎骏导演作品的信息，但**没有关于今敏导演的任何资料**。因此，我无法直接比较他们二人的导演风格。\n\n不过，我可以先根据现有信息，为你总结宫崎骏的导演风格特点，再补充关于今敏的通用知识，供你参考。\n\n### 宫崎骏的导演风格（基于搜索结果）\n\n从列出的三部吉卜力工作室作品来看，宫崎骏深度参与了编剧工作，其风格特点包括：\n\n*   **自然与人类的主题**：作品如《龙猫》和《幽灵公主》深刻探讨了人与自然的关系，前者充满田园诗意，后者则更具冲突性和史诗感。\n*   **坚强的女性主角**：《千与千寻》中的千寻和《幽灵公主》中的小桑，都是独立、勇敢、在困境中不断成长的少女形象。\n*   **丰富的想象力与细节**：他构建的世界观宏大且充满奇幻色彩，如《千与千寻》中的神灵异境，细节描绘极其丰富。\n*   **手绘动画的极致追求**：作为吉卜力的核心，宫崎骏坚持传统手绘，画面风格细腻、温暖，充满生命力。\n*   **反战与环保思想**：作品中常常融入对战争、工业文明的反思，以及对自然万物的敬畏。\n\n### 今敏的导演风格（补充知识）\n\n今敏的风格与宫崎骏截然不同，他专注于探索人类的精神世界：\n\n*   **梦境与现实的交织**：这是今敏最核心的标签。他的作品（如《红辣椒》、《未麻的部屋》）擅长用华丽的剪辑将梦境、幻觉、记忆与现实完美融合，让观众难以分辨。\n*   **心理惊悚与社会批判**：他常以惊悚、悬疑的手法，深度剖析现代人的身份认同危机、精神压力与欲望，例如《未麻的部屋》对偶像文化和网络时代的尖锐呈现。\n*   **电影化的蒙太奇手法**：今敏的动画极具“电影感”，运用了非常复杂的匹配剪辑、时空跳跃等技巧，叙事结构精巧复杂。\n*   **关注都市边缘人**：他的主角往往是生活在都市中，承受着巨大心理压力或怀揣秘密的普通人，而非宫崎骏式的奇幻英雄。\n\n### 核心区别总结\n\n*   **宫崎骏**：向外看，关注**自然、社会与人的宏大关系**，风格**奇幻、温暖、充满希望**",
+      "gold_entities": [
+        "宫崎骏",
+        "今敏"
+      ],
+      "gold_keywords": [
+        "宫崎骏",
+        "今敏",
+        "导演",
+        "风格"
+      ],
+      "correct": true,
+      "faithfulness": 0.06521739130434782,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.5,
+        "completeness": 0.7,
+        "overall": 0.6,
+        "hallucination": false,
+        "reason": "回答正确识别了宫崎骏的风格，但检索上下文未提供今敏信息，回答依赖补充知识，相关性中等；准确性上宫崎骏部分基于上下文但导演信息有误（如龙猫导演应为宫崎骏而非斯波重治），今敏部分无上下文支持；完整性较好，分别总结并对比了两位导演风格，但未完全基于检索上下文；无幻觉，但部分信息与上下文不符。"
+      },
+      "latency": 10.425488948822021,
+      "tokens": 672,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.2765076160430908,
+      "num_docs": 3
+    },
+    {
+      "id": "AL001",
+      "type": "alias_resolution",
+      "difficulty": "easy",
+      "query": "EVA 的评分",
+      "answer": "根据搜索结果，EVA（新世纪福音战士）系列相关作品的评分如下：\n\n*   **《新世纪福音战士》 (TV版)**: 评分 **8.7**，评分人数 33824 人。播出日期为 1995-10-04[2]。\n*   **《福音战士新剧场版：破》**: 评分 **8.4**，评分人数 17906 人。播出日期为 2009-06-27[1]。\n*   **《福音战士新剧场版：序》**: 评分 **8.0**，评分人数 16105 人。播出日期为 2007-09-01[3]。",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA"
+      ],
+      "correct": true,
+      "faithfulness": 0.6268656716417911,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "回答完全基于检索到的上下文，准确提取了《新世纪福音战士》TV版及两部新剧场版的评分、评分人数和播出日期，无虚构信息，且与查询高度相关。"
+      },
+      "latency": 2.4910964965820312,
+      "tokens": 641,
+      "completion_tokens": 144,
+      "retrieve_latency": 0.2767212390899658,
+      "num_docs": 3
+    },
+    {
+      "id": "AL003",
+      "type": "alias_resolution",
+      "difficulty": "medium",
+      "query": "民工漫里评分最高的是哪个",
+      "answer": "根据搜索结果，在提到的民工漫中，**《航海王》** 有明确的评分记录，为 **8.3 分**（评分人数 14543）[2]。而《死神》和《龙珠Z》的搜索结果中未提供具体评分，因此无法直接比较。\n\n不过，从观众评论来看，《死神》被称为“三大民工漫里最好的”[1]，而《龙珠Z》则被评价为“最喜欢的民工漫”[3]，但这些属于主观评价，并非量化评分。因此，基于现有数据，**《航海王》是搜索结果中唯一有明确评分的民工漫**，可视为当前可比较的评分最高者。",
+      "gold_entities": [],
+      "gold_keywords": [
+        "评分"
+      ],
+      "correct": true,
+      "faithfulness": 0.36792452830188677,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.7,
+        "completeness": 0.6,
+        "overall": 0.7,
+        "hallucination": false,
+        "reason": "回答基本相关，准确指出了《航海王》有明确评分，但未全面考虑其他民工漫的评分数据，且对‘评分最高’的结论不够严谨，完整性稍欠。"
+      },
+      "latency": 3.347524881362915,
+      "tokens": 366,
+      "completion_tokens": 140,
+      "retrieve_latency": 0.32372236251831055,
+      "num_docs": 3
+    },
+    {
+      "id": "AL005",
+      "type": "alias_resolution",
+      "difficulty": "hard",
+      "query": "谏山创那部巨人动画叫什么来着",
+      "answer": "根据搜索结果，谏山创那部巨人动画叫 **《进击的巨人》**（進撃の巨人）[2]。  \n动画系列分为多季，其中第一季至第三季由 **WIT STUDIO** 制作[2][3]，最终季（第四季）由 **MAPPA** 接手制作[1]。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "进击的巨人"
+      ],
+      "correct": true,
+      "faithfulness": 0.45454545454545453,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案准确回答了用户问题，给出了动画名称《进击的巨人》，并补充了制作公司信息，完全基于检索到的上下文，没有虚构内容。"
+      },
+      "latency": 1.713395118713379,
+      "tokens": 301,
+      "completion_tokens": 72,
+      "retrieve_latency": 0.27648210525512695,
+      "num_docs": 3
+    },
+    {
+      "id": "MT001",
+      "type": "multi_turn",
+      "difficulty": "easy",
+      "query": "推荐几部科幻动画",
+      "answer": "根据搜索结果，为您推荐以下科幻动画：\n\n1.  **《黑客帝国动画版》**\n    *   **评分**：8.0分（1896人评价）\n    *   **播出日期**：2003年6月3日\n    *   **类型/标签**：科幻、神作、剧场版、OVA、MADHouse、短片集、渡边信一郎、森本晃司、川尻善昭等。\n    *   **简介**：这是一部由多位世界知名动画导演联合创作的短片集，基于《黑客帝国》的世界观，从不同角度拓展了电影中的虚拟与现实主题。制作阵容豪华，被许多观众奉为神作[1]。\n\n2.  **《机魂末世录》**\n    *   **评分**：7.3分（452人评价）\n    *   **播出日期**：2003年4月16日\n    *   **类型/标签**：科幻、TV、原创、机战、意识流、MADHouse、末世、致郁。\n    *   **简介**：一部风格独特的原创科幻动画，由浜崎博嗣执导，安倍吉俊负责人设。故事设定在末世背景下，氛围压抑，叙事带有强烈的意识流色彩，适合喜欢深度和另类风格的观众[2]。\n\n3.  **《星空清理者》**\n    *   **类型/标签**：硬科幻\n    *   **简介**：根据观众评论，这是一部“少见的硬科幻番，制作和剧情都非常好”[3]。该作以近未来的太空开发为背景，扎实地描绘了宇宙垃圾清理员的工作与生活，在科学设定和人文关怀上都备受赞誉。",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻",
+        "评分",
+        "最高"
+      ],
+      "correct": true,
+      "faithfulness": 0.4851063829787234,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.9,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答推荐了科幻动画，符合查询意图，但未明确提及评分最高或按评分排序，且《星空清理者》缺少评分数据，完整性稍欠；无幻觉信息。"
+      },
+      "latency": 6.524351596832275,
+      "tokens": 685,
+      "completion_tokens": 360,
+      "retrieve_latency": 0.33344173431396484,
+      "num_docs": 3
+    },
+    {
+      "id": "MT002",
+      "type": "multi_turn",
+      "difficulty": "medium",
+      "query": "命运石之门好看吗",
+      "answer": "根据搜索结果，观众对《命运石之门》系列的评价存在差异，但整体上认为它是值得一看的作品。\n\n*   **关于剧场版《负荷领域的既视感》**：有观众认为它“没正传好看”[1]，说明正传可能更受认可。\n*   **关于续作《命运石之门 0》**：有观众评价“有了0才是完整的命运石之门”[2]，这暗示了该系列通过续作补完了故事，提升了整体的观看价值。不过，也有观众表示“已经忘记有没有看过了”[3]，这可能意味着部分情节的记忆点不强。\n\n综合来看，虽然不同篇章的评价不一，但《命运石之门》系列（尤其是正传和关键续作）被许多观众视为一部完整且精彩的作品，值得一看。",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "制作公司",
+        "命运石之门",
+        "WHITE FOX"
+      ],
+      "correct": true,
+      "faithfulness": 0.28125,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.7,
+        "completeness": 0.6,
+        "overall": 0.7,
+        "hallucination": false,
+        "reason": "回答基本相关，引用了检索到的观众评论，但未提及制作公司WHITE FOX等预期关键词，且对正传评价的推断不够直接，整体较合理但不够全面。"
+      },
+      "latency": 3.6790754795074463,
+      "tokens": 283,
+      "completion_tokens": 165,
+      "retrieve_latency": 0.2735481262207031,
+      "num_docs": 3
+    },
+    {
+      "id": "MT003",
+      "type": "multi_turn",
+      "difficulty": "hard",
+      "query": "推荐几部和星际牛仔类似的",
+      "answer": "《星际牛仔》是科幻动画中难以逾越的经典，融合了太空歌剧、西部片、黑色电影等多种元素，配以菅野洋子大师级的爵士乐，营造出独一无二的浪漫与颓废感。如果你想找风格类似的番剧，可以从以下几个方向入手：\n\n**1. 精神续作，同样浪漫的太空公路片**\n*   **《太空丹迪》**：由《星际牛仔》的核心主创渡边信一郎担任总导演，骨头社制作。如果说《星际牛仔》是严肃的成人浪漫，那《太空丹迪》就是无厘头的宇宙狂欢。它同样讲述宇宙猎人的故事，但风格更加奔放、色彩斑斓，每一集的作画和音乐都堪称顶级，充满了对宇宙的奇妙想象[1][2]。\n\n**2. 渡边信一郎的其他音乐与动作神作**\n*   **《混沌武士》**：导演渡边信一郎将舞台从宇宙搬到了江户时代，把科幻换成了嘻哈。两位武士保护少女的旅途，本质上和Spike、Jet的赏金之旅一样，充满了随性、幽默和精彩的打斗。菅野洋子等人的配乐依然是灵魂，公路片的氛围感拉满[2]。\n*   **《坂道上的阿波罗》**：如果你沉迷于《星际牛仔》中的爵士乐，这部番绝对不能错过。同样是渡边信一郎与菅野洋子合作的音乐题材动画，讲述60年代少年少女因爵士乐而结缘的青春故事，对音乐的演绎细腻而动人[2]。\n\n**3. 气质相似的硬汉与黑色电影风格**\n*   **《黑之契约者》**：同样由菅野洋子配乐，骨头社制作。主角“黑”是一个伪装成中国留学生的超能力杀手，性格冷静、身手不凡，和Spike一样充满孤独的硬汉魅力。故事氛围压抑、阴郁，充满了黑色电影的质感[2]。\n*   **《枪神》**：主角法修和Spike一样，是个身怀绝技、背负沉重过去却表现得玩世不恭的顶级枪手。故事发生在一个类似西部世界的荒漠星球上，融合了科幻、西部和喜剧元素，内核同样是对生命价值的探讨。\n\n**4. 同属太空科幻的经典之作**\n*   **《星空清理者》**：同样由日升社（サン",
+      "gold_entities": [
+        "星际牛仔"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "类似",
+        "两部",
+        "不是"
+      ],
+      "correct": true,
+      "faithfulness": 0.19093851132686085,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答推荐了多部与《星际牛仔》风格相似的番剧，如《太空丹迪》《混沌武士》等，相关性高；但未明确提及用户期望的‘两部’和‘不是’关键词，且部分推荐（如《黑之契约者》）与《星际牛仔》的太空西部风格略有偏差，准确性稍降；完整性较好，但未完全覆盖用户隐含的限定要求。"
+      },
+      "latency": 12.531585693359375,
+      "tokens": 874,
+      "completion_tokens": 512,
+      "retrieve_latency": 1.145810604095459,
+      "num_docs": 3
+    },
+    {
+      "id": "ED004",
+      "type": "edge_case",
+      "difficulty": "easy",
+      "query": "你好",
+      "answer": "关于《你好 世界》这部动画电影，观众的评价比较多样。根据搜索结果，有观众觉得“马戏不错”[1]，也有观众认为“感觉一般”[2]，还有观众称赞“结局厉害！”[3]。看来这部作品在剧情和结局上给不同观众留下了不同的印象。",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "correct": false,
+      "faithfulness": 0.29333333333333333,
+      "judge": {
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0,
+        "overall": 0.0,
+        "hallucination": false,
+        "reason": "用户仅问候'你好'，未提及任何动漫，回答却强行关联《你好 世界》并引用无关评论，完全偏离用户意图。"
+      },
+      "latency": 2.3397467136383057,
+      "tokens": 157,
+      "completion_tokens": 62,
+      "retrieve_latency": 0.34364843368530273,
+      "num_docs": 3
+    },
+    {
+      "id": "ED002",
+      "type": "edge_case",
+      "difficulty": "medium",
+      "query": "",
+      "answer": "",
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "overall": 0,
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "reason": "Error code: 400 - {'error': {'code': 'InvalidParameter', 'message': 'The parameter `input` specified in the request are not valid: input could not be empty. Request id: 021785201355465a656cb432d181fdc"
+      },
+      "latency": 0,
+      "tokens": 0
+    },
+    {
+      "id": "ED001",
+      "type": "edge_case",
+      "difficulty": "hard",
+      "query": "!@#",
+      "answer": "抱歉，我无法理解您输入的“!@#”是什么意思。根据您提供的搜索结果，目前只有关于《GJ部@》和《009-1》的信息。\n\n如果您是想查询这两部作品，我可以为您介绍：\n*   **《GJ部@》**：这是《GJ部》的特别篇或续作，有观众标记为“补标”[1][2]。\n*   **《009-1》**：这是一部以女特工为主角的科幻动作动画，有观众标记为“标记”[3]。\n\n如果您有其他具体的动漫问题，欢迎用清晰的文字告诉我，我很乐意为您解答。",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "correct": false,
+      "faithfulness": 0.1388888888888889,
+      "judge": {
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0,
+        "overall": 0.0,
+        "hallucination": false,
+        "reason": "用户输入为无意义符号，回答正确指出无法理解，但未涉及任何有效动漫问题，因此所有维度得分为0"
+      },
+      "latency": 3.9807987213134766,
+      "tokens": 225,
+      "completion_tokens": 133,
+      "retrieve_latency": 0.33278822898864746,
+      "num_docs": 3
+    },
+    {
+      "id": "KB001",
+      "type": "knowledge_boundary",
+      "difficulty": "medium",
+      "query": "进击的巨人动画改编自谁的原作",
+      "answer": "《进击的巨人》动画改编自**谏山创**的同名漫画原作。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "谏山创"
+      ],
+      "correct": true,
+      "faithfulness": 0.4090909090909091,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案准确回答了问题，明确指出原作是谏山创，与预期实体和关键词完全匹配，且未出现幻觉信息。"
+      },
+      "latency": 1.3830382823944092,
+      "tokens": 269,
+      "completion_tokens": 19,
+      "retrieve_latency": 0.44146156311035156,
+      "num_docs": 3
+    },
+    {
+      "id": "KB002",
+      "type": "knowledge_boundary",
+      "difficulty": "hard",
+      "query": "EVA 的宗教隐喻有哪些",
+      "answer": "关于《新世纪福音战士》（EVA）中的宗教隐喻，这可以说是这部作品被称为“神作”和“神棍片王者”的核心原因之一。它大量借用了犹太教（尤其是神秘主义派系）和基督教的符号与概念，但庵野秀明导演更多是将其作为一种营造神秘氛围和独特世界观的“装饰”，而非严谨的神学探讨。\n\n以下是EVA中几个最核心的宗教隐喻：\n\n**1. 生命之树（Sephiroth）**\n这是犹太教卡巴拉神秘主义的核心概念。在EVA中，生命之树图由10个质点（Sephirah）和22条路径组成，代表了从神到物质世界的流溢过程，也象征着人类补完计划的路径。在《真心为你》的高潮部分，巨大化的绫波丽与初号机结合后，背后就浮现出生命之树，人类补完计划正是通过逆向回溯这些路径，回归到万物之源。\n\n**2. 使徒（Angel）**\n使徒的命名直接来源于《圣经》中的天使，如萨基尔、夏姆榭尔、雷米尔等。但它们并非传统意义上神的使者，而是被设定为拥有“生命之果”的、与人类（拥有“智慧之果”）完全不同的生命形态。它们对人类的攻击，隐喻着一种对人类“原罪”的审判和回归亚当的渴望。\n\n**3. 亚当与莉莉丝**\n这是EVA世界观的基础，也是对《创世纪》的彻底颠覆。\n*   **亚当**：第一使徒，是使徒的起源，被视为“生命之果”的拥有者。\n*   **莉莉丝**：第二使徒，是人类的起源（Lilin），被视为“智慧之果”的拥有者。在犹太神话中，莉莉丝是亚当的第一任妻子，因拒绝顺从而离开伊甸园。EVA中，莉莉丝被钉在NERV总部最终教条区的十字架上，其形象是胸口有七只眼的白色巨人，朗基努斯之枪则刺穿其身体，阻止其再生。\n\n**4. 朗基努斯之枪（Spear of Longinus）**\n根据《圣经》记载，这是罗马士兵朗基努斯为确认耶稣是否已死而刺穿其肋下的长枪。在EVA中，它被设定为“生命之树”的根须，是能够穿透A.T.力场、控制",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA",
+        "宗教",
+        "隐喻"
+      ],
+      "correct": true,
+      "faithfulness": 0.2610062893081761,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.9,
+        "completeness": 0.8,
+        "overall": 0.87,
+        "hallucination": false,
+        "reason": "回答准确识别了EVA中的宗教隐喻（生命之树、使徒、亚当与莉莉丝、朗基努斯之枪），与查询高度相关，内容基本准确且无虚构信息，但未完全覆盖所有隐喻（如死海文书、卡巴拉等），完整性略有不足。"
+      },
+      "latency": 11.025300741195679,
+      "tokens": 886,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.3796403408050537,
+      "num_docs": 3
+    }
+  ],
+  "details_b3": [
+    {
+      "id": "SF001",
+      "type": "simple_fact",
+      "difficulty": "easy",
+      "query": "命运石之门的评分是多少",
+      "answer": "根据搜索结果，命运石之门系列不同作品的评分如下：\n\n*   **《命运石之门》**：**8.8分**（评分人数：39808）[1]\n*   **《命运石之门 0》**：**8.2分**（评分人数：15997）[5]\n*   **《命运石之门 负荷领域的既视感》**（剧场版）：**7.9分**（评分人数：14619）[10]",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "评分"
+      ],
+      "correct": true,
+      "faithfulness": 0.5357142857142857,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.7,
+        "completeness": 0.6,
+        "overall": 0.73,
+        "hallucination": true,
+        "reason": "答案中《命运石之门》评分8.8正确，但《命运石之门0》和剧场版评分未在检索上下文中提供，属于幻觉；整体相关但部分信息不准确且不完整。"
+      },
+      "latency": 6.443079233169556,
+      "tokens": 949,
+      "completion_tokens": 101,
+      "retrieve_latency": 3.2566564083099365,
+      "num_docs": 10
+    },
+    {
+      "id": "SF005",
+      "type": "simple_fact",
+      "difficulty": "medium",
+      "query": "攻壳机动队有几部剧场版",
+      "answer": "根据搜索结果，**攻壳机动队**系列共有**3部**主要的剧场版动画，具体信息如下：\n\n1.  **《攻壳机动队》**\n    *   **播出日期**：1995年11月18日\n    *   **评分**：8.8分（12668人评分）\n    *   **导演**：押井守\n    *   **制作公司**：Production I.G\n    *   **标签**：科幻、赛博朋克、经典、神作、哲学[^6]\n\n2.  **《攻壳机动队2 无罪》**\n    *   **播出日期**：2004年3月6日\n    *   **评分**：8.7分（8149人评分）\n    *   **导演**：押井守\n    *   **制作公司**：Production I.G\n    *   **标签**：科幻、赛博朋克、经典、神作、哲学、美学[^7][^9]\n\n3.  **《攻壳机动队2.0》**\n    *   **播出日期**：2008年7月12日\n    *   **评分**：8.4分（2957人评分）\n    *   **备注**：这是1995年剧场版的**复刻**版本[^3][^8]\n    *   **主要声优**：田中敦子、大塚明夫、山寺宏一等[^10]\n\n此外，搜索结果中还提到了另一部剧场版 **《攻壳机动队 S.A.C. Solid State Society》**，它是TV动画《攻壳机动队 S.A.C.》系列的剧场版，由神山健治执导，Production I.G制作[^4][^5]。",
+      "gold_entities": [
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队",
+        "剧场版"
+      ],
+      "correct": true,
+      "faithfulness": 0.6056338028169014,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.6,
+        "completeness": 0.7,
+        "overall": 0.7,
+        "hallucination": true,
+        "reason": "答案声称有3部剧场版，但检索上下文仅明确提及《攻壳机动队2.0》为剧场版，其他两部（1995年《攻壳机动队》和《无罪》）未在上下文中出现，属于幻觉；同时遗漏了《S.A.C. Solid State Society》等可能剧场版，但上下文未提供完整信息，故准确性和完整性中等。"
+      },
+      "latency": 4.902675628662109,
+      "tokens": 1088,
+      "completion_tokens": 373,
+      "retrieve_latency": 0.2928438186645508,
+      "num_docs": 10
+    },
+    {
+      "id": "SF007",
+      "type": "simple_fact",
+      "difficulty": "hard",
+      "query": "押井守和神山健治都参与过的攻壳机动队作品有哪些",
+      "answer": "根据搜索结果，押井守和神山健治都参与过的《攻壳机动队》作品如下：\n\n-   **《攻壳机动队 STAND ALONE COMPLEX》**：这部作品的标签中同时出现了神山健治和押井守[7]。\n-   **《攻壳机动队 S.A.C. Solid State Society》**：这部作品的编剧/系列构成是神山健治[1]，而押井守虽然没有在制作人员中被直接提及，但考虑到这是S.A.C.系列的剧场版，通常认为押井守作为原作或系列构成之一有参与或影响。不过，根据搜索结果，押井守并未直接列在该作品的制作人员中[1][6]。\n-   **《攻壳机动队 S.A.C. 2nd GIG》**：这部作品的编剧/系列构成是神山健治[2]，同样，押井守也未在制作人员中被直接提及[2]。\n\n需要注意的是，虽然神山健治是S.A.C.系列（包括TV版和剧场版）的核心主创，但押井守主要以其执导的1995年剧场版《攻壳机动队》和2004年续作《攻壳机动队2 无罪》而闻名[5][8]。在S.A.C.系列中，押井守的参与程度可能不如神山健治直接和深入。",
+      "gold_entities": [
+        "押井守",
+        "神山健治",
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队"
+      ],
+      "correct": false,
+      "faithfulness": 0.4166666666666667,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.3,
+        "completeness": 0.4,
+        "overall": 0.43,
+        "hallucination": true,
+        "reason": "回答声称押井守和神山健治共同参与《攻壳机动队 STAND ALONE COMPLEX》，但检索上下文未提及押井守参与该作品，且回答中关于押井守参与S.A.C.系列的说法缺乏证据，存在幻觉；同时未提及两人共同参与的电影《攻壳机动队2 无罪》等作品，准确性和完整性不足。"
+      },
+      "latency": 5.549940347671509,
+      "tokens": 1291,
+      "completion_tokens": 289,
+      "retrieve_latency": 0.7719147205352783,
+      "num_docs": 10
+    },
+    {
+      "id": "RC001",
+      "type": "recommendation",
+      "difficulty": "easy",
+      "query": "推荐几部科幻类型的动画",
+      "answer": "根据搜索结果，为你推荐以下几部高评价的科幻动画：\n\n*   **《攻壳机动队 STAND ALONE COMPLEX》**：评分高达**9.1**，是赛博朋克题材的经典神作。故事围绕公安九课处理各种高科技犯罪展开，深入探讨了灵魂、意识和政治等深刻主题[9]。\n*   **《攻壳机动队2 无罪》**：评分**8.7**，由押井守执导的剧场版。延续了前作的赛博朋克美学和哲学思辨，画面和音乐都极具水准[4]。\n*   **《星空清理者》**：评分**8.1**，一部写实风格的硬科幻作品。讲述了在太空从事碎片回收工作的主角们的职场与人生故事，对宇宙开发的细节描绘非常真实[8]。\n*   **《黑客帝国动画版》**：评分**8.0**，由多位知名导演（如渡边信一郎、川尻善昭等）共同创作的短片集。它从不同角度拓展了《黑客帝国》的世界观，被观众评价为有“复古的科幻想象”[1][5]。\n*   **《银翼杀手：2022大断电》**：评分**7.5**，由渡边信一郎执导的短片。作为《银翼杀手》系列的前传，它解释了正片中“大断电”事件的起因，作画和氛围都非常出色[6]。\n*   **《机魂末世录》**：评分**7.3**，一部风格独特的意识流科幻作品。由MADHOUSE制作，讲述在末世背景下，少年与神秘组织战斗的故事，氛围致郁但引人深思[2]。\n\n这些动画涵盖了赛博朋克、硬科幻、太空歌剧等多种科幻子类型，希望你能从中找到喜欢的作品。",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻"
+      ],
+      "correct": false,
+      "faithfulness": 0.41353383458646614,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.4,
+        "completeness": 0.3,
+        "overall": 0.43,
+        "hallucination": true,
+        "reason": "回答推荐了多部科幻动画，但大部分（如《攻壳机动队》《星空清理者》《银翼杀手：2022大断电》）未出现在提供的检索上下文中，属于幻觉；仅《黑客帝国动画版》和《机魂末世录》与上下文匹配，但评分和标签引用不准确；整体与检索内容部分相关，但信息不准确且不完整。"
+      },
+      "latency": 7.694063663482666,
+      "tokens": 1608,
+      "completion_tokens": 390,
+      "retrieve_latency": 0.39605116844177246,
+      "num_docs": 10
+    },
+    {
+      "id": "RC003",
+      "type": "recommendation",
+      "difficulty": "medium",
+      "query": "推荐几部京阿尼制作的催泪番",
+      "answer": "根据搜索结果，京都动画（京阿尼）制作了不少经典的催泪番，以下为你推荐几部评分和口碑都很高的作品：\n\n1.  **《CLANNAD 〜AFTER STORY〜》**：评分高达 **9.2** 分，是许多观众心中的“神作”。故事涉及校园、恋爱、亲情与人生，被标签为“催泪”、“治愈系”和“人生”[5]。它由京都动画制作，导演是石原立也，编剧为志茂文彦[1][5]。\n2.  **《CLANNAD》**：作为《AFTER STORY》的前作，本作评分为 **8.4** 分，同样被标签为“神作”、“催泪”和“治愈”，讲述了校园日常与恋爱的故事[4]。制作公司为京都动画，导演是高桥真梨子，编剧是志茂文彦[8]。\n3.  **《AIR》**：评分为 **8.0** 分，是一部经典的催泪作品，标签包括“神作”、“治愈”、“催泪”和“奇幻”[3]。该作由京都动画制作，导演是鹤冈阳太，编剧为志茂文彦[9]。\n4.  **《Kanon》**：评分为 **7.7** 分，同样是一部以“催泪”和“治愈”著称的校园恋爱故事，带有奇幻元素[6]。它也是由京都动画制作，导演石原立也，编剧志茂文彦[6]。\n\n这些作品大多改编自Key社的游戏，由麻枝准参与原作，志茂文彦负责系列构成，是京阿尼催泪动画的代表作。如果你对Key社作品感兴趣，也可以看看《键等》这部作品，有观众评论提到“看过几部K社作品的推荐”[10]。",
+      "gold_entities": [
+        "京都动画"
+      ],
+      "gold_keywords": [
+        "京都动画",
+        "京阿尼",
+        "CLANNAD",
+        "催泪"
+      ],
+      "correct": true,
+      "faithfulness": 0.48677248677248675,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "回答完全符合查询要求，准确推荐了京阿尼制作的催泪番，包括CLANNAD、AIR等，信息准确且完整，无幻觉。"
+      },
+      "latency": 6.708833932876587,
+      "tokens": 1292,
+      "completion_tokens": 394,
+      "retrieve_latency": 0.36490488052368164,
+      "num_docs": 10
+    },
+    {
+      "id": "RC006",
+      "type": "recommendation",
+      "difficulty": "hard",
+      "query": "推荐几部和混沌武士风格类似的动画，但不要渡边信一郎的其他作品",
+      "answer": "根据搜索结果，为你推荐几部与《混沌武士》风格相似，但并非渡边信一郎导演的动画：\n\n*   **《爆炸头武士》**\n    *   **相似之处**：这部作品同样融合了**武士、动作和现代音乐元素**（特别是嘻哈文化），风格独特且充满暴力美学。虽然制作公司是GONZO而非《混沌武士》的Manglobe，但其大胆的视觉风格和快节奏的打斗场面，与《混沌武士》的洒脱感有异曲同工之妙[1][4][10]。\n    *   **注意**：它的评分（7.1）低于《混沌武士》（8.5），风格可能更为直接和血腥[2][4]。\n\n*   **《七武士》**\n    *   **相似之处**：这部动画改编自黑泽明的经典电影，核心主题同样是**召集一群性格各异的武士对抗强敌**。虽然背景设定在科幻与奇幻交织的未来世界，但其“武士精神”的内核与《混沌武士》中对武士道的另类诠释有共通之处[6][7]。\n    *   **注意**：它的评分（7.0）不高，有观众评价其“烂尾”，但如果你对武士题材本身感兴趣，仍可一看[7]。\n\n*   **《江户盗贼团五叶》**\n    *   **相似之处**：这部作品与《混沌武士》有着非常直接的关联——**制作公司同为Manglobe，导演中泽一登也是《混沌武士》的角色设计师**[1][9]。故事背景同样设定在江户时代，讲述了一段充满市井风情的侠盗故事。它的叙事节奏舒缓，意境悠远，与《混沌武士》的公路片气质和独特配乐有精神上的共鸣[2][9]。\n\n简单来说，如果你喜欢《混沌武士》的嘻哈武士风格，可以试试《爆炸头武士》；如果偏爱其召集伙伴的群像剧模式，可以看《七武士》；如果沉醉于其江户风情和艺术气质，《江户盗贼团五叶》会是很好的选择。",
+      "gold_entities": [
+        "混沌武士",
+        "渡边信一郎"
+      ],
+      "gold_keywords": [
+        "类似",
+        "混沌武士",
+        "排除"
+      ],
+      "correct": true,
+      "faithfulness": 0.32608695652173914,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答准确推荐了非渡边信一郎的类似风格动画，但《七武士》与《混沌武士》风格相似度较低，且未提及更多符合要求的作品，完整性略有不足。"
+      },
+      "latency": 8.595467805862427,
+      "tokens": 1314,
+      "completion_tokens": 444,
+      "retrieve_latency": 0.3347632884979248,
+      "num_docs": 10
+    },
+    {
+      "id": "CP001",
+      "type": "comparison",
+      "difficulty": "easy",
+      "query": "比较一下 CLANNAD 和 AIR，哪部更催泪",
+      "answer": "根据搜索结果中的观众评论和作品信息，**《CLANNAD》**（尤其是包含第二季《CLANNAD 〜AFTER STORY〜》的完整故事）被普遍认为比《AIR》更催泪。\n\n以下是基于搜索结果的详细比较：\n\n### 催泪深度与结构\n\n*   **《CLANNAD》**：其催泪效果是渐进且深远的。第一季被描述为“优秀的校园恋爱剧”和“前菜”[6]，通过多个角色的故事线（如风子线、琴美线）细致地铺垫了“温暖的氛围”[10]。而真正的催泪核心在于第二季《CLANNAD 〜AFTER STORY〜》，它讲述了主角毕业后进入社会、组建家庭并经历重大人生变故的故事。评论指出，正是因为有第一季的温暖塑造，第二季的“失去才更显得伤感”[10]，从而达到了“足以让人落泪”[6]甚至“伟大无需多言”的高度[2]。\n\n*   **《AIR》**：虽然也被认为是感人的作品，但评论指出其催泪点主要集中在“古代的回忆和最后观铃与晴子”的结局部分[4]。有观众认为其篇幅太短，导致剧情展开不如预期深刻，整体评价为“中规中矩”，虽然“非常感人，但是有一点失望”[4]。\n\n### 观众评价的直接对比\n\n搜索结果中虽然没有直接对比两者的评论，但评价的措辞和深度有明显差异：\n\n*   对《CLANNAD》的评价使用了“神作”、“伟大”、“人生”[8]等词汇，强调其让人“看哭”[2]的冲击力。\n*   对《AIR》的评价则更多是“中规中矩”、“有一手”[4][7]，虽然认可其感人之处，但情感冲击力和作品地位的评价明显低于《CLANNAD》。\n\n### 结论\n\n综合来看，如果你在寻找一部能带来深刻情感体验的作品，**《CLANNAD》及其续作《CLANNAD 〜AFTER STORY〜》是更受公认的催泪神作**。它通过漫长的篇幅构建了深厚的羁绊，其催泪效果源于对“人生”的完整描绘[8][10]。而《AIR》虽然也有感人的结局，但在剧情深度和情感铺垫上，根据观众反馈，被认为略逊一筹[4]。",
+      "gold_entities": [
+        "CLANNAD",
+        "AIR"
+      ],
+      "gold_keywords": [
+        "CLANNAD",
+        "AIR",
+        "催泪",
+        "比较"
+      ],
+      "correct": true,
+      "faithfulness": 0.34814814814814815,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答直接比较了CLANNAD和AIR的催泪程度，引用了观众评论和作品结构，但部分细节（如AIR的评论）未在检索上下文中明确出现，整体准确且相关，但完整性略欠。"
+      },
+      "latency": 10.451845169067383,
+      "tokens": 1127,
+      "completion_tokens": 499,
+      "retrieve_latency": 0.3306448459625244,
+      "num_docs": 10
+    },
+    {
+      "id": "CP002",
+      "type": "comparison",
+      "difficulty": "medium",
+      "query": "比较一下星际牛仔和混沌武士的风格",
+      "answer": "《星际牛仔》和《混沌武士》都是渡边信一郎执导的经典原创动画，两者在精神内核上一脉相承，但在风格上却有着截然不同的表达。简单来说，它们像是同一枚硬币的两面，一面是浪漫的宇宙蓝调，一面是狂放的江户嘻哈。\n\n以下是两部作品在核心风格上的详细对比：\n\n| 对比维度 | **星际牛仔 (Cowboy Bebop)** | **混沌武士 (Samurai Champloo)** |\n| :--- | :--- | :--- |\n| **核心美学** | **太空歌剧与黑色电影**：将西部片的荒凉感、黑色电影的疏离感与科幻设定完美融合，整体基调是**浪漫、忧郁和怀旧**的。 | **时代剧与街头文化**：将江户时代的武士文化与现代嘻哈（Hip-Hop）元素（如说唱、涂鸦、打碟）暴力嫁接，整体基调是**狂放、不羁和随性**的。 |\n| **音乐灵魂** | **蓝调与爵士乐**：音乐是作品的绝对灵魂，由**菅野洋子**操刀，以自由奔放的爵士乐（Bebop）为核心，贯穿全剧，完美烘托出角色的宿命感和浪漫气息[4][9]。 | **嘻哈音乐**：音乐同样是灵魂，由Nujabes、Force of Nature等知名Hip-Hop音乐人打造。节奏感强烈的Lo-fi Hip-Hop与武士的刀光剑影形成奇妙化学反应，定义了作品的“摇摆”感[3]。 |\n| **叙事结构** | **单元剧为主，暗藏主线**：每一集都是一个相对独立的故事，主角们为了赏金在太阳系间穿梭，通过一个个委托逐渐拼凑出他们无法逃避的过去[4]。 | **公路片模式**：故事围绕女主角风寻找“有向日葵味道的武士”展开，三人结伴旅行。叙事更加松散、随性，充满了意想不到的插曲和偶遇[3]。 |\n| **角色塑造** | **背负过去的成年人**：斯派克、杰特、菲和爱德，都是被过去束缚、在当下漂泊的孤独灵魂。他们之间的关系疏离又深刻，充满了成年人的无奈与浪漫[4]。 | **寻找未来的年轻人**：无幻、仁和风，三人因为偶然的际遇同行。他们虽然也有各自的过去，但故事",
+      "gold_entities": [
+        "星际牛仔",
+        "混沌武士"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "混沌武士",
+        "渡边信一郎",
+        "风格"
+      ],
+      "correct": true,
+      "faithfulness": 0.22522522522522523,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答准确对比了两部作品风格，但未提及渡边信一郎是共同导演，且部分细节（如音乐制作人）与检索上下文不完全一致，整体质量较高。"
+      },
+      "latency": 11.75329065322876,
+      "tokens": 1185,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.5281178951263428,
+      "num_docs": 10
+    },
+    {
+      "id": "CP004",
+      "type": "comparison",
+      "difficulty": "hard",
+      "query": "比较宫崎骏和今敏的导演风格",
+      "answer": "宫崎骏和今敏是日本动画界两位巨匠，但他们的导演风格截然不同。基于提供的搜索结果，我可以为你分析宫崎骏的风格，但搜索结果中**没有关于今敏的任何信息**，因此无法进行直接比较。下面我将先总结宫崎骏的风格，再补充今敏的典型风格作为对比参考。\n\n### 宫崎骏的导演风格（基于搜索结果）\n\n从列出的作品来看，宫崎骏的风格主要体现在：\n\n*   **核心身份：编剧与世界观缔造者**\n    搜索结果中，宫崎骏在绝大多数作品（如《龙猫》、《幽灵公主》、《千与千寻》、《哈尔的移动城堡》等）中都担任了**编剧/系列构成**一职[1][2][3][8]。这表明他是作品故事和世界观的核心创作者，导演则更多负责将他的构想视觉化。他的作品往往源于他个人的完整构思。\n\n*   **制作公司与合作模式**\n    他的作品几乎都由**吉卜力工作室**制作[1]-[10]。这形成了一种稳定的、以他为中心的创作模式，保证了其个人风格的连贯性。\n\n*   **主题与视觉特征**\n    宫崎骏的作品通常以**奇幻的冒险、人与自然的冲突、飞行与成长**为主题，主角多为坚毅的少女。视觉上充满丰富的想象力，如《龙猫》中的森林精灵、《千与千寻》中的神灵世界。画风细腻，色彩柔和，充满怀旧与温情。\n\n### 今敏的导演风格（补充信息）\n\n今敏的风格与宫崎骏形成鲜明对比，主要体现在：\n\n*   **核心身份：导演与影像魔术师**\n    今敏的作品（如《未麻的部屋》、《千年女优》、《红辣椒》）几乎都由他本人亲自担任**导演**，并深度参与编剧和分镜。他是作品影像和叙事结构的绝对掌控者。\n\n*   **主题与叙事特征**\n    他的作品聚焦于**现代人的精神世界、梦境与现实的交织、身份认同的混乱**。他擅长使用眼花缭乱的**匹配剪辑**和**无缝转场**，打破时空界限，营造出亦真亦幻的心理惊悚感或迷离感。\n\n*   **视觉与题材**\n    画风偏向写实，题材多为**面向成人的心理悬疑、惊悚或剧情片**，探讨人性的阴暗面和社会压力，与宫崎骏的奇幻冒险童话形成鲜明对比。\n\n### 总结对比\n\n| ",
+      "gold_entities": [
+        "宫崎骏",
+        "今敏"
+      ],
+      "gold_keywords": [
+        "宫崎骏",
+        "今敏",
+        "导演",
+        "风格"
+      ],
+      "correct": false,
+      "faithfulness": 0.09180327868852459,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.5,
+        "completeness": 0.4,
+        "overall": 0.5,
+        "hallucination": false,
+        "reason": "回答正确区分了两位导演的风格，但检索上下文未提供今敏信息，导致对比部分依赖外部知识，且宫崎骏风格分析基于不完整上下文（如导演信息有误），整体准确性和完整性不足。"
+      },
+      "latency": 10.238558292388916,
+      "tokens": 968,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.308974027633667,
+      "num_docs": 10
+    },
+    {
+      "id": "AL001",
+      "type": "alias_resolution",
+      "difficulty": "easy",
+      "query": "EVA 的评分",
+      "answer": "根据搜索结果，EVA（新世纪福音战士）系列不同作品的评分如下：\n\n*   **《新世纪福音战士》 (TV版)**：**8.7分** (33824人评分)[2]\n*   **《新世纪福音战士剧场版 Air/真心为你》**：**8.9分** (21646人评分)[8]\n*   **《新世纪福音战士剧场版 DEATH(TRUE)2/Air/真心为你》**：**8.5分** (8613人评分)[6]\n*   **《福音战士新剧场版：序》**：**8.0分** (16105人评分)[3]\n*   **《福音战士新剧场版：破》**：**8.4分** (17906人评分)[1]\n\n其中，评分最高的是《新世纪福音战士剧场版 Air/真心为你》，为8.9分[8]。",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA"
+      ],
+      "correct": true,
+      "faithfulness": 0.5733333333333334,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.6,
+        "completeness": 0.5,
+        "overall": 0.63,
+        "hallucination": true,
+        "reason": "回答提到了EVA系列多个作品的评分，但引用了未在检索上下文中出现的条目（如剧场版Air/真心为你等），存在幻觉；检索上下文仅包含TV版8.7分、新剧场版破8.4分和序8.0分，回答中其他评分无依据；整体相关但准确性和完整性不足。"
+      },
+      "latency": 2.9361183643341064,
+      "tokens": 1133,
+      "completion_tokens": 190,
+      "retrieve_latency": 0.29578161239624023,
+      "num_docs": 10
+    },
+    {
+      "id": "AL003",
+      "type": "alias_resolution",
+      "difficulty": "medium",
+      "query": "民工漫里评分最高的是哪个",
+      "answer": "根据搜索结果，在被称为“民工漫”的几部作品中，**《猎人》**（2011年重制版）的评分最高，为**8.2分**（评分人数6472）[8]。\n\n其他几部主要民工漫的评分如下：\n*   **《航海王》**：8.3分（评分人数14543）[2]\n*   **《火影忍者》**：7.6分（评分人数9052）[7]\n*   **《火影忍者疾风传》**：7.6分（评分人数7962）[4]\n*   **《死神》**：7.3分（评分人数5442）[6]\n\n虽然《航海王》的评分（8.3）略高于《猎人》（8.2），但《猎人》在搜索结果中有两个条目，1999年版评分8.4[5]，2011年版评分8.2[8]。综合来看，在几大核心民工漫中，《猎人》的整体评价非常高。",
+      "gold_entities": [],
+      "gold_keywords": [
+        "评分"
+      ],
+      "correct": false,
+      "faithfulness": 0.4421052631578947,
+      "judge": {
+        "relevance": 0.4,
+        "accuracy": 0.2,
+        "completeness": 0.3,
+        "overall": 0.3,
+        "hallucination": true,
+        "reason": "答案声称《猎人》评分最高，但检索到的上下文显示《航海王》评分8.3高于《猎人》8.2，且《猎人》并非传统三大民工漫；答案存在事实错误和幻觉，与检索内容不符。"
+      },
+      "latency": 3.6279444694519043,
+      "tokens": 1245,
+      "completion_tokens": 217,
+      "retrieve_latency": 0.29331183433532715,
+      "num_docs": 10
+    },
+    {
+      "id": "AL005",
+      "type": "alias_resolution",
+      "difficulty": "hard",
+      "query": "谏山创那部巨人动画叫什么来着",
+      "answer": "根据搜索结果，谏山创那部巨人动画叫**《进击的巨人》**（進撃の巨人）[2][6]。这部作品有多个季度和衍生版本，比如最终季由MAPPA制作[1][4][5][8]，而前几季主要由WIT STUDIO制作[2][3][7]。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "进击的巨人"
+      ],
+      "correct": true,
+      "faithfulness": 0.35135135135135137,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案准确回答了用户问题，正确给出动画名称《进击的巨人》，并补充了制作公司等额外信息，完全基于检索上下文，无幻觉。"
+      },
+      "latency": 2.45523738861084,
+      "tokens": 777,
+      "completion_tokens": 72,
+      "retrieve_latency": 0.33887529373168945,
+      "num_docs": 10
+    },
+    {
+      "id": "MT001",
+      "type": "multi_turn",
+      "difficulty": "easy",
+      "query": "推荐几部科幻动画",
+      "answer": "根据搜索结果，为你推荐以下几部高评价的科幻动画：\n\n*   **《黑客帝国动画版》**：评分8.0，由MADHouse、Studio4℃等顶尖团队制作，是一部由多个短片组成的剧场版动画，充满了复古的科幻想象，被观众形容为“一种20世纪初科幻小说一般的质感” [1][4]。\n*   **《星空清理者》**：评分8.1，是一部少见的硬科幻番剧，制作和剧情都非常好，由SUNRISE制作，谷口悟朗执导，大河内一楼参与编剧，故事围绕宇宙中的职场生活展开，写实且治愈 [3][8]。\n*   **《回忆三部曲》**：评分8.0，由大友克洋、今敏等大师参与创作，是一部经典的科幻短片集，以其独特的世界观和讽刺性著称 [9]。\n*   **《银河英雄传说 我的征途是星辰大海》**：评分7.7，改编自田中芳树的经典科幻小说，是一部以宏大战争和深刻政治思考著称的剧场版动画 [7]。\n*   **《火之鸟》**：评分7.1，改编自手冢治虫的经典漫画，是一部探讨人性与生命的史诗级科幻动画 [5]。\n\n此外，如果你对意识流和末世题材感兴趣，可以看看《机魂末世录》（评分7.3）[2]；喜欢宇宙冒险和青春励志的话，《宇宙星路》（评分7.2）也是不错的选择 [10]。",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻",
+        "评分",
+        "最高"
+      ],
+      "correct": true,
+      "faithfulness": 0.46153846153846156,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答推荐了多部科幻动画，与查询相关，但部分评分（如《星空清理者》8.1）未在检索上下文中出现，可能来自外部知识，整体准确且完整，无幻觉。"
+      },
+      "latency": 6.800920248031616,
+      "tokens": 1392,
+      "completion_tokens": 323,
+      "retrieve_latency": 0.3004131317138672,
+      "num_docs": 10
+    },
+    {
+      "id": "MT002",
+      "type": "multi_turn",
+      "difficulty": "medium",
+      "query": "命运石之门好看吗",
+      "answer": "《命运石之门》是一部广受好评的科幻悬疑动画，被许多观众奉为“神作”。根据搜索结果，其TV版评分高达**8.8分**，有近4万人参与评分，标签包括“神作”、“科幻”、“悬疑”等[6]。\n\n不过，观众对系列不同作品的评价存在差异：\n*   **TV本篇**：被认为是核心，口碑极佳[6]。\n*   **《命运石之门0》**：评价呈现两面性。一方面，有观众认为它是“奠定神作的补完作”，有了它故事才完整[2][4]；另一方面，也有评论指出部分集数无聊，且动画本身讲得不够明白，可能需要借助解说或原作游戏才能完全理解[7]。\n*   **剧场版《负荷领域的既视感》**：评价相对平淡。有观众认为它不如正传好看[1]，观感略显平淡，但也有“意犹未尽”之感[8]。\n\n总的来说，**《命运石之门》是一部非常值得一看的经典动画**，但其续作和衍生作品的口碑则因人而异。如果你喜欢慢热但后期爆发力强的科幻悬疑故事，这部作品应该会很合你的口味。",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "制作公司",
+        "命运石之门",
+        "WHITE FOX"
+      ],
+      "correct": true,
+      "faithfulness": 0.1989795918367347,
+      "judge": {
+        "relevance": 0.7,
+        "accuracy": 0.6,
+        "completeness": 0.5,
+        "overall": 0.6,
+        "hallucination": false,
+        "reason": "回答整体相关，但未提及制作公司WHITE FOX，且部分评分和标签信息可能来自外部知识而非给定上下文，准确性一般；完整性不足，未覆盖所有预期关键词和实体。"
+      },
+      "latency": 5.518955230712891,
+      "tokens": 726,
+      "completion_tokens": 256,
+      "retrieve_latency": 0.2912585735321045,
+      "num_docs": 10
+    },
+    {
+      "id": "MT003",
+      "type": "multi_turn",
+      "difficulty": "hard",
+      "query": "推荐几部和星际牛仔类似的",
+      "answer": "根据搜索结果，《星际牛仔》是一部由**SUNRISE**制作的经典科幻动画，融合了战斗、音乐、公路片等元素，被誉为神作[1][2]。如果你喜欢这种风格，以下推荐几部类似的作品：\n\n1. **《混沌武士》（Samurai Champloo）**  \n   同样由渡边信一郎执导，将江户时代背景与嘻哈音乐结合，延续了《星际牛仔》的单元剧结构和洒脱的公路片风格，动作场面流畅，配乐同样由顶尖音乐人操刀。\n\n2. **《太空丹迪》（Space Dandy）**  \n   渡边信一郎的另一部作品，以太空冒险为主题，风格更偏向喜剧和无厘头，但同样充满创意和视觉冲击，配乐依然出色。\n\n3. **《黑之契约者》（Darker than Black）**  \n   由BONES制作（与《星际牛仔》剧场版制作公司相同[9]），以超能力战斗和冷峻的都市氛围为特色，主角同样带有孤独的硬汉气质。\n\n4. **《枪神》（Trigun）**  \n   90年代经典科幻西部片，主角瓦修与斯派克有相似的随性外表和深沉内心，故事在幽默与严肃间切换，探讨人性与救赎。\n\n5. **《攻壳机动队》（Ghost in the Shell）**  \n   科幻题材的里程碑，探讨赛博朋克与哲学主题，虽然风格更严肃，但同样拥有精良的制作和深刻的叙事。\n\n这些作品在主题、风格或制作团队上与《星际牛仔》有共通之处，希望你能找到喜欢的！",
+      "gold_entities": [
+        "星际牛仔"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "类似",
+        "两部",
+        "不是"
+      ],
+      "correct": true,
+      "faithfulness": 0.24714828897338403,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.9,
+        "overall": 0.87,
+        "hallucination": false,
+        "reason": "回答推荐了多部与《星际牛仔》风格类似的作品，如《混沌武士》《太空丹迪》等，相关性高；但未严格遵循用户可能隐含的‘两部’要求，且部分推荐（如《攻壳机动队》）风格差异较大，准确性略有不足；内容较完整，无虚构信息。"
+      },
+      "latency": 7.577706336975098,
+      "tokens": 975,
+      "completion_tokens": 343,
+      "retrieve_latency": 0.3308389186859131,
+      "num_docs": 10
+    },
+    {
+      "id": "ED004",
+      "type": "edge_case",
+      "difficulty": "easy",
+      "query": "你好",
+      "answer": "根据搜索结果，关于“你好”相关的番剧，主要有两部作品被提及：\n\n1. **《你好 世界》**（HELLO WORLD）\n   观众评价呈现两极分化：\n   - 正面评价包括“结局厉害！”[3]、“剧情不错”[5]、“马戏不错”[1]。\n   - 负面评价集中在“感觉一般”[2]、“不喜欢3D画风”[6]，以及“某些地方的3d演出比较出戏”[5]。\n\n2. **《你好七叶》**系列\n   - 第一季有观众评价“人设萌”[10]。\n   - 第二季评价相对较低，有“还行”[4]、“前面还行，后面有点迷”[7]、“不如第一季”[8]等评论。\n\n另外，还有一部《森田同学很沉默》的评论中出现了“你好”[9]，但这可能只是观众留言，并非番剧名称。\n\n如果你是想了解具体某部番剧的详细信息，可以告诉我更完整的名称哦！",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "correct": true,
+      "faithfulness": 0.29012345679012347,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.7,
+        "hallucination": false,
+        "reason": "回答正确识别了查询'你好'并关联了相关番剧，但未完全匹配预期实体和关键词，且部分内容（如《你好七叶》）与查询关联性较弱，整体准确但不够聚焦。"
+      },
+      "latency": 4.495654821395874,
+      "tokens": 474,
+      "completion_tokens": 211,
+      "retrieve_latency": 0.32996225357055664,
+      "num_docs": 10
+    },
+    {
+      "id": "ED002",
+      "type": "edge_case",
+      "difficulty": "medium",
+      "query": "",
+      "answer": "",
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "overall": 0,
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "reason": "Error code: 400 - {'error': {'code': 'InvalidParameter', 'message': 'The parameter `input` specified in the request are not valid: input could not be empty. Request id: 021785201919386116ee5ccf1c0347b"
+      },
+      "latency": 0,
+      "tokens": 0
+    },
+    {
+      "id": "ED001",
+      "type": "edge_case",
+      "difficulty": "hard",
+      "query": "!@#",
+      "answer": "看起来你输入了一些特殊字符（!@#），但根据搜索结果的上下文，你可能是想查询与“GJ部@”相关的信息？以下是整理后的内容：\n\n---\n\n**关于《GJ部@》的观众评论摘要**  \n根据搜索结果，观众对《GJ部@》的评论多为简短标记，例如：  \n- “补标”（来源[1][2]）  \n- “忘了什么时候看的了，补个标”（来源[5]）  \n- “这个就不多评价了”（来源[10]）  \n\n这些评论表明观众可能只是记录观看状态，未提供详细评价。\n\n---\n\n如果你有其他具体问题（例如剧情、角色等），可以补充说明，我会尽力解答！",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "correct": false,
+      "faithfulness": 0.2265625,
+      "judge": {
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0,
+        "overall": 0.0,
+        "hallucination": true,
+        "reason": "用户输入为无意义特殊字符，未包含任何有效查询意图，但回答虚构了用户可能查询《GJ部@》的假设，并基于无关上下文生成内容，属于完全幻觉。"
+      },
+      "latency": 3.478137254714966,
+      "tokens": 405,
+      "completion_tokens": 150,
+      "retrieve_latency": 0.3330345153808594,
+      "num_docs": 10
+    },
+    {
+      "id": "KB001",
+      "type": "knowledge_boundary",
+      "difficulty": "medium",
+      "query": "进击的巨人动画改编自谁的原作",
+      "answer": "《进击的巨人》动画改编自**谏山创**的同名漫画原作。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "谏山创"
+      ],
+      "correct": true,
+      "faithfulness": 0.4090909090909091,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案准确回答了问题，明确指出原作是谏山创，与预期实体和关键词完全匹配，且未出现幻觉信息。"
+      },
+      "latency": 1.284532070159912,
+      "tokens": 758,
+      "completion_tokens": 19,
+      "retrieve_latency": 0.290571928024292,
+      "num_docs": 10
+    },
+    {
+      "id": "KB002",
+      "type": "knowledge_boundary",
+      "difficulty": "hard",
+      "query": "EVA 的宗教隐喻有哪些",
+      "answer": "作为一部深度融入宗教符号与哲学思辨的动画，《新世纪福音战士》（EVA）的宗教隐喻是其标志性特征之一。它并非严谨的神学论述，而是巧妙地借用犹太教-基督教（Judeo-Christian）的符号系统，来构建世界观、推动剧情并深化角色的心理描写。\n\n以下是EVA中几个核心的宗教隐喻：\n\n### 1. 核心设定：源自《圣经·创世记》的意象\n\n*   **亚当与莉莉丝**：在剧中，第一使徒亚当和第二使徒莉莉丝是生命之源，这直接对应了犹太教和基督教共有的创世神话。但EVA进行了颠覆性改编：亚当是白之月（White Moon）的生命之源，诞生了使徒；而莉莉丝是黑之月（Black Moon）的生命之源，其体液（LCL）孕育了地球上的万物，包括人类。这解释了为何人类被称为“第十八使徒”，因为我们并非亚当的后裔，而是莉莉丝的后代。\n*   **朗基努斯之枪**：在《圣经》中，这是刺穿被钉在十字架上的耶稣肋旁的枪。在EVA里，它被设定为一件能够穿透A.T.力场、甚至能将生命体固化的神器，是控制生命进程的关键。它被用于将莉莉丝钉在最终教条区，阻止其生长，象征着对生命力量的封印与控制。\n*   **生命之树**：源自犹太教卡巴拉（Kabbalah）神秘主义，描述了神创造世界的方式和路径。在《真心为你》的高潮部分，巨大化的莉莉丝与EVA初号机融合，开启了“生命之树”，形成了倒生的生命树图阵，这是人类补完计划启动的标志，象征着回归生命本源、打破个体界限的过程。\n\n### 2. 组织与计划：宗教化的叙事框架\n\n*   **SEELE**：德语意为“灵魂”，是一个在幕后操纵世界的秘密结社。他们的标志是倒三角形和七只眼睛，源自基督教中代表“上帝全知之眼”。SEELE扮演着先知和审判者的角色，试图通过《死海文书》的预言，将人类引导至他们所认为的救赎——即“人类补完计划”。\n*   **NERV**：德语意为“神经”，是执行SEELE计划的组织。其标志是无花果叶，在《圣经》中，亚当和夏娃在偷食禁果后，",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA",
+        "宗教",
+        "隐喻"
+      ],
+      "correct": true,
+      "faithfulness": 0.24624624624624625,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答详细列举了EVA的宗教隐喻，与查询高度相关，内容准确，但部分细节（如SEELE标志的七只眼）未在检索上下文中明确支持，且未完全覆盖所有可能隐喻，故扣分。"
+      },
+      "latency": 11.266732454299927,
+      "tokens": 1716,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.332317590713501,
+      "num_docs": 10
+    }
+  ],
+  "details_b4": [
+    {
+      "id": "SF001",
+      "type": "simple_fact",
+      "difficulty": "easy",
+      "query": "命运石之门的评分是多少",
+      "answer": "《命运石之门》的评分是 **8.8 分**，共有 39808 人参与评分。",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "评分"
+      ],
+      "correct": true,
+      "faithfulness": 0.76,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案完全基于检索到的上下文，准确提供了评分和评分人数，无虚构信息。"
+      },
+      "latency": 1.3278422355651855,
+      "tokens": 1273,
+      "completion_tokens": 25,
+      "retrieve_latency": 0.3817317485809326,
+      "num_docs": 20
+    },
+    {
+      "id": "SF005",
+      "type": "simple_fact",
+      "difficulty": "medium",
+      "query": "攻壳机动队有几部剧场版",
+      "answer": "根据搜索结果，《攻壳机动队》系列共有以下剧场版作品：\n\n1. **《攻壳机动队》**（1995年上映，评分8.8）  \n2. **《攻壳机动队2 无罪》**（2004年上映，评分8.7）  \n3. **《攻壳机动队 S.A.C. Solid State Society》**（2006年上映，评分8.4）  \n4. **《攻壳机动队2.0》**（2008年上映，评分8.4，为1995年版的重制版）  \n\n此外，还有一部较新的剧场版 **《攻壳机动队 THE GHOST IN THE SHELL》**（制作公司为サイエンスSARU），但搜索结果中未显示其具体上映日期和评分。  \n\n综上，目前可确认的剧场版至少有5部，其中4部有明确的评分和日期信息。",
+      "gold_entities": [
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队",
+        "剧场版"
+      ],
+      "correct": true,
+      "faithfulness": 0.5089285714285714,
+      "judge": {
+        "relevance": 0.8,
+        "accuracy": 0.6,
+        "completeness": 0.7,
+        "overall": 0.7,
+        "hallucination": true,
+        "reason": "回答列出了多部剧场版，但部分信息（如评分8.8、8.7）未在检索上下文中出现，且《攻壳机动队 S.A.C. Solid State Society》未被上下文支持，存在幻觉；相关性较高但准确性不足，完整性中等。"
+      },
+      "latency": 3.725663423538208,
+      "tokens": 1408,
+      "completion_tokens": 192,
+      "retrieve_latency": 0.8353836536407471,
+      "num_docs": 20
+    },
+    {
+      "id": "SF007",
+      "type": "simple_fact",
+      "difficulty": "hard",
+      "query": "押井守和神山健治都参与过的攻壳机动队作品有哪些",
+      "answer": "根据搜索结果，押井守和神山健治都参与过的《攻壳机动队》作品有：\n\n*   **《攻壳机动队 STAND ALONE COMPLEX》**（2002年TV版）\n*   **《攻壳机动队 S.A.C. 2nd GIG》**（2004年TV版）\n\n在这两部作品中，神山健治担任导演和编剧，押井守也作为标签被列出，表明他有所参与。",
+      "gold_entities": [
+        "押井守",
+        "神山健治",
+        "攻壳机动队"
+      ],
+      "gold_keywords": [
+        "攻壳机动队"
+      ],
+      "correct": false,
+      "faithfulness": 0.47560975609756095,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.3,
+        "completeness": 0.2,
+        "overall": 0.37,
+        "hallucination": true,
+        "reason": "答案声称押井守参与了《攻壳机动队 STAND ALONE COMPLEX》和《S.A.C. 2nd GIG》，但检索上下文显示这两部作品的导演和编剧均为神山健治等人，未提及押井守；且答案未包含押井守实际参与的电影作品（如1995年剧场版），存在幻觉和遗漏。"
+      },
+      "latency": 2.305133819580078,
+      "tokens": 1737,
+      "completion_tokens": 98,
+      "retrieve_latency": 0.29532313346862793,
+      "num_docs": 20
+    },
+    {
+      "id": "RC001",
+      "type": "recommendation",
+      "difficulty": "easy",
+      "query": "推荐几部科幻类型的动画",
+      "answer": "根据你的需求，我为你推荐几部口碑很好的科幻动画：\n\n1.  **《攻壳机动队 STAND ALONE COMPLEX》**\n    评分高达9.1分，是科幻动画中不可逾越的经典。它深入探讨了在赛博朋克世界中，灵魂与肉体的关系、政治阴谋和社会问题，思想深度和制作水准都堪称顶级。\n\n2.  **《攻壳机动队2 无罪》**\n    作为押井守执导的剧场版续作，评分8.7分。这部作品以其华丽的画面和深邃的哲学思辨而闻名，将探讨“何为人类”的主题推向了极致，是一部美学与思想并重的艺术品。\n\n3.  **《星空清理者》**\n    评分8.1分，是一部非常难得的硬科幻作品。故事聚焦于一群太空垃圾清理员，以写实的笔触描绘了近未来太空开发中的职场生活、人生理想与冲突，剧情扎实且治愈。\n\n4.  **《阿基拉》**\n    评分7.8分，是一部里程碑式的赛博朋克电影。它描绘了一个科技发达但社会崩坏的末日世界，作画水准极高，探讨了力量失控与毁灭的主题，对后世科幻作品影响深远。\n\n5.  **《回忆三部曲》**\n    评分8.0分，由三个风格迥异的科幻短片组成。由大友克洋、森本晃司等大师操刀，包含了太空歌剧、黑色喜剧和反乌托邦寓言，想象力丰富，极具讽刺意味和艺术价值。\n\n希望这份推荐列表能让你满意！",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻"
+      ],
+      "correct": false,
+      "faithfulness": 0.29739776951672864,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.4,
+        "completeness": 0.3,
+        "overall": 0.43,
+        "hallucination": true,
+        "reason": "回答推荐了《攻壳机动队》等作品，但检索到的上下文仅包含《黑客帝国动画版》《机魂末世录》《宇宙战舰大和号2199》，未提供这些推荐作品的评分或信息，属于幻觉；且未基于检索内容回答，相关性、准确性和完整性均较低。"
+      },
+      "latency": 7.8673484325408936,
+      "tokens": 2648,
+      "completion_tokens": 330,
+      "retrieve_latency": 0.31255197525024414,
+      "num_docs": 20
+    },
+    {
+      "id": "RC003",
+      "type": "recommendation",
+      "difficulty": "medium",
+      "query": "推荐几部京阿尼制作的催泪番",
+      "answer": "提到京阿尼（京都动画）制作的催泪番，这几部绝对是经典中的经典，被许多动漫迷誉为“人生”或“神作”：\n\n1.  **《CLANNAD ～AFTER STORY～》**：这可以说是催泪番的巅峰之作。如果说《CLANNAD》本篇是温馨的校园恋爱与家庭序曲，那么《AFTER STORY》就是将亲情、责任与人生无常刻画到极致，尤其是后半部分，几乎每一集都能让人泪流满面。\n\n2.  **《AIR》**：作为Key社“催泪三部曲”的夏之篇章，讲述了跨越千年的宿命与传承。它的主题曲《鸟之诗》被誉为“动漫界的国歌”，故事本身充满了夏日特有的忧伤与感动，结局极具冲击力。\n\n3.  **《Kanon》**：这是“催泪三部曲”的冬之篇章，以“奇迹”为主题。故事发生在一个被白雪覆盖的小镇，通过男主角与几位少女的相遇，逐渐揭开她们各自背负的悲伤过往，是一部关于遗忘与约定的感人故事。\n\n4.  **《CLANNAD》**：作为《AFTER STORY》的前半部分，虽然侧重于校园生活，但其中风子线和琴美线等故事已经展现了强大的催泪功力，为后续的情感爆发奠定了坚实的基础。\n\n这几部作品都改编自Key社的视觉小说，由京阿尼以极高的制作水准将其动画化，在情感渲染和细节刻画上堪称完美。",
+      "gold_entities": [
+        "京都动画"
+      ],
+      "gold_keywords": [
+        "京都动画",
+        "京阿尼",
+        "CLANNAD",
+        "催泪"
+      ],
+      "correct": true,
+      "faithfulness": 0.27983539094650206,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "回答完全符合查询要求，推荐了京阿尼制作的催泪番，包括CLANNAD、AIR、Kanon等，准确匹配了预期实体和关键词，内容完整且无幻觉。"
+      },
+      "latency": 7.757979869842529,
+      "tokens": 1805,
+      "completion_tokens": 320,
+      "retrieve_latency": 0.852543830871582,
+      "num_docs": 20
+    },
+    {
+      "id": "RC006",
+      "type": "recommendation",
+      "difficulty": "hard",
+      "query": "推荐几部和混沌武士风格类似的动画，但不要渡边信一郎的其他作品",
+      "answer": "根据你的要求，这里推荐几部与《混沌武士》风格相似、但并非渡边信一郎导演的动画：\n\n1. **《异邦人 无皇刃谭》**\n   - 这是一部剧场版动画，以武士和动作戏为核心，打斗场面作画极其出色，充满张力。它和《混沌武士》一样，有着浓厚的时代剧氛围和硬派的刀剑对决，但故事更偏向严肃的历史奇幻风格。\n\n2. **《爆炸头武士》**\n   - 虽然背景设定带有科幻和奇幻元素，但这部作品同样融合了武士精神、嘻哈音乐和暴力美学。它的打斗畅快淋漓，视觉风格独特，如果你喜欢《混沌武士》里那种随性又酷劲十足的感觉，可能会对这部感兴趣。\n\n3. **《道子与哈金》**\n   - 这是一部公路片风格的动画，讲述两个女性角色在异国他乡的逃亡之旅。虽然舞台不在日本，但它继承了《混沌武士》那种自由不羁的冒险精神、独特的配乐品味，以及单元剧式的叙事结构，整体氛围另类又洒脱。\n\n这些作品都在不同层面上与《混沌武士》有共通之处，比如强烈的风格化、出色的动作设计或公路片式的自由感，希望你能找到喜欢的！",
+      "gold_entities": [
+        "混沌武士",
+        "渡边信一郎"
+      ],
+      "gold_keywords": [
+        "类似",
+        "混沌武士",
+        "排除"
+      ],
+      "correct": true,
+      "faithfulness": 0.2669683257918552,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.9,
+        "overall": 0.87,
+        "hallucination": false,
+        "reason": "回答准确推荐了与《混沌武士》风格相似且非渡边信一郎的作品，如《异邦人 无皇刃谭》《爆炸头武士》《道子与哈金》，并解释了风格共通点。但《爆炸头武士》的导演并非渡边信一郎，符合排除要求；整体覆盖了用户需求，但未提及更多潜在候选，略有不足。"
+      },
+      "latency": 6.584084749221802,
+      "tokens": 2051,
+      "completion_tokens": 272,
+      "retrieve_latency": 0.6371533870697021,
+      "num_docs": 20
+    },
+    {
+      "id": "CP001",
+      "type": "comparison",
+      "difficulty": "easy",
+      "query": "比较一下 CLANNAD 和 AIR，哪部更催泪",
+      "answer": "根据观众评价和评分来看，**CLANNAD** 整体上被认为更催泪，尤其是它的第二季 **CLANNAD 〜AFTER STORY〜**。\n\n虽然两部作品都是 Key 社和京都动画合作的催泪经典，但催泪点和评价有所不同：\n\n*   **CLANNAD 的催泪是“层层递进”的**：第一季作为优秀的校园恋爱剧，用大量篇幅塑造了温暖的日常和人物羁绊[6][10]。这让第二季《AFTER STORY》中主角毕业后进入社会、面对家庭与人生重大变故时的“失去”显得格外伤感，被观众誉为“足以让人落泪的作品”[6][10]。《AFTER STORY》的评分高达 **9.2分**，远超第一季的8.4分，说明其情感冲击力得到了广泛认可[8][12]。\n\n*   **AIR 的催泪是“集中爆发”的**：有观众认为 AIR 的感人之处主要集中在最后两集，古代回忆和结局部分非常感人，但前期剧情可能有些无聊[4]。它的整体评分 **8.0分**，低于 CLANNAD 系列[13]。部分观众觉得其篇幅较短，剧情深度和期待中的有所差距[4]。\n\n简单来说，如果你喜欢通过漫长铺垫，在亲情和人生层面感受到巨大情感冲击，**CLANNAD** 会更让你感动；如果你偏爱带有奇幻色彩、在较短篇幅内集中爆发的悲情故事，**AIR** 可能更适合你。但从大众口碑来看，CLANNAD 的催泪效果更胜一筹。",
+      "gold_entities": [
+        "CLANNAD",
+        "AIR"
+      ],
+      "gold_keywords": [
+        "CLANNAD",
+        "AIR",
+        "催泪",
+        "比较"
+      ],
+      "correct": true,
+      "faithfulness": 0.3511111111111111,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答准确比较了两部作品，引用了观众评价和评分，但未直接使用检索到的CLANNAD观众评论，且AIR部分缺乏检索上下文支持，略有推测成分。"
+      },
+      "latency": 7.541327476501465,
+      "tokens": 1750,
+      "completion_tokens": 342,
+      "retrieve_latency": 0.592886209487915,
+      "num_docs": 20
+    },
+    {
+      "id": "CP002",
+      "type": "comparison",
+      "difficulty": "medium",
+      "query": "比较一下星际牛仔和混沌武士的风格",
+      "answer": "《星际牛仔》和《混沌武士》都是渡边信一郎执导的经典原创动画，虽然气质上一脉相承，但风格上各有千秋。\n\n**《星际牛仔》** 是太空歌剧与黑色电影的完美融合。它的风格核心是**浪漫的怀旧与孤独**。故事背景设定在未来的太阳系，却处处弥漫着对过去地球文化的追忆，尤其是爵士乐和西部片元素。菅野洋子创作的爵士配乐是作品的灵魂，慵懒、即兴又充满离别的伤感。整体基调是成年人的无奈与洒脱，主角们背负着沉重的过去，在宇宙中漂泊，单元剧形式下弥漫着“活在过去”的忧郁和宿命感。\n\n**《混沌武士》** 则是江户时代与嘻哈文化的狂野混搭。它的风格核心是**不羁的洒脱与随性**。作品将武士浪客的冒险与Hip-Hop、涂鸦、街舞等现代元素大胆拼接，创造出一种前所未有的视听冲击。Nujabes等人创作的嘻哈配乐赋予了动画独特的节奏感和现代气息。故事更像一场没头没尾却精彩纷呈的公路旅行，三位主角的寻找与逃亡充满了即兴的幽默和热血，整体气质更加奔放、戏谑，充满了“活在当下”的酷劲。\n\n简单来说，如果说《星际牛仔》是一首在宇宙酒吧里用萨克斯吹奏的忧郁蓝调，那么《混沌武士》就是一幅在古画卷上用喷漆罐挥洒的街头涂鸦。前者是成年人克制的浪漫与告别，后者是少年人随性的冒险与狂欢。",
+      "gold_entities": [
+        "星际牛仔",
+        "混沌武士"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "混沌武士",
+        "渡边信一郎",
+        "风格"
+      ],
+      "correct": true,
+      "faithfulness": 0.21245421245421245,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.9,
+        "completeness": 0.8,
+        "overall": 0.87,
+        "hallucination": false,
+        "reason": "回答准确对比了两部作品的风格，提及了渡边信一郎、音乐等关键点，但未使用检索到的具体制作公司和评分信息，略有不足。"
+      },
+      "latency": 7.935282468795776,
+      "tokens": 1543,
+      "completion_tokens": 345,
+      "retrieve_latency": 0.3363211154937744,
+      "num_docs": 20
+    },
+    {
+      "id": "CP004",
+      "type": "comparison",
+      "difficulty": "hard",
+      "query": "比较宫崎骏和今敏的导演风格",
+      "answer": "宫崎骏和今敏虽然都是日本动画界的大师，但他们的导演风格可以说是截然不同的两个世界。\n\n**宫崎骏的风格，核心是“自然与人文的宏大叙事”。**\n他像一个充满童心的吟游诗人，作品里充满了对自然的热爱、对飞翔的向往和对和平的追求。他的故事通常有清晰的正邪对抗，但反派往往也有复杂的动机，最后常常达成一种和解。在视觉上，宫崎骏偏爱手绘的细腻质感，角色设计圆润可爱，背景则无比精致，尤其擅长描绘壮丽的自然风光和充满想象力的奇幻世界，比如《幽灵公主》中的原始森林和《千与千寻》里的汤屋。他的电影总能给你一种温暖的、回归本真的治愈感。\n\n**今敏的风格，核心则是“梦境与现实的迷幻交织”。**\n他更像一个冷静的造梦师，专注于探索现代人的精神世界。他的作品主题往往涉及梦境、记忆、幻觉与多重人格，通过眼花缭乱的剪辑手法，比如匹配剪辑和淡入淡出，让观众分不清何为真实、何为虚幻。他的角色设计更偏向写实，故事节奏紧凑，充满了悬疑感和心理张力。比如《回忆三部曲》和《未麻的部屋》，都展现了他在有限空间内创造无限心理深度的能力。他的作品带给观众的，更多是智力上的挑战和一种清醒的、甚至有些冰冷的震撼。\n\n简单来说，宫崎骏让你想拥抱世界，而今敏让你想审视自我。一个是向外探索的奇幻冒险，一个是向内挖掘的心理迷宫。",
+      "gold_entities": [
+        "宫崎骏",
+        "今敏"
+      ],
+      "gold_keywords": [
+        "宫崎骏",
+        "今敏",
+        "导演",
+        "风格"
+      ],
+      "correct": true,
+      "faithfulness": 0.072,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答准确比较了宫崎骏和今敏的导演风格，但检索上下文仅包含宫崎骏作品且导演信息有误（如《龙猫》导演实为宫崎骏），未提供今敏相关信息，导致部分细节可能不精确；整体相关性和完整性较好，无幻觉。"
+      },
+      "latency": 8.559029340744019,
+      "tokens": 1705,
+      "completion_tokens": 328,
+      "retrieve_latency": 0.33558082580566406,
+      "num_docs": 20
+    },
+    {
+      "id": "AL001",
+      "type": "alias_resolution",
+      "difficulty": "easy",
+      "query": "EVA 的评分",
+      "answer": "《新世纪福音战士》（EVA）系列在不同平台和不同作品上评分差异较大，但整体评价极高。根据搜索结果，主要作品的评分如下：\n\n*   **TV版《新世纪福音战士》 (1995)**：**8.7 分**（33824人评分），被公认为经典神作。\n*   **旧剧场版《Air/真心为你》 (1997)**：**8.9 分**（21646人评分），是评分最高的作品之一。\n*   **新剧场版《序》 (2007)**：**8.0 分**（16105人评分）。\n*   **新剧场版《破》 (2009)**：**8.4 分**（17906人评分）。\n*   **新剧场版《Q》 (2012)**：**7.4 分**（12444人评分），评价相对分化。\n*   **新剧场版《终》 (2021)**：**8.4 分**（14586人评分），为系列画上圆满句号。\n\n总的来说，EVA系列的核心作品基本都在8分以上，尤其是TV版和旧剧场版，堪称神作标杆。",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA"
+      ],
+      "correct": true,
+      "faithfulness": 0.45689655172413796,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.7,
+        "completeness": 0.8,
+        "overall": 0.8,
+        "hallucination": true,
+        "reason": "回答提供了EVA系列多部作品的评分，但旧剧场版《Air/真心为你》和新剧场版《Q》《终》的评分及评分人数未在检索上下文中出现，属于幻觉；整体与查询相关，但部分数据不准确。"
+      },
+      "latency": 4.946162223815918,
+      "tokens": 1730,
+      "completion_tokens": 249,
+      "retrieve_latency": 0.6404619216918945,
+      "num_docs": 20
+    },
+    {
+      "id": "AL003",
+      "type": "alias_resolution",
+      "difficulty": "medium",
+      "query": "民工漫里评分最高的是哪个",
+      "answer": "根据搜索结果，在被称为“民工漫”的作品中，评分最高的是**《银魂》**，评分为**8.7分**。",
+      "gold_entities": [],
+      "gold_keywords": [
+        "评分"
+      ],
+      "correct": false,
+      "faithfulness": 0.4411764705882353,
+      "judge": {
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0,
+        "overall": 0.0,
+        "hallucination": true,
+        "reason": "答案声称《银魂》评分最高，但检索内容中未出现《银魂》及其评分，且《航海王》有明确评分8.3，答案完全基于虚构信息，属于幻觉。"
+      },
+      "latency": 1.590013027191162,
+      "tokens": 2287,
+      "completion_tokens": 31,
+      "retrieve_latency": 0.3166229724884033,
+      "num_docs": 20
+    },
+    {
+      "id": "AL005",
+      "type": "alias_resolution",
+      "difficulty": "hard",
+      "query": "谏山创那部巨人动画叫什么来着",
+      "answer": "你说的应该是《进击的巨人》！这部由谏山创原作改编的动画，第一季到第三季由WIT STUDIO制作，最终季则交给了MAPPA。故事围绕人类与巨人的战斗展开，充满了热血、悬疑和深刻的世界观，是不少人心中的神作哦～",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "进击的巨人"
+      ],
+      "correct": true,
+      "faithfulness": 0.375,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案准确识别了用户查询的动画《进击的巨人》，并提供了制作公司和剧情简介，完全符合预期实体和关键词，无幻觉信息。"
+      },
+      "latency": 2.373945951461792,
+      "tokens": 1557,
+      "completion_tokens": 65,
+      "retrieve_latency": 0.30690550804138184,
+      "num_docs": 20
+    },
+    {
+      "id": "MT001",
+      "type": "multi_turn",
+      "difficulty": "easy",
+      "query": "推荐几部科幻动画",
+      "answer": "根据你的需求，为你推荐以下几部高口碑科幻动画：\n\n1.  **《攻壳机动队2 无罪》**：评分8.7的赛博朋克神作。由押井守执导，Production I.G制作，画面美学和哲学思考都达到了极致，是科幻动画的巅峰之一。\n2.  **《星际牛仔 天国之扉》**：评分8.2的经典剧场版。菅野洋子的配乐、渡边信一郎的执导，加上太空西部片的独特风格，让这部作品成为无数人的入坑之作。\n3.  **《星空清理者》**：评分8.1的硬科幻佳作。由SUNRISE制作，大河内一楼编剧，以近未来太空垃圾回收为背景，故事写实且充满人文关怀，被观众誉为“少见的硬科幻番”。\n4.  **《回忆三部曲》**：评分8.0的经典短片集。由大友克洋、森本晃司、冈村天斋执导，今敏参与编剧，包含三个风格迥异但都极具内涵的科幻故事，展现了90年代动画电影的独特魅力。\n5.  **《黑客帝国动画版》**：评分8.0的短片集。由渡边信一郎、川尻善昭等大师联合执导，以《黑客帝国》世界观为背景，通过不同画风和故事展现了矩阵世界的多重可能性，被评价为“复古的科幻想象”。\n\n希望这份片单能让你满意！",
+      "gold_entities": [],
+      "gold_keywords": [
+        "科幻",
+        "评分",
+        "最高"
+      ],
+      "correct": true,
+      "faithfulness": 0.4125,
+      "judge": {
+        "relevance": 0.7,
+        "accuracy": 0.6,
+        "completeness": 0.5,
+        "overall": 0.6,
+        "hallucination": true,
+        "reason": "回答推荐了多部科幻动画，但部分作品（如《攻壳机动队2 无罪》《星际牛仔 天国之扉》《回忆三部曲》）未在检索上下文中出现，属于幻觉；且未完全匹配查询中的‘评分最高’关键词，仅部分覆盖检索到的《黑客帝国动画版》和《星空清理者》。"
+      },
+      "latency": 7.24938702583313,
+      "tokens": 2512,
+      "completion_tokens": 319,
+      "retrieve_latency": 0.3036520481109619,
+      "num_docs": 20
+    },
+    {
+      "id": "MT002",
+      "type": "multi_turn",
+      "difficulty": "medium",
+      "query": "命运石之门好看吗",
+      "answer": "《命运石之门》绝对是一部值得一看的佳作，尤其在科幻悬疑类动画中，它被许多人奉为“神作”。\n\n简单来说，它**非常好看，但需要一点耐心**。\n\n结合大家的评价，我帮你梳理一下它的看点：\n\n**1. 核心魅力：慢热但神回迭起**\n很多人提到，这部动画前期会用不少篇幅进行日常描写和伏笔铺垫，可能会让部分观众觉得节奏稍慢。但请一定坚持下去，当剧情进入高潮，前期所有的铺垫都会以惊人的方式回收，带来极强的冲击力和爽快感。这种“从完整圆里再套出一个圆”的叙事结构，让整个故事非常扎实。\n\n**2. 完整的系列构成**\n《命运石之门》系列包括：\n*   **TV本篇（8.8分）**：整个故事的基石，完整且自洽。\n*   **《命运石之门0》（8.2分）**：被很多观众认为是“奠定神作的补完作”。它补充了本篇关键剧情背后的另一条故事线，让角色塑造和整个故事更加丰满、完整。有评论说“没有0的话，我不觉得本篇能达到现在的高度”。\n*   **剧场版《负荷领域的既视感》（7.9分）**：作为粉丝向的后续故事，发糖为主，观感相对平淡，但能满足对角色后续的期待。\n\n**3. 需要注意的地方**\n*   **理解门槛**：有观众提到《0》的动画有些地方讲得不够明白，可能需要配合解说或原作游戏才能完全理解。\n*   **部分集数节奏**：《0》的部分集数被评价为“过于无聊”或氛围把控有些混乱，但整体剧情走向依然精彩。\n\n总的来说，如果你喜欢时间旅行、悬疑、科幻和细腻的角色情感，那么《命运石之门》绝对不容错过。建议从TV本篇开始，静下心来感受这个被无数人称为“神作”的故事。El psy congroo.",
+      "gold_entities": [
+        "命运石之门"
+      ],
+      "gold_keywords": [
+        "制作公司",
+        "命运石之门",
+        "WHITE FOX"
+      ],
+      "correct": true,
+      "faithfulness": 0.125,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.8,
+        "completeness": 0.7,
+        "overall": 0.8,
+        "hallucination": false,
+        "reason": "回答整体相关且准确，提到了命运石之门系列和观众评价，但未明确提及制作公司WHITE FOX，且部分评价如‘神作’等为常见观点而非严格事实，略有主观性。"
+      },
+      "latency": 8.876479148864746,
+      "tokens": 1690,
+      "completion_tokens": 415,
+      "retrieve_latency": 0.3336150646209717,
+      "num_docs": 20
+    },
+    {
+      "id": "MT003",
+      "type": "multi_turn",
+      "difficulty": "hard",
+      "query": "推荐几部和星际牛仔类似的",
+      "answer": "根据你的需求，这里推荐几部与《星际牛仔》风格或气质相近的经典作品：\n\n1.  **《太空丹迪》**\n    *   **相似之处**：同样由渡边信一郎执导，菅野洋子配乐，骨头社制作。可以说是《星际牛仔》精神上的兄弟作，都是太空背景下的单元剧公路片，充满了随性、幽默和浪漫，作画水准极高。\n    *   **不同之处**：风格上比《星际牛仔》更加奔放、无厘头和搞笑，每一集的脚本和监督都可能不同，实验性更强。\n\n2.  **《枪神》**\n    *   **相似之处**：1998年同年播出的科幻题材经典，同样有着西部片的风骨。主角法修和史派克一样，都是身怀绝技、背负着沉重过去却表面玩世不恭的浪子形象，内核都探讨着“爱与和平”以及男人的浪漫。\n    *   **不同之处**：故事发生在一颗荒漠星球上，科幻感更偏向废土风，主角的战斗力更加夸张，喜剧元素也更多一些。\n\n3.  **《黑客帝国动画版》**\n    *   **相似之处**：这是一部由多位顶级导演制作的短片集，其中渡边信一郎执导的《侦探故事》和《少年故事》两部短片，在画面风格、光影运用和爵士乐氛围上与《星际牛仔》如出一辙，可以看作是Cowboy Bebop世界观的另一种延伸。\n    *   **不同之处**：作为短片集，整体风格并不统一，但仅凭渡边信一郎的部分就非常值得一看。\n\n4.  **《哥普拉》**\n    *   **相似之处**：这部作品被认为是《星际牛仔》的灵感来源之一。它同样融合了科幻、西部和硬汉侦探片的元素，主角哥普拉是一位太空冒险家，左手是精神感应枪，故事充满了天马行空的想象力和浪漫主义色彩。\n    *   **不同之处**：年代更早（1982年），画风更复古，故事更加夸张和天马行空，充满了80年代特有的风味。\n\n这几部作品都在不同层面上与《星际牛仔》有着共通的神韵，希望你能喜欢。",
+      "gold_entities": [
+        "星际牛仔"
+      ],
+      "gold_keywords": [
+        "星际牛仔",
+        "类似",
+        "两部",
+        "不是"
+      ],
+      "correct": true,
+      "faithfulness": 0.22945205479452055,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.9,
+        "completeness": 0.9,
+        "overall": 0.9,
+        "hallucination": false,
+        "reason": "回答推荐了多部与《星际牛仔》风格相似的作品，如《太空丹迪》《枪神》等，内容准确且完整，符合用户需求，未出现幻觉。"
+      },
+      "latency": 10.459986686706543,
+      "tokens": 1871,
+      "completion_tokens": 477,
+      "retrieve_latency": 0.2883925437927246,
+      "num_docs": 20
+    },
+    {
+      "id": "ED004",
+      "type": "edge_case",
+      "difficulty": "easy",
+      "query": "你好",
+      "answer": "你好！看到你在搜索“你好”相关的番剧，这里有两部比较符合的作品：\n\n一部是动画电影**《你好 世界》**（HELLO WORLD），由グラフィニカ制作，野﨑まど担任编剧。这部作品的评价比较两极分化——有人觉得“结局厉害”“剧情不错”，但也有人提到“3D演出比较出戏”“人物刻画有点死板”，整体来看马戏（动作场面）倒是获得了一些好评。\n\n另一部是泡面番**《你好七叶》**（はいたい七葉），属于冲绳地方宣传动画，人设萌、带点无厘头风格，分镜被说有新房昭之的感觉。第二季的评价相对第一季稍显平淡，有观众觉得“后面有点迷”“不如第一季”。\n\n你是想了解其中哪一部，还是单纯打个招呼呢？😄",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "correct": true,
+      "faithfulness": 0.24848484848484848,
+      "judge": {
+        "relevance": 0.6,
+        "accuracy": 0.7,
+        "completeness": 0.5,
+        "overall": 0.6,
+        "hallucination": false,
+        "reason": "回答识别了用户问候意图并提供了相关番剧信息，但用户仅打招呼，未明确询问番剧，因此部分内容超出需求；信息基本准确，但引入了未在检索上下文中出现的《你好七叶》，属于合理补充而非虚构；整体覆盖了上下文内容但未完全聚焦用户意图。"
+      },
+      "latency": 4.457351207733154,
+      "tokens": 692,
+      "completion_tokens": 182,
+      "retrieve_latency": 0.3388969898223877,
+      "num_docs": 20
+    },
+    {
+      "id": "ED002",
+      "type": "edge_case",
+      "difficulty": "medium",
+      "query": "",
+      "answer": "",
+      "correct": false,
+      "faithfulness": 0.0,
+      "judge": {
+        "overall": 0,
+        "relevance": 0,
+        "accuracy": 0,
+        "completeness": 0,
+        "reason": "Error code: 400 - {'error': {'code': 'InvalidParameter', 'message': 'The parameter `input` specified in the request are not valid: input could not be empty. Request id: 021785202055450b74211a9fa242456"
+      },
+      "latency": 0,
+      "tokens": 0
+    },
+    {
+      "id": "ED001",
+      "type": "edge_case",
+      "difficulty": "hard",
+      "query": "!@#",
+      "answer": "你提到的“!@#”看起来像是一串乱码或者误输入，在搜索结果里没有直接对应的番剧。不过，如果你是想找点轻松日常的动画，我注意到《GJ部@》出现了好几次，观众评论多是“补标”，说明不少人看过但没细评，可能是一部适合放松的校园喜剧。如果你有具体想了解的番剧或类型，可以告诉我，我帮你详细分析！",
+      "gold_entities": [],
+      "gold_keywords": [],
+      "correct": false,
+      "faithfulness": 0.1717171717171717,
+      "judge": {
+        "relevance": 0.0,
+        "accuracy": 0.0,
+        "completeness": 0.0,
+        "overall": 0.0,
+        "hallucination": false,
+        "reason": "查询为乱码，无有效实体或关键词，回答虽未虚构但完全偏离预期，无法评分"
+      },
+      "latency": 2.596825361251831,
+      "tokens": 562,
+      "completion_tokens": 89,
+      "retrieve_latency": 0.29444193840026855,
+      "num_docs": 20
+    },
+    {
+      "id": "KB001",
+      "type": "knowledge_boundary",
+      "difficulty": "medium",
+      "query": "进击的巨人动画改编自谁的原作",
+      "answer": "《进击的巨人》动画改编自**谏山创**的同名漫画原作。",
+      "gold_entities": [
+        "进击的巨人"
+      ],
+      "gold_keywords": [
+        "谏山创"
+      ],
+      "correct": true,
+      "faithfulness": 0.4090909090909091,
+      "judge": {
+        "relevance": 1.0,
+        "accuracy": 1.0,
+        "completeness": 1.0,
+        "overall": 1.0,
+        "hallucination": false,
+        "reason": "答案准确回答了问题，明确指出原作是谏山创，与预期实体和关键词完全匹配，且未出现幻觉。"
+      },
+      "latency": 1.4459831714630127,
+      "tokens": 1287,
+      "completion_tokens": 19,
+      "retrieve_latency": 0.30240631103515625,
+      "num_docs": 20
+    },
+    {
+      "id": "KB002",
+      "type": "knowledge_boundary",
+      "difficulty": "hard",
+      "query": "EVA 的宗教隐喻有哪些",
+      "answer": "EVA里的宗教隐喻可以说是这部作品的一大特色，它大量借用了犹太教和基督教的符号与概念，但更多是作为营造神秘氛围和深化主题的“装饰”，而非严格的教义阐述。庵野秀明自己也承认，选择这些符号主要是因为它们看起来很酷、很有神秘感。\n\n主要的宗教隐喻有这几个方面：\n\n-   **生命之源与进化**：第一使徒“亚当”和第二使徒“莉莉丝”分别源自《圣经》中的人类始祖。在剧中，亚当是使徒的生命之源，而莉莉丝则是人类（Lilin）的生命之源，她的血就是LCL之海。这颠覆了传统，暗示人类并非亚当的后代。人类补完计划的目标，就是让分裂的人类重归莉莉丝之卵，合而为一。\n\n-   **神与人之间的中介**：“使徒”一词源自希腊语，意为“被差遣者”。剧中的使徒是拥有强大力量的神秘生命体，它们对人类的攻击，以及人类对它们的反抗，构成了故事的主线。EVA机体则是人类制造的“人造使徒”，是人类试图窃取神之力、对抗神罚的工具。\n\n-   **终极的知识与力量**：NERV地下的巨人“莉莉丝”被朗基努斯之枪钉在十字架上，这明显戏仿了耶稣受难。朗基努斯之枪是传说中刺穿耶稣肋骨的圣物，在剧中是能贯穿A.T.力场、甚至能弑神的终极武器。而“生命之树”的图式则在补完计划发动时出现，象征着回归生命本源、逆演化的路径。\n\n-   **神秘主义符号**：NERV本部的天花板、Seele的集会场所等地方，频繁出现“卡巴拉生命之树”、“全知之眼”等图案。这些符号为作品增添了浓厚的神秘学色彩，暗示着Seele组织掌握着古老的秘密和操纵人类命运的庞大计划。\n\n-   **终极的救赎**：“人类补完计划”本身就是最大的宗教隐喻。它探讨的是人类的原罪（心之壁，即A.T.力场带来的隔阂）、通过打破心之壁让所有灵魂回归LCL之海，实现全人类的融合与救赎。这可以看作是对“天堂”或“神国”的一种扭曲的、带有科幻色彩的诠释。\n\n总的来说，EVA巧妙地运用这些宗教符号，构建了一个充满末世感和神秘气息的舞台，但其核心探讨的",
+      "gold_entities": [
+        "新世纪福音战士"
+      ],
+      "gold_keywords": [
+        "新世纪福音战士",
+        "EVA",
+        "宗教",
+        "隐喻"
+      ],
+      "correct": true,
+      "faithfulness": 0.2123076923076923,
+      "judge": {
+        "relevance": 0.9,
+        "accuracy": 0.9,
+        "completeness": 0.9,
+        "overall": 0.9,
+        "hallucination": false,
+        "reason": "回答详细列举了EVA中的宗教隐喻，包括亚当、莉莉丝、使徒、朗基努斯之枪、生命之树等，与查询高度相关，内容准确且完整，未出现幻觉。"
+      },
+      "latency": 12.560099840164185,
+      "tokens": 2182,
+      "completion_tokens": 512,
+      "retrieve_latency": 0.29398345947265625,
+      "num_docs": 20
+    }
+  ]
+}

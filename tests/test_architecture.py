@@ -94,7 +94,12 @@ def test_similar_expert_excludes_same_series_after_metadata_enrichment():
 def test_series_filter_ignores_ambiguous_short_topic_titles():
     from agents.similar_expert import _series_markers
 
-    assert _series_markers("日常") == set()
+    # 中文模糊短词（<4字）不能作为子串标记，否则会把所有含"日常"的番误判同系列。
+    # 别名库补全后 markers 可能含罗马音/假名（如 nichijou/にちじょう），
+    # 这些长度>=4 且不与其它番剧标题子串冲突，是安全标记；真正要挡的是中文短词泄漏。
+    markers = _series_markers("日常")
+    assert all(len(m) >= 4 for m in markers)
+    assert not any("日常" in m for m in markers)
 
 
 def test_message_helpers_parse_multimodal_content():

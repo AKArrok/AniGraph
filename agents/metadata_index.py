@@ -19,6 +19,7 @@ class MetadataIndex:
         self._index_path = index_path or config.METADATA_INDEX_PATH
         self._data: list[dict] = []
         self._by_id: dict[str, dict] = {}
+        self._by_alias: dict[str, dict] = {}
         self._loaded = False
 
     # ── 加载 ─────────────────────────────────────────────────────
@@ -36,10 +37,14 @@ class MetadataIndex:
 
         # 构建 ID 索引
         self._by_id = {}
+        # 构建别名索引：name_cn / name / alias[] 全部小写归一 -> 首个命中的条目生效
+        self._by_alias = {}
         for item in self._data:
             sid = str(item.get("id", ""))
             if sid:
                 self._by_id[sid] = item
+            for key in self._alias_keys(item):
+                self._by_alias.setdefault(key, item)
 
         self._loaded = True
 
@@ -48,6 +53,7 @@ class MetadataIndex:
         self._loaded = False
         self._data = []
         self._by_id = {}
+        self._by_alias = {}
         self.load()
 
     # ── 查询 ─────────────────────────────────────────────────────
@@ -58,23 +64,29 @@ class MetadataIndex:
             self.load()
         return self._by_id.get(str(sid))
 
+    @staticmethod
+    def _alias_keys(item: dict):
+        """产出该条目所有可匹配的归一化键：name_cn / name / alias[]。"""
+        seen = set()
+        for raw in (item.get("name_cn", ""), item.get("name", "")):
+            k = (raw or "").strip().lower()
+            if k and k not in seen:
+                seen.add(k)
+                yield k
+        for alias in item.get("alias", []) or []:
+            k = (alias or "").strip().lower()
+            if k and k not in seen:
+                seen.add(k)
+                yield k
+
     def get_by_alias(self, name: str) -> dict | None:
-        """别名精确匹配 → 直接返回元数据"""
+        """别名精确匹配 → 直接返回元数据（O(1) 预建索引查找）"""
         if not self._loaded:
             self.load()
         n = name.strip().lower()
-        for item in self._data:
-            # 中文名
-            if item.get("name_cn", "").lower() == n:
-                return item
-            # 日文名
-            if item.get("name", "").lower() == n:
-                return item
-            # 别名列表
-            for alias in item.get("alias", []):
-                if alias.lower() == n:
-                    return item
-        return None
+        if not n:
+            return None
+        return self._by_alias.get(n)
 
     # ── 消息级模糊实体解析（管道匹配，零 LLM）──
 
@@ -82,8 +94,10 @@ class MetadataIndex:
         r"[呢吗啊吧啦哦呀哎嘿哈]+$|"
         r"(好不好看|好看吗|怎么样|是啥|是什么|多少分|讲什么|说啥|聊啥|介绍|是谁)[呢吗啊吧啦哦呀哎嘿哈]*$"
     )
+    # 分支按长度降序：正则在同一位置取最左分支，短词在前会截断长词
+    # （如 "有" 排在 "有没有" 前会把 "有没有X" 只剥成 "没有X"）
     _FUZZY_PREFIX_STRIP_RE = re.compile(
-        r"^(有|有没有|这个|那个|这部|那部|什么是|介绍下|知道|听说过|问一下|问下|聊聊|来讲讲|说说)"
+        r"^(有没有|什么是|介绍下|听说过|问一下|来讲讲|这个|那个|这部|那部|知道|问下|聊聊|说说|有)"
     )
 
     def fuzzy_lookup(self, query: str) -> dict | None:

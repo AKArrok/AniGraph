@@ -74,41 +74,39 @@ class StrategyOutput(BaseModel):
 
 # ── 第一阶段分类 Prompt ──
 
-_INTENT_PROMPT = """你是 ACG 番剧查询分类器，快速判断查询的意图类别。
+_INTENT_PROMPT = """把用户的 ACG 番剧查询打两个标签：query_category 和 query_type。
 
-## 查询类别 (query_category)
-- metadata: 查结构化元数据（评分/声优/导演/公司/标签/年份等），数据库能回答
-  例: "进击的巨人评分"、"MAPPA作品"、"2024热血番"
-- semantic: 开放性问题需语义理解（评价/口碑/观后感/推荐相似作品），需向量检索
-  例: "有没有类似钢炼的番"、"为什么EVA是神作"、"催泪番推荐"
-- mixed: 指定番剧名 + 评价/推荐意图，需 Metadata 查信息 + Semantic 做推荐
-  例: "碧蓝之海怎么样？"、"进击的巨人好看吗"、"RE:0值得看吗"
-- chat: 闲聊/问候/非番剧问题
-  例: "你好"、"谢谢"、"你是谁"、"你能做什么"
+## query_category（数据源需求）
+- metadata: 查结构化元数据（评分/声优/导演/公司/标签/年份等），数据库直接能答。例："进击的巨人评分"、"MAPPA 作品"、"2024 热血番"。
+- semantic: 开放性问题需要语义理解（评价/口碑/观后感/推荐相似作品），要走向量检索。例："有没有类似钢炼的番"、"为什么 EVA 是神作"、"催泪番推荐"。
+- mixed: 指定作品名 + 评价/推荐意图，两边数据都要。例："碧蓝之海怎么样"、"进击的巨人好看吗"、"RE:0 值得看吗"。
+- chat: 闲聊、问候、明显跟番剧无关的问题。例："你好"、"谢谢"、"你是谁"、"你能做什么"。
 
-## 查询类型 (query_type)
-- simple_fact: 查已知事物的具体属性
-- recommendation: 要求推荐/发现新番剧
-- comparison: 对比多部番剧
-- chat: 闲聊/问候
+## query_type（回答形态）
+- simple_fact: 查已知对象的某个具体属性（评分、声优、导演、日期等）。
+- recommendation: 要求推荐或发现新番剧。
+- comparison: 需要对比多部番剧。
+- chat: 闲聊/问候。
+
+两个字段独立判断，用最贴近的类别，不要因为好像沾边就选 mixed 或 comparison。
 
 {history_section}"""
 
 
 # ── 第二阶段策略细化 Prompt ──
 
-_COMPLEXITY_PROMPT = """你是查询复杂度分析器，判断用户查询是否需要多查询扩展。
+_COMPLEXITY_PROMPT = """判断这条查询是否需要多查询扩展/重写/分解，并挑一个建议策略。
 
-## 简单查询 (is_complex=false, direct)
-- 查单一已知事实: "巨人评分多少"、"MAPPA有哪些作品"
-- 简单闲聊: "你好"、"谢谢"
-- 明确指代已知番剧的单项查询
+## 简单查询 (is_complex=false)
+- 单一已知事实：如"巨人评分多少"、"MAPPA 有哪些作品"。
+- 简单闲聊：如"你好"、"谢谢"。
+- 明确指代某部已知番剧的单项查询。
 
 ## 复杂查询 (is_complex=true)
-- 需要多角度扩展: "类似巨人的番"（需从标签/风格/评分多路检索）
-- 深度分析: "为什么EVA是神作"、"巨人好在哪"（需 hyde 生成假设文档）
-- 多子问题: "推荐2024热血番并说明理由"（需分解+合成）
-- 对比类: "巨人和鬼灭哪个好看"（需分别检索再对比）
+- 需要多角度扩展：如"类似巨人的番"（要从标签/风格/评分多路检索）。
+- 深度分析或评价：如"为什么 EVA 是神作"、"巨人好在哪"（用 hyde 生成假设文档再检索）。
+- 多个子问题串联：如"推荐 2024 热血番并说明理由"（要拆分再合成）。
+- 对比类：如"巨人和鬼灭哪个好看"（分别检索再对比）。
 
 {suggested_strategy_section}
 
@@ -120,23 +118,25 @@ _SUGGESTED_STRATEGY_SECTION = """## 建议策略 (suggested_strategy)
 - hyde: 深度分析/评价类，需生成假设文档再检索
 - decompose: 含多个子问题需分解执行"""
 
-_STRATEGY_PROMPT = """你是 ACG 番剧推荐系统的规划器。用户查询已初步分类，请细化执行策略。
+_STRATEGY_PROMPT = """用户查询已初步分类，细化以下 4 个执行策略字段。
 
-## 查询优化策略 (rewrite_strategy)
-- direct: 简单查询，不需重写
-- rewrite: 需从多角度扩展查询
-- hyde: 深度分析/评价类（含"为什么""好在哪""区别"等）
-- decompose: 含多个子问题
+## rewrite_strategy（查询优化策略）
+- direct: 简单查询，不需重写。
+- rewrite: 从多角度扩展查询（推荐/相似/风格类）。
+- hyde: 深度分析或评价（含"为什么""好在哪""怎么样""区别"等）。
+- decompose: 含多个独立子问题。
 
-## 专家选择 (experts)
-- metadata_reasoner: 涉及评分/标签/公司/声优等结构化数据
-- similar_expert: 涉及相似推荐/对比/语义理解
+## experts（专家选择）
+- metadata_reasoner: 涉及评分、标签、制作公司、导演、声优等结构化数据。
+- similar_expert: 涉及相似推荐、对比、开放性语义理解。
+两者可同时选中。
 
-## 并行 (parallel)
-- 两个 expert 都需要 -> true，只需一个 -> false
+## parallel（是否并行）
+- 两个 expert 都要，且互不依赖 -> true；只需一个，或结论有依赖 -> false。
 
-## 联网 (need_web)
-- 查询可能超出知识库范围（冷门番剧/最新资讯）-> true
+## need_web（是否联网）
+- 查询指向冷门作品、近半年新番、当前资讯类问题 -> true。
+- 主库能覆盖的常规查询 -> false，别默认开启。
 
 {history_section}
 
@@ -375,11 +375,17 @@ def _intent_to_plan(intent: IntentOutput,
 
     # 有复杂度分析且判断为简单 -> 直接用复杂度建议的策略，跳过昂贵的策略细化
     if complexity is not None and not complexity.is_complex:
-        experts = (
-            ["metadata_reasoner"] if intent.query_category == "metadata"
-            else ["similar_expert"] if intent.query_category == "semantic"
-            else ["metadata_reasoner", "similar_expert"]
-        )
+        # 契约：simple_fact 走 simple_fact_answer 快速通道（无 Expert）；
+        # 其他类型才配 Expert。这样 graph._route_after_retrieval 里
+        # `query_type == simple_fact` 的短路与 experts 字段不再互相打架。
+        if intent.query_type == "simple_fact":
+            experts: list[str] = []
+        else:
+            experts = (
+                ["metadata_reasoner"] if intent.query_category == "metadata"
+                else ["similar_expert"] if intent.query_category == "semantic"
+                else ["metadata_reasoner", "similar_expert"]
+            )
         return {
             "query_category": intent.query_category,
             "query_type": intent.query_type,
@@ -393,10 +399,14 @@ def _intent_to_plan(intent: IntentOutput,
 
     if strategy is None:
         # 简单路径: metadata 或 semantic，不需要策略细化
-        experts = (
-            ["metadata_reasoner"] if intent.query_category == "metadata"
-            else ["similar_expert"]
-        )
+        # 契约：simple_fact 一律走快速通道，experts 留空
+        if intent.query_type == "simple_fact":
+            experts = []
+        else:
+            experts = (
+                ["metadata_reasoner"] if intent.query_category == "metadata"
+                else ["similar_expert"]
+            )
         rewrite = "direct" if intent.query_type == "simple_fact" else "rewrite"
         return {
             "query_category": intent.query_category,
@@ -410,11 +420,15 @@ def _intent_to_plan(intent: IntentOutput,
         }
 
     # mixed / 复杂查询: 有策略细化结果
+    # 契约兜底：strategy 若违反 simple_fact 互斥，强制清空 experts
+    experts = list(strategy.experts)
+    if intent.query_type == "simple_fact":
+        experts = []
     return {
         "query_category": intent.query_category,
         "query_type": intent.query_type,
         "rewrite_strategy": strategy.rewrite_strategy,
-        "experts": strategy.experts,
+        "experts": experts,
         "parallel": strategy.parallel,
         "need_web": strategy.need_web,
         "alias_resolved": False,
@@ -427,12 +441,14 @@ def _intent_to_plan(intent: IntentOutput,
 # ══════════════════════════════════════════════════════════════════════
 
 def _hash_query(query: str, history_text: str = "") -> str:
-    """生成查询缓存键: query + history_text（避免追问场景下误命中）
+    """生成查询缓存键: 仅使用 query 归一化后的字符串。
 
-    同一查询在不同历史上下文中可能需要不同分类策略，所以 history_text 也
-    参与缓存键。
+    Intent 分类对 history 不敏感（prompt 明确"独立判断当前查询意图"），
+    历史文本参与 key 会让追问场景每轮都 miss。history_text 保留在签名里，
+    但不参与哈希，避免调用点大改。
     """
-    return hashlib.md5(f"{query}|{history_text}".encode()).hexdigest()
+    normalized = " ".join(query.strip().lower().split())
+    return hashlib.md5(normalized.encode()).hexdigest()
 
 
 # OrderedDict: 访问/写入时 move_to_end，满了 popitem(last=False) 淘汰最久未访问

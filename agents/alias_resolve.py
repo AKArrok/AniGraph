@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 async def alias_resolve_node(state: AgentState) -> dict:
     """别名/实体解析: 别名 → 角色/梗 → 兜底标记"""
-    from agents.alias import resolve_alias
+    from agents.alias import resolve_alias_ex
     from agents.metadata_index import index
     from agents.entity_resolver import resolve_entity
 
@@ -53,12 +53,17 @@ async def alias_resolve_node(state: AgentState) -> dict:
             "metadata": [index_hit],
         }
 
-    # ── 2. 别名解析（词典）──
-    resolved, was_resolved = resolve_alias(query, use_llm=False)
-
-    # ── 3. 别名解析（LLM 兜底）──
-    if not was_resolved:
-        resolved, was_resolved = resolve_alias(query, use_llm=True)
+    # ── 2. 别名解析：L1 cache -> L2 LLM -> L3 web ──
+    use_web = bool(
+        getattr(config, "ENABLE_ALIAS_WEB_FALLBACK", False)
+        and getattr(config, "ENABLE_WEB_SEARCH", False)
+        and getattr(config, "TAVILY_API_KEY", "")
+    )
+    alias_result = resolve_alias_ex(query, use_web=use_web)
+    resolved = alias_result["full_name"] or query
+    was_resolved = alias_result["full_name"] is not None
+    alias_source = alias_result["source"]
+    alias_conf = alias_result["confidence"]
 
     # ── 2. 实体解析（角色/梗）──
     entity = resolve_entity(query)
@@ -81,8 +86,8 @@ async def alias_resolve_node(state: AgentState) -> dict:
                 "entity_type": "alias",
                 "entity_name": resolved,
                 "entity_anime": resolved,
-                "entity_confidence": 0.90,
-                "entity_source": "dict",
+                "entity_confidence": alias_conf,
+                "entity_source": f"alias_{alias_source}",
             }
             _, meta = metadata_cache.resolve(resolved)
             if meta:
@@ -96,8 +101,8 @@ async def alias_resolve_node(state: AgentState) -> dict:
             "entity_type": "alias",
             "entity_name": resolved,
             "entity_anime": resolved,
-            "entity_confidence": 0.90,
-            "entity_source": "dict",
+            "entity_confidence": alias_conf,
+            "entity_source": f"alias_{alias_source}",
         }
         _, meta = metadata_cache.resolve(resolved)
         if meta:
@@ -158,14 +163,20 @@ def should_skip_alias(query: str) -> bool:
 
     q = query.strip().lower()
 
+    # seed 里登记的已知别名/缩写（如巨人/咒术/op/86）永不跳过，
+    # 否则会被下方 len<=2 / 纯英文短查询守卫误杀。
+    from agents.alias import HARDCODED_ALIASES
+    if q in HARDCODED_ALIASES:
+        return False
+
     # 纯闲聊 / 英文问候
     simple_greetings = {"你好", "谢谢", "再见", "早上好", "晚上好", "晚安",
                         "hi", "hello", "hey", "help", "thanks", "bye"}
     if q in simple_greetings or len(q) <= 2:
         return True
 
-    # 纯英文短查询（不太可能涉及中文番剧别名）
-    if len(q) <= 10 and q.isascii() and not any(w in q for w in ["re0", "eva", "sao"]):
+    # 纯英文短查询（不太可能涉及中文番剧别名；seed 命中的已在上方放行）
+    if len(q) <= 10 and q.isascii():
         return True
 
     # Embedding 预检: chat 类别高置信度 → 纯闲聊，跳过

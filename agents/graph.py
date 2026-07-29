@@ -105,7 +105,7 @@ def _route_after_retrieval(state: AgentState) -> list[Send] | str:
     experts = plan.get("experts", [])
 
     # simple_fact 走快速通道：跳过 Expert + Merge + Answer，一次 LLM 直接回答
-    if plan.get("query_type") == "simple_fact":
+    if plan.get("query_type") == "simple_fact" and not getattr(config, "ABLATION_NO_FAST_PATH", False):
         return "simple_fact_answer"
 
     if not experts:

@@ -88,43 +88,35 @@ print(answer)
 
 ## 架构
 
-```
-用户查询 / 图片上传
-  │
-  ├── 有图 ──→ image_recognition  ← trace.moe 识图 + VLM 补充
-  ├── 低风险跳过 ─→ alias_skip    ← 跳过别名解析
-  └── 按需 ──→ alias_resolve      ← 别名/实体解析（管道式：别名词典 → LLM → fuzzy_lookup）
-  │
-  ▼
-history_extractor   ← 提取最近 N 轮对话历史
-  │
-  ▼
-context_builder     ← 追问检测 + 指代消解 + 话题推断 + history 预拼接
-  │
-  ▼
-planner             ← 4 层路由（Embedding 粗筛 → 缓存 → LLM 分类 → 复杂度分析）
-  │
-  ├── chat ──────────────────────────→ answer（闲聊直达）
-  │
-  └── 其他 ──→ query_processing      ← 查询优化（direct / rewrite / hyde / decompose）
-                  │
-                  ▼
-           knowledge_retrieval        ← 三路检索（metadata / semantic / mixed）
-                  │
-                  ├── simple_fact ──→ simple_fact_answer → END（快速通道）
-                  └── 复杂查询 ──→ Expert Dispatcher
-                                       ├── parallel=true  → Send(experts) 并行
-                                       ├── parallel=false → experts 按计划顺序串行
-                                       └── 单 Expert ─────→ 直接执行
-                                                │
-                                                ▼
-                                         merge → evaluator
-                                      ┌───────┼──────────┐
-                                      │pass   │replan    │exhausted/fallback
-                                      ▼       ▼          ▼
-                               web判断/answer replanner 降级回答
-                                                │
-                                                └→ query_processing（最多一次）
+```mermaid
+flowchart TD
+    Start([用户查询 / 图片上传]) --> RouteStart{路由}
+    RouteStart -- 有图 --> Image[image_recognition<br/>trace.moe + VLM]
+    RouteStart -- 低风险 --> Skip[alias_skip]
+    RouteStart -- 按需 --> Alias[alias_resolve<br/>别名词典 → LLM → fuzzy_lookup]
+    Image --> Hist[history_extractor]
+    Skip --> Hist
+    Alias --> Hist
+    Hist --> Ctx[context_builder<br/>追问检测 + 指代消解 + 话题推断]
+    Ctx --> Planner[planner<br/>Embedding 粗筛 → 缓存 → LLM 分类 → 复杂度]
+    Planner -- chat --> Answer[answer]
+    Planner -- 其他 --> QP[query_processing<br/>direct / rewrite / hyde / decompose]
+    QP --> KR[knowledge_retrieval<br/>metadata / semantic / mixed]
+    KR -- simple_fact --> SF[simple_fact_answer] --> End([END])
+    KR -- 复杂查询 --> Dispatch{Expert Dispatcher}
+    Dispatch -- parallel=true --> Parallel[Send&#40;experts&#41; 并行]
+    Dispatch -- parallel=false --> Serial[experts 顺序串行]
+    Dispatch -- 单 Expert --> Single[直接执行]
+    Parallel --> Merge[merge]
+    Serial --> Merge
+    Single --> Merge
+    Merge --> Eval{evaluator}
+    Eval -- pass --> WebOrAnswer[web 判断 → answer]
+    Eval -- replan --> Replan[replanner] --> QP
+    Eval -- fallback/exhausted --> Degrade[降级回答]
+    WebOrAnswer --> Answer
+    Answer --> End
+    Degrade --> End
 ```
 
 详细节点说明见 [架构文档](docs/architecture.md)。

@@ -11,31 +11,29 @@
 
 ### 图流程
 
-```
-START
-  ├── 有图片 ──→ image_recognition
-  ├── 需解析别名 ─→ alias_resolve (alias.py + entity_resolver.py + fuzzy_lookup 管道)
-  └── 可跳过别名 ─→ alias_skip
-  │
-  ▼
-history_extractor → context_builder (追问检测 + 指代消解 + 话题推断)
-  │
-  ▼
-planner (4 层路由: Embedding 粗筛 → 缓存 → LLM 分类 → 复杂度分析)
-  │
-  ├── chat ──→ answer (闲聊直达)
-  │
-  └── 其他 ──→ query_processing (direct / rewrite / hyde / decompose)
-                  │
-                  ▼
-           knowledge_retrieval (metadata / semantic / mixed 三路径)
-                  │
-                  ├── simple_fact ──→ simple_fact_answer → END (快速通道)
-                  │
-                  └── Expert Dispatcher (parallel → Send 并行 / serial 串行)
-                        │
-                        ▼
-                    merge → evaluator → [replanner → query_processing]? → answer_planner → answer → END
+```mermaid
+flowchart TD
+    Start([START]) --> RouteStart{路由}
+    RouteStart -- 有图片 --> Image[image_recognition]
+    RouteStart -- 需解析别名 --> Alias[alias_resolve<br/>alias.py + entity_resolver.py + fuzzy_lookup]
+    RouteStart -- 可跳过 --> Skip[alias_skip]
+    Image --> Hist[history_extractor]
+    Alias --> Hist
+    Skip --> Hist
+    Hist --> Ctx[context_builder<br/>追问检测 + 指代消解 + 话题推断]
+    Ctx --> Planner[planner<br/>4 层路由: Embedding 粗筛 → 缓存 → LLM 分类 → 复杂度]
+    Planner -- chat --> Answer[answer]
+    Planner -- 其他 --> QP[query_processing<br/>direct / rewrite / hyde / decompose]
+    QP --> KR[knowledge_retrieval<br/>metadata / semantic / mixed]
+    KR -- simple_fact --> SF[simple_fact_answer] --> End([END])
+    KR -- 复杂 --> Dispatch[Expert Dispatcher<br/>parallel → Send / serial 串行]
+    Dispatch --> Merge[merge]
+    Merge --> Eval{evaluator}
+    Eval -- pass --> AP[answer_planner]
+    Eval -- replan --> Replan[replanner] --> QP
+    Eval -- fallback --> AP
+    AP --> Answer
+    Answer --> End
 ```
 
 ### 关键设计

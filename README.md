@@ -2,10 +2,10 @@
 
 基于 LangGraph 的多 Agent 动漫问答系统。它把结构化元数据、向量检索、关键词检索和联网搜索组合在一条动态工作流中，支持事实查询、推荐、对比、多轮追问和动漫截图识别，并提供 Web Trace 实时执行面板。
 
-`
+```
 用户: "无职转生的主角是谁？"
 AniGraph: 鲁迪乌斯·格雷拉特，声优是内山夕实。原作是理不尽な孫の手写的轻小说...
-`
+```
 
 ---
 
@@ -19,11 +19,11 @@ AniGraph: 鲁迪乌斯·格雷拉特，声优是内山夕实。原作是理不�
 - **对话上下文感知**：支持多轮追问、指代消解（"它的评分""第二部呢"），缓存键含 history 防误命中
 - **ToolRegistry**：统一工具注册表，12 个工具集中管理、懒加载、开关控制
 - **LLM 健壮性**：Structured Output 自动降级 + tenacity 指数退避重试（覆盖全部 13 处调用点）
-- **Evaluator-Replan 闭环**：Merge 后先评估证据质量，失败时最多重规划一次（默认关闭，MAX_REPLANS=0）
-- **共享 Prompt 组件**：gents/prompts.py 统一禁止清单和上下文构建，避免重复
+- **Evaluator-Replan 闭环**：Merge 后先评估证据质量，失败时最多重规划一次（默认关闭，`MAX_REPLANS=0`）
+- **共享 Prompt 组件**：`agents/prompts.py` 统一禁止清单和上下文构建，避免重复
 - **Web Trace 面板**：SSE 实时推送执行过程——聊天气泡 + 流程图，每个节点的 LLM Token 用量一目了然
 - **动漫截图识别**：上传 JPEG/PNG/WebP，优先调用 trace.moe；低置信度时可选用 VLM 补充识别
-- **SessionStore 统一**：main.py / chat.py / server.py 共用 SessionStore，同一 	hread_id 共享 MemorySaver 与已编译图实例
+- **SessionStore 统一**：`main.py` / `chat.py` / `server.py` 共用 `SessionStore`，同一 `thread_id` 共享 `MemorySaver` 与已编译图实例
 
 ---
 
@@ -31,7 +31,7 @@ AniGraph: 鲁迪乌斯·格雷拉特，声优是内山夕实。原作是理不�
 
 ### 1. 环境配置
 
-`ash
+```bash
 # 克隆项目
 git clone <repo-url> && cd AniGraph
 
@@ -41,54 +41,54 @@ uv pip install -r requirements.txt
 # 配置 .env
 cp .env.example .env
 # 编辑 .env，至少填入 LLM、Embedding、Pinecone 和 Tavily 所需密钥
-`
+```
 
-默认使用 Ark Coding Plan 的 doubao-embedding-vision（1024 维）。如需本地 embedding，将 EMBEDDING_BACKEND 改为 local；如需 DashScope，将其改为 dashscope。切换模型后不得复用维度不一致的 Pinecone 索引。
+默认使用 Ark Coding Plan 的 `doubao-embedding-vision`（1024 维）。如需本地 embedding，将 `EMBEDDING_BACKEND` 改为 `local`；如需 DashScope，将其改为 `dashscope`。切换模型后不得复用维度不一致的 Pinecone 索引。
 
-启动时 config.validate() 会检查必填配置。当前实现将 TAVILY_API_KEY 也视为必填，即使关闭联网搜索也不能省略。
+启动时 `config.validate()` 会检查必填配置。当前实现将 `TAVILY_API_KEY` 也视为必填，即使关闭联网搜索也不能省略。
 
 ### 2. 构建知识库
 
-`ash
+```bash
 python data/build_kb.py --metadata-only    # 构建 Metadata Index
 python data/build_kb.py --whoosh-only      # 构建 Whoosh 索引
 python data/build_kb.py                    # 构建 Pinecone 向量库
-`
+```
 
-构建脚本读取 data/anime_data.db。向量和 Whoosh 索引共用分块规则，将每部番剧拆成 profile、staff、cast 和 eviews 等语义块。断点续跑使用 python data/build_kb.py --resume。
+构建脚本读取 `data/anime_data.db`。向量和 Whoosh 索引共用分块规则，将每部番剧拆成 `profile`、`staff`、`cast` 和 `reviews` 等语义块。断点续跑使用 `python data/build_kb.py --resume`。
 
 ### 3a. Web Trace 面板（推荐）
 
-`ash
+```bash
 python server.py
 # 打开 http://localhost:9527
-`
+```
 
-左侧聊天面板输入查询，右侧实时显示流程图——每个节点的执行状态、耗时、LLM Token 用量流式推送。面板同时支持文字查询和截图上传。截图识别依赖公网访问 trace.moe；VLM fallback 只有在配置 VLM_API_KEY 后才可用。
+左侧聊天面板输入查询，右侧实时显示流程图——每个节点的执行状态、耗时、LLM Token 用量流式推送。面板同时支持文字查询和截图上传。截图识别依赖公网访问 trace.moe；VLM fallback 只有在配置 `VLM_API_KEY` 后才可用。
 
 ### 3b. 命令行交互
 
-`ash
+```bash
 python main.py
 # 或指定会话
 python main.py --session demo
-`
+```
 
 ### 3c. Python 调用
 
-`python
+```python
 import asyncio
 from main import run
 
 answer = asyncio.run(run("推荐一部科幻悬疑番", thread_id="demo"))
 print(answer)
-`
+```
 
 ---
 
 ## 架构
 
-`
+```
 用户查询 / 图片上传
   │
   ├── 有图 ──→ image_recognition  ← trace.moe 识图 + VLM 补充
@@ -125,7 +125,7 @@ planner             ← 4 层路由（Embedding 粗筛 → 缓存 → LLM 分类
                                web判断/answer replanner 降级回答
                                                 │
                                                 └→ query_processing（最多一次）
-`
+```
 
 详细节点说明见 [架构文档](docs/architecture.md)。
 
@@ -133,7 +133,7 @@ planner             ← 4 层路由（Embedding 粗筛 → 缓存 → LLM 分类
 
 ## 项目结构
 
-`
+```
 AniGraph/
 ├── main.py                # 入口：run() / run_stream() + 终端
 ├── chat.py                # 交互式终端 Chat
@@ -205,7 +205,7 @@ AniGraph/
 ├── .env.example           # 环境变量模板
 ├── requirements.txt       # Python 依赖
 └── LICENSE                # MIT
-`
+```
 
 ---
 
@@ -219,15 +219,15 @@ AniGraph/
 | 节点详情 | 点击节点查看 State 变化、LLM 调用明细 |
 | 模型信息 | 显示当前 LLM / Embedding 配置（只读） |
 
-**启动**：python server.py → http://localhost:9527
+**启动**：`python server.py` → http://localhost:9527
 
 **API 端点**：
-- GET / — Web 面板
-- POST /chat/stream — SSE 流式对话（主接口）
-- GET /chat/stream?query=...&thread_id=... — SSE 流式对话（GET 调试版）
-- POST /chat/image — 截图上传 + SSE 流式输出
-- GET /api/models — 返回 LLM / Embedding 配置对象
-- GET /api/health — 健康检查（仅报告进程存活）
+- `GET /` — Web 面板
+- `POST /chat/stream` — SSE 流式对话（主接口）
+- `GET /chat/stream?query=...&thread_id=...` — SSE 流式对话（GET 调试版）
+- `POST /chat/image` — 截图上传 + SSE 流式输出
+- `GET /api/models` — 返回 LLM / Embedding 配置对象
+- `GET /api/health` — 健康检查（仅报告进程存活）
 
 ---
 
@@ -242,7 +242,7 @@ AniGraph/
 | 向量检索 | Pinecone (similarity / MMR) |
 | 稀疏检索 | Whoosh (BM25F) |
 | 精排 | bge-reranker-v2-m3 |
-| 嵌入模型 | Ark Coding Plan doubao-embedding-vision（默认）/ local Qwen3 / DashScope |
+| 嵌入模型 | Ark Coding Plan `doubao-embedding-vision`（默认）/ local Qwen3 / DashScope |
 | 结构化索引 | JSON MetadataIndex |
 | 联网搜索 | Tavily |
 
@@ -250,21 +250,21 @@ AniGraph/
 
 ## 配置约束
 
-验证逻辑见 config.validate() 和 config.validate_retrieval_settings()：
+验证逻辑见 `config.validate()` 和 `config.validate_retrieval_settings()`：
 
-- RETRIEVER_FETCH_K >= HYBRID_DENSE_K（MMR 粗召回池必须覆盖密集检索量）
-- HYBRID_DENSE_K >= RETRIEVER_K 且 HYBRID_SPARSE_K >= RETRIEVER_K（密集/稀疏检索量须 ≥ 最终返回数）
-- RERANK_TOP_K >= RETRIEVER_K（精排候选数须 ≥ 最终返回数）
-- Ark Coding Plan 固定 doubao-embedding-vision、1024 维，不得切换模型或维度
-- PINECONE_SEARCH_TYPE 必须为 "similarity" 或 "mmr"；mmr 模式下 RETRIEVER_FETCH_K 须 ≥ HYBRID_DENSE_K
-- 记忆系统为进程内 MemorySaver，重启清空；同一 	hread_id 共享 in-process 实例
-- /api/health 仅报告进程存活，不检查 Pinecone / Tavily / LLM 连通性
+- `RETRIEVER_FETCH_K >= HYBRID_DENSE_K`（MMR 粗召回池必须覆盖密集检索量）
+- `HYBRID_DENSE_K >= RETRIEVER_K` 且 `HYBRID_SPARSE_K >= RETRIEVER_K`（密集/稀疏检索量须 ≥ 最终返回数）
+- `RERANK_TOP_K >= RETRIEVER_K`（精排候选数须 ≥ 最终返回数）
+- Ark Coding Plan 固定 `doubao-embedding-vision`、1024 维，不得切换模型或维度
+- `PINECONE_SEARCH_TYPE` 必须为 `"similarity"` 或 `"mmr"`；`mmr` 模式下 `RETRIEVER_FETCH_K` 须 ≥ `HYBRID_DENSE_K`
+- 记忆系统为进程内 `MemorySaver`，重启清空；同一 `thread_id` 共享 in-process 实例
+- `/api/health` 仅报告进程存活，不检查 Pinecone / Tavily / LLM 连通性
 
 ---
 
 ## 测试
 
-`ash
+```bash
 # 无依赖单元测试
 pytest -q tests/test_config.py tests/test_quality_loop.py tests/test_retry_system.py \
           tests/test_chunking.py tests/test_planner_fast_path.py \
@@ -279,9 +279,9 @@ pytest -q tests/test_agent.py tests/test_architecture.py \
 python tests/ablation.py --dry-run   # 预览实验矩阵
 python tests/run_full_pipeline.py    # 全流程评测
 python tests/run_hard_ablation.py    # Hard Eval 消融
-`
+```
 
-> 注意：集成测试依赖 pytest-asyncio 与真实 API 配置，需额外安装并配好 .env。
+> 注意：集成测试依赖 `pytest-asyncio` 与真实 API 配置，需额外安装并配好 `.env`。
 
 ---
 

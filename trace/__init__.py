@@ -1,4 +1,4 @@
-"""trace 模块 — AniGraph 可观测性数据模型。
+"""trace 模块 — AniRAG 可观测性数据模型。
 
 将 LangGraph 原始 streaming 事件转换并分发到前端 Trace 面板。
 

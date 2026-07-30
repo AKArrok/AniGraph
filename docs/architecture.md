@@ -1,10 +1,10 @@
-# AniGraph 架构文档
+# AniRAG 架构文档
 
 > 外部 HTTP / Python 接入见 [接口文档](api.md)，内部模块与状态字段见 [Python API 参考](api_reference.md)。
 
 ## 概述
 
-AniGraph 是一个基于 LangGraph 的多 Agent ACG 番剧检索、问答与推荐系统。核心采用 **ExecutionPlan 驱动编排** 的设计：Planner 输出一份执行计划，图引擎根据计划自动选择检索路径、Expert 组合和回答策略；截图请求先经过独立的识图节点。
+AniRAG 是一个基于 LangGraph 的多 Agent ACG 番剧检索、问答与推荐系统。核心采用 **ExecutionPlan 驱动编排** 的设计：Planner 输出一份执行计划，图引擎根据计划自动选择检索路径、Expert 组合和回答策略；截图请求先经过独立的识图节点。
 
 ### 关键特性
 
@@ -156,7 +156,7 @@ Merge 后始终进入 `evaluator`。
 ## 项目结构
 
 ```
-AniGraph/
+AniRAG/
 ├── main.py                 # 入口：run() / run_stream()
 ├── chat.py                 # 交互式终端
 ├── server.py               # FastAPI Web Trace Server

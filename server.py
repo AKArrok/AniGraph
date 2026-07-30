@@ -1,4 +1,4 @@
-"""AniGraph Web Trace Server — FastAPI + SSE 实时 Trace 面板。
+"""AniRAG Web Trace Server — FastAPI + SSE 实时 Trace 面板。
 
 启动: python server.py
 打开: http://localhost:9527
@@ -24,7 +24,7 @@ from llms import embeddings
 # FastAPI App
 # ============================================================
 
-app = FastAPI(title="AniGraph Trace", version="1.0")
+app = FastAPI(title="AniRAG Trace", version="1.0")
 
 # 静态文件
 static_dir = Path(__file__).parent / "static"
@@ -51,7 +51,7 @@ async def index():
     index_path = static_dir / "index.html"
     if index_path.exists():
         return HTMLResponse(index_path.read_text(encoding="utf-8"))
-    return HTMLResponse("<h1>AniGraph Trace Panel</h1><p>静态文件缺失，请确认 static/index.html 存在。</p>")
+    return HTMLResponse("<h1>AniRAG Trace Panel</h1><p>静态文件缺失，请确认 static/index.html 存在。</p>")
 
 
 @app.post("/chat/stream")

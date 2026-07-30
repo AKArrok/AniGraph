@@ -1,10 +1,10 @@
-# AniGraph — ACG 番剧智能检索与推荐系统 v2.5
+# AniRAG — ACG 番剧智能检索与推荐系统 v2.5
 
 基于 LangGraph 的多 Agent 动漫问答系统。它把结构化元数据、向量检索、关键词检索和联网搜索组合在一条动态工作流中，支持事实查询、推荐、对比、多轮追问和动漫截图识别，并提供 Web Trace 实时执行面板。
 
 ```
 用户: "无职转生的主角是谁？"
-AniGraph: 鲁迪乌斯·格雷拉特，声优是内山夕实。原作是理不尽な孫の手写的轻小说...
+AniRAG: 鲁迪乌斯·格雷拉特，声优是内山夕实。原作是理不尽な孫の手写的轻小说...
 ```
 
 ---
@@ -33,7 +33,7 @@ AniGraph: 鲁迪乌斯·格雷拉特，声优是内山夕实。原作是理不�
 
 ```bash
 # 克隆项目
-git clone <repo-url> && cd AniGraph
+git clone <repo-url> && cd AniRAG
 
 # 安装依赖（推荐 uv）
 uv pip install -r requirements.txt
@@ -126,7 +126,7 @@ flowchart TD
 ## 项目结构
 
 ```
-AniGraph/
+AniRAG/
 ├── main.py                # 入口：run() / run_stream() + 终端
 ├── chat.py                # 交互式终端 Chat
 ├── server.py              # FastAPI Web Trace Server

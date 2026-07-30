@@ -26,7 +26,7 @@ config.validate()
 
 
 async def run(query: str = "", thread_id: str = "1", image_data: str = None) -> str:
-    """向 AniGraph 发送一条查询，返回回答文本。
+    """向 AniRAG 发送一条查询，返回回答文本。
 
     同一 thread_id 的多次调用共享对话历史。
 
@@ -51,7 +51,7 @@ async def run(query: str = "", thread_id: str = "1", image_data: str = None) -> 
 
 
 async def run_stream(query: str = "", thread_id: str = "1", image_data: str = None) -> AsyncIterator[dict]:
-    """向 AniGraph 发送一条查询，流式返回 Trace 事件。
+    """向 AniRAG 发送一条查询，流式返回 Trace 事件。
 
     用于 Web Trace 面板（SSE）实时展示 Agent 执行过程。
 

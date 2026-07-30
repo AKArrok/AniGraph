@@ -1,4 +1,4 @@
-/* AniGraph Trace Panel — Chat + Flowchart */
+/* AniRAG Trace Panel — Chat + Flowchart */
 
 const state = {
   running: false,

@@ -1,4 +1,4 @@
-"""AniGraph ablation experiment framework.
+"""AniRAG ablation experiment framework.
 
 Design rules:
 - Change exactly one variable per experiment; hold everything else fixed.
@@ -38,7 +38,7 @@ EXPERIMENTS: list[dict[str, Any]] = [
     dict(id="B4_multi_agent", label="Hybrid + Reranker + Multi-Agent",
          retrieval="hybrid", multi_expert=True, evaluator=False, replan=False,
          reranker=True, hyde=False, sparse=True, desc="+Multi-Agent"),
-    dict(id="B5_full", label="AniGraph full system",
+    dict(id="B5_full", label="AniRAG full system",
          retrieval="hybrid", multi_expert=True, evaluator=True, replan=True,
          reranker=True, hyde=True, sparse=True, desc="+Evaluator+Replan+HyDE"),
 
@@ -155,7 +155,7 @@ def run_experiment(exp_id: str) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="AniGraph ablation experiments")
+    parser = argparse.ArgumentParser(description="AniRAG ablation experiments")
     parser.add_argument("--dry-run", action="store_true",
                         help="Print experiment matrix without execution")
     parser.add_argument("--config", type=str, default="",

@@ -46,7 +46,7 @@ EXPERIMENT_META = {
     "B2_dense_topk3":  ("B2: Dense top_k=3",         "Dense RAG, tight retrieval"),
     "B3_dense_topk10": ("B3: Dense top_k=10",        "Dense RAG, mid retrieval"),
     "B4_no_cite_prompt":("B4: no-cite prompt",       "Dense top_k=20, prompt without 'cite sources'"),
-    "B5_full":         ("B5: AniGraph Full",         "+ Evaluator + Replan + HyDE (pending)"),
+    "B5_full":         ("B5: AniRAG Full",         "+ Evaluator + Replan + HyDE (pending)"),
     "AB_sparse":       ("Ablation: no Sparse",       "Full minus Whoosh"),
     "AB_reranker":     ("Ablation: no Reranker",     "Full minus CrossEncoder"),
     "AB_hyde":         ("Ablation: no HyDE",         "Full minus HyDE query rewrite"),

@@ -1,4 +1,4 @@
-"""AniGraph 多 Agent 协作 — 全功能多轮问答回归测试
+"""AniRAG 多 Agent 协作 — 全功能多轮问答回归测试
 
 覆盖功能：
   query_type:   simple_fact / recommendation / comparison / chat
@@ -518,7 +518,7 @@ ALL_SCENARIOS = [
 async def main():
     """完整回归测试运行入口"""
     print(f"\n{'='*60}")
-    print("  AniGraph 全功能多轮回归测试")
+    print("  AniRAG 全功能多轮回归测试")
     print(f"  {len(ALL_SCENARIOS)} 个场景, 启动中...")
     print(f"{'='*60}\n")
 
@@ -606,7 +606,7 @@ async def main():
 def _build_parser() -> argparse.ArgumentParser:
     """构建命令行参数解析器"""
     p = argparse.ArgumentParser(
-        description="AniGraph 全功能多轮回归测试",
+        description="AniRAG 全功能多轮回归测试",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 示例:

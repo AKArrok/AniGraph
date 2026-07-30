@@ -1,4 +1,4 @@
-"""AniGraph 交互式对话终端
+"""AniRAG 交互式对话终端
 
 使用方式:
     python chat.py              # 默认会话
@@ -22,7 +22,7 @@ def _truncate(text: str, max_len: int = 72) -> str:
 async def chat_loop(app, thread_id: str):
     """主对话循环。"""
     print("=" * 60)
-    print("  AniGraph — ACG 番剧推荐与问答")
+    print("  AniRAG — ACG 番剧推荐与问答")
     print(f"  模型: {config.LLM_MODEL} / {config.SIMPLE_LLM_MODEL}")
     print(f"  会话: {thread_id[:8]}")
     print("=" * 60)

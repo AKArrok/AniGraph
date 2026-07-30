@@ -1,4 +1,4 @@
-"""AniGraph ablation runner: B0 (LLM-only) and B1 (Dense RAG) on eval_dataset."""
+"""AniRAG ablation runner: B0 (LLM-only) and B1 (Dense RAG) on eval_dataset."""
 import json, os, sys, time, statistics, re
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from dotenv import load_dotenv; load_dotenv()

@@ -1,4 +1,4 @@
-# AniGraph Failure Case Study
+# AniRAG Failure Case Study
 
 ## Case 1: Pronoun Resolution Drift in Multi-Turn Follow-up
 

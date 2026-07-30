@@ -2,7 +2,7 @@
   "_meta": {
     "version": "1.0",
     "created": "2026-07-27",
-    "description": "AniGraph 离线评测数据集。100 条标注用例，覆盖 6 种查询类型 x 3 种难度。",
+    "description": "AniRAG 离线评测数据集。100 条标注用例，覆盖 6 种查询类型 x 3 种难度。",
     "usage": "与 tests/ablation.py 配合使用，对每轮实验跑完整的 pipeline。"
   },
   "cases": [

@@ -27,7 +27,7 @@ DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
                          "data", "anime_data.db")
 API_BASE = "https://api.bgm.tv/v0/subjects"
 PROXY = os.environ.get("HTTPS_PROXY") or "http://127.0.0.1:7897"
-UA = "AniGraph-alias/1.0 (https://github.com/anonymous/anigraph)"
+UA = "AniRAG-alias/1.0 (https://github.com/anonymous/anirag)"
 
 ALIAS_KEYS = {"别名", "英文名", "日文名", "第二中文名", "其他", "其他名"}
 

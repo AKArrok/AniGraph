@@ -1,4 +1,4 @@
-# AniGraph 内部 Python API 参考
+# AniRAG 内部 Python API 参考
 
 > 本文面向维护者，记录模块、状态和内部函数。HTTP / Python 对外接入方式见 [接口文档](api.md)。版本 v2.5（2026-07-29）。
 

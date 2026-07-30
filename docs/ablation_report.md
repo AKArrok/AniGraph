@@ -1,6 +1,6 @@
 # 消融实验报告 (Ablation Study)
 
-面向 AniGraph 的 Bangumi 番剧问答任务。本报告记录了从数据集设计、
+面向 AniRAG 的 Bangumi 番剧问答任务。本报告记录了从数据集设计、
 变体设置、到 metadata filter 路由干预 的完整流程与结论。
 
 数据文件：`tests/eval_hard_final.json` (50 条)
